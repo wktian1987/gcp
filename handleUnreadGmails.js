@@ -230,21 +230,13 @@ export async function HandleUnreadGmails(req, res) {
             }
         };
         client = new ImapFlow(IMAP_CONFIG);
-        const clientready = await client.connect();
-        if (clientready.authenticated) {
-            console.log("✔ IMAP Client 连接成功");
-        } else {
-            console.log("✘ IMAP Client 连接失败");
-        }
+        await client.connect();
+        console.log("✔ IMAP Client 连接成功");
 
         // 必须先进入文件夹，search 才会生效
         await client.mailboxOpen(FolderName);
         const lock = await client.getMailboxLock(FolderName);
-        if (lock) {
-            console.log("✔ Mail Folder lock 成功");
-        } else {
-            console.log("✘ Mail Folder lock 失败");
-        } 
+        console.log("✔ Mail Folder lock 成功");
         // 搜索未读邮件
         const messages = await client.search({ seen: false });
         // 如果没有未读邮件，则安全退出
@@ -385,14 +377,14 @@ export async function HandleUnreadGmails(req, res) {
                     values: handledEmailsData
                 }
             });
-            console.log(`✔ 当前处理邮件${messages.length} 封写入GoogleSheets "${handledEmailsSheetTitle}"成功`);
+            console.log(`✔ 当前处理邮件${messages.length}封写入GoogleSheets "${handledEmailsSheetTitle}"成功`);
         }
         catch (sheetErr) {
-            console.error(`✘ 当前处理邮件${messages.length} 封写入GoogleSheets "${handledEmailsSheetTitle}"失败: ` + sheetErr.message);
+            console.error(`✘ 当前处理邮件${messages.length}封写入GoogleSheets "${handledEmailsSheetTitle}"失败: ` + sheetErr.message);
         }
 
     } catch (err) {
-        console.error("✘ [后台任务失败] 未读tradingview邮件处理异常: " + err.message);
+        console.error("✘ 未读tradingview邮件处理异常: " + err.message);
         // 注意：这里不能再调用 res.status()，因为响应已在开头发出
     } finally {
         if (lock) {
