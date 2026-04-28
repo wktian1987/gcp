@@ -295,11 +295,11 @@ export async function HandleUnreadGmails(req, res) {
                 "subject      : " + subject + "\n" +
                 "msgID        : " + msgId;
 
-            console.log("开始处理新邮件:" + "\n" + thisEmailMark);
+            console.log("开始处理新邮件:" + msgId);
 
-            let finalBody = rawBody.match(/<tradingviewcode>([\s\S]*?)<\/tradingviewcode>/) ? // 先判断是否是加密邮件
-                decrypt(rawBody) :
-                rawBody;
+            let finalBody = rawBody.match(/<tradingviewcode>([\s\S]*?)<\/tradingviewcode>/)     ? // 先判断是否是加密邮件
+                decrypt(rawBody)                                                                :
+                rawBody                                                                         ;
 
             if (!finalBody) finalBody = "邮件内容为空或解析失败";
 
