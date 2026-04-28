@@ -1,0 +1,17 @@
+{
+    "name": "trading_router",
+    "version": "0.1.99",
+    "description": "TradingView Gmail Router, TradingView webhook",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "start": "node index.js"
+    },
+    "dependencies": {
+        "express": "^4.18.2",
+        "nodemailer": "^6.9.7",
+        "googleapis": "^105.0.0",
+        "imapflow": "^1.0.158",
+        "mailparser": "^3.7.1"
+    }
+}
