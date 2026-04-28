@@ -231,12 +231,20 @@ export async function HandleUnreadGmails(req, res) {
         };
         client = new ImapFlow(IMAP_CONFIG);
         await client.connect();
-        console.log("✔ IMAP Client 连接成功");
+        if (client.authenticated) {
+            console.log("✔ IMAP Client 连接成功");
+        } else {
+            console.log("✘ IMAP Client 连接失败");
+        }
 
         // 必须先进入文件夹，search 才会生效
         await client.mailboxOpen(FolderName);
-        const lock = await client.getMailboxLock(FolderName);
-        console.log("✔ Mail Folder lock 成功");
+        lock = await client.getMailboxLock(FolderName);
+        if (lock) {
+            console.log("✔ Mail Folder lock 成功");
+        } else {
+            console.log("✘ Mail Folder lock 失败");
+        }
         // 搜索未读邮件
         const messages = await client.search({ seen: false });
         // 如果没有未读邮件，则安全退出
