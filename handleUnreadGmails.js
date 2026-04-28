@@ -211,7 +211,7 @@ export async function HandleUnreadGmails(req, res) {
 
     const SPREADSHEET_ID = GetSheetID("TradingBot_00");
     const handledEmailsSheetTitle = "handledEmails";
-    await CheckIfSheetExists(sheets, SPREADSHEET_ID, handledEmailsSheetTitle, true);
+    // await CheckIfSheetExists(sheets, SPREADSHEET_ID, handledEmailsSheetTitle, true);
     let lock = null;
     let client = null;
 
