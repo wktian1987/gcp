@@ -230,11 +230,21 @@ export async function HandleUnreadGmails(req, res) {
             }
         };
         client = new ImapFlow(IMAP_CONFIG);
-        await client.connect();
+        const clientready = await client.connect();
+        if (clientready.authenticated) {
+            console.log("✔ IMAP Client 连接成功");
+        } else {
+            console.log("✘ IMAP Client 连接失败");
+        }
 
         // 必须先进入文件夹，search 才会生效
         await client.mailboxOpen(FolderName);
-        lock = await client.getMailboxLock(FolderName);
+        const lock = await client.getMailboxLock(FolderName);
+        if (lock) {
+            console.log("✔ Mail Folder lock 成功");
+        } else {
+            console.log("✘ Mail Folder lock 失败");
+        } 
         // 搜索未读邮件
         const messages = await client.search({ seen: false });
         // 如果没有未读邮件，则安全退出
@@ -387,11 +397,11 @@ export async function HandleUnreadGmails(req, res) {
     } finally {
         if (lock) {
             await lock.release();
-            console.log("✔ Gmail folder lock released");
+            console.log("✔ Gmail folder lock 已释放");
         }
         if (client) {
             await client.logout();
-            console.log("✔ 已安全退出 client");
+            console.log("✔ IMAP Client 已关闭");
         }
     }
 }
