@@ -217,12 +217,16 @@ export async function HandleUnreadGmails(req, res) {
 
     try {
         const IMAP_CONFIG = {
-            host: 'imap.gmail.com',
-            port: 993,
-            secure: true,
-            auth: {
+            host    : 'imap.gmail.com',
+            port    : 993,
+            secure  : true,
+            auth    : {
                 user: process.env.GMAIL_USER,
                 pass: process.env.GMAIL_APP_PASS
+            },
+            // 关键设置：只输出错误级别的日志
+            logger  : {
+                level: 'error' // 可选值: 'debug', 'info', 'warn', 'error', 'silent'
             }
         };
         client = new ImapFlow(IMAP_CONFIG);
