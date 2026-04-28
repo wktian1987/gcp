@@ -7,7 +7,6 @@ app.listen(process.env.PORT || 8080, () => {
 });
 
 app.post('/schedule', json(), async (req, res) => {
-    console.log("收到schedule信号");
     const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
     await HandleUnreadGmails(req, res);
 }
@@ -32,9 +31,4 @@ app.use((err, req, res, next) => {
         res.status(500).json({ status: 'error', message: 'Internal Server Error' });
     }
 });
-
-
-
-// test to GCP
-
 

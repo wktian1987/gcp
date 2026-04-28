@@ -12,12 +12,11 @@ const auth = new google.auth.GoogleAuth({
 const sheets = google.sheets({ version: 'v4', auth });
 
 
-const botToken = process.env.TG_TOKEN;
-const myGroupAlertTgID = process.env.TG_CHAT_ID;
-const myTgID = "6444592564";
+const botToken          = process.env.TG_TOKEN;
+const myGroupAlertTgID  = process.env.TG_CHAT_ID;
+const myTgID            = process.env.myTgID;
+// const myTgID = "6444592564";
 
-
-// https://api.telegram.org/bot8509122671:AAGmfo4Cak8ptnLotdpiE-xgrcnBcJ6r7OA/setWebhook?url=https://trading-webhook-767754845117.asia-northeast1.run.app/tgBot
 
 export async function HandleTgBot(req, res) {
 
