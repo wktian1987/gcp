@@ -7,6 +7,7 @@ app.listen(process.env.PORT || 8080, () => {
 });
 
 app.post('/schedule', json(), async (req, res) => {
+    console.log("收到schedule信号");
     const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
     await HandleUnreadGmails(req, res);
 }
