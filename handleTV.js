@@ -23,8 +23,8 @@ export async function HandleTV(newDatasFromTV) {
         datas       = await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP);
         datas       = Object.fromEntries(datas);
 
-        datas.tvUpdateTime   = GetTimeStringWithOffset(8, newDatasFromTV.timestamp);
-        datas.gcpGetTime     = GetTimeStringWithOffset(8);
+        newDatasFromTV.tvUpdateTime   = GetTimeStringWithOffset(8, newDatasFromTV.timestamp);
+        newDatasFromTV.gcpGetTime     = GetTimeStringWithOffset(8);
 
 
 
