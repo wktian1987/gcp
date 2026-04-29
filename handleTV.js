@@ -69,9 +69,9 @@ export async function HandleTV(req, res) {
         await Promise.all([writeToSheet, sentTgMessage]);
 
 
-        console.log('✅ TV数据写入表格成功');
+        console.log('✔ TV数据写入表格成功');
     } catch (err) {
-        console.error('❌ TV数据写入表格失败:', err);
+        console.error('✘ TV数据写入表格失败:', err);
         throw err;
     }
 
