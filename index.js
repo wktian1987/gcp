@@ -36,7 +36,7 @@ app.post('/tradingview', json(), async (req, res) => {
     try {
         await HandleTV(body);
     } catch (e) {
-        console.error(e.message);
+        console.error("✘ HandleTV处理失败: ", e.message);
     }
 }
 );
