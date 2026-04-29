@@ -27,7 +27,6 @@ export async function HandleTV(newDatasFromTV) {
         datas.gcpGetTime     = GetTimeStringWithOffset(8);
 
 
-        datas.newData = "new data from GCP";
 
 
 
@@ -44,7 +43,6 @@ export async function HandleTV(newDatasFromTV) {
 
 
         const writeToRange = newDatasFromTV.sheetTitle + '!A:B'; // 指定操作 A 到 B 列
-
         // 1. 先清空该区域的所有数据
         await sheets.spreadsheets.values.clear({
             spreadsheetId,
@@ -52,20 +50,19 @@ export async function HandleTV(newDatasFromTV) {
         });
 
         // 2. 写入新数据
-        const dataToWrite   = Object.entries(datas);
         const writeToSheet  = sheets.spreadsheets.values.update({
             spreadsheetId:spreadsheetId,
             range: writeToRange,
             valueInputOption: 'USER_ENTERED', // 允许自动识别数字/日期格式
             requestBody: {
-                values: dataToWrite,
+                values: Object.entries(newDatasFromTV),
             },
         });
         // 发送tg消息
-        const sentTgMessage = SendSplitTGMessages(  process.env.TG_TOKEN                    , 
-                                                    process.env.TG_CHAT_ID                  , 
-                                                    "Get TV webhook Message"                , 
-                                                    FormatMatrixToString(dataToWrite)       );
+        const sentTgMessage = SendSplitTGMessages(  process.env.TG_TOKEN                            , 
+                                                    process.env.TG_CHAT_ID                          , 
+                                                    "Get TV webhook Message"                        , 
+                                                    FormatMatrixToString(Object.entries(datas))     );
 
         await Promise.all([writeToSheet, sentTgMessage]);
 
