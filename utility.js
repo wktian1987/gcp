@@ -266,10 +266,10 @@ export async function SendSplitTGMessages(botToken, chatId, subject, text) {
             const result = await response.json(); // 必须加上这一行，否则 result 是 undefined
 
             if (! response.ok) {
-                throw new error(`✘ TG消息发送失败: [${result.error_code}] ${result.description}`);
+                throw new error(`TG消息发送失败: [${result.error_code}] , ${result.description}`);
             }
         } catch (err) {
-            throw new error(`✘ TG消息发送失败: ${err.message}`);
+            throw new Error(`✘ TG消息发送失败: ${err.message}`);
         }
 
         await new Promise(res => setTimeout(res, 1000));

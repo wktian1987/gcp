@@ -73,7 +73,7 @@ export async function HandleTV(newDatasFromTV) {
 
         console.log('✔ TV数据写入表格成功');
     } catch (err) {
-        throw new Error('✘ TV消息处理失败:', err.message);
+        throw new Error(`✘ TV消息处理失败: ${err.message}`);
     }
 
 }

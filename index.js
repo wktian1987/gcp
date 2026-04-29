@@ -34,8 +34,8 @@ app.post('/tradingview', json(), async (req, res) => {
     }
 
     try {
-    await HandleTV(body);
-    } catch(e){
+        await HandleTV(body);
+    } catch (e) {
         console.error(e.message);
     }
 }
