@@ -397,7 +397,7 @@ export async function HandleUnreadGmails(req, res) {
     } finally {
         if (lock) {
             await lock.release();
-            console.log("✔ Gmail folder lock 已释放");
+            console.log("✔ Mail folder lock 已释放");
         }
         if (client) {
             await client.logout();
