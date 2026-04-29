@@ -23,15 +23,15 @@ export async function HandleTV(newDatasFromTV) {
         datas       = await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP);
         datas       = Object.fromEntries(datas);
 
-        if (!datas.ifNoError || datas.ifNoError === "FALSE") {
-            throw new Error(`!datas.ifNoError || datas.ifNoError === "FALSE"`) ;
+        if (!datas.ifNoError || datas.ifNoError === "FALSE" || datas.TradingSymbol !== newDatasFromTV.TradingSymbol) {
+            throw new Error(`!datas.ifNoError || datas.ifNoError === "FALSE" || datas.TradingSymbol !== newDatasFromTV.TradingSymbol`) ;
         }
 
         newDatasFromTV.tvUpdateTime   = GetTimeStringWithOffset(8, newDatasFromTV.timestamp);
         newDatasFromTV.gcpGetTime     = GetTimeStringWithOffset(8);
 
-
-
+        if (datas.realTradeTime < newDatasFromTV.timestamp) {
+        }
 
 
 
@@ -54,7 +54,7 @@ export async function HandleTV(newDatasFromTV) {
         });
 
         // 2. 写入新数据
-        const writeToSheet  = sheets.spreadsheets.values.update({
+        await sheets.spreadsheets.values.update({
             spreadsheetId:spreadsheetId,
             range: writeToRange,
             valueInputOption: 'USER_ENTERED', // 允许自动识别数字/日期格式
@@ -62,16 +62,31 @@ export async function HandleTV(newDatasFromTV) {
                 values: Object.entries(newDatasFromTV),
             },
         });
+
+        let newDatasFromSheet   =  { timestamp: 0 };
+        let attampts            =  0 
+        while (attampts < 60 && Number(newDatasFromSheet.timestamp) < newDatasFromTV.timestamp) {
+            await new Promise(res => setTimeout(res, 1000));
+            newDatasFromSheet = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP));
+            attampts    += 1;
+        }
+        if (Number(newDatasFromSheet.timestamp) >= newDatasFromTV.timestamp) {
+            console.log('✔ TV数据写入表格成功');
+            await SendSplitTGMessages(  process.env.TG_TOKEN                                        , 
+                                        process.env.TG_CHAT_ID                                      , 
+                                        "Get TV webhook Message"                                    , 
+                                        FormatMatrixToString(Object.entries(newDatasFromSheet))     );
+        } else {
+            console.log('✘ TV数据写入表格失败');
+            await SendSplitTGMessages(  process.env.TG_TOKEN                                        , 
+                                        process.env.TG_CHAT_ID                                      , 
+                                        "Get TV webhook Message"                                    ,
+                                        "But FAIL write to Google Sheets"                           ); 
+            throw new Error("TV数据写入表格失败");
+        }
+
         // 发送tg消息
-        const sentTgMessage = SendSplitTGMessages(  process.env.TG_TOKEN                            , 
-                                                    process.env.TG_CHAT_ID                          , 
-                                                    "Get TV webhook Message"                        , 
-                                                    FormatMatrixToString(Object.entries(datas))     );
 
-        await Promise.all([writeToSheet, sentTgMessage]);
-
-
-        console.log('✔ TV数据写入表格成功');
     } catch (err) {
         throw new Error(`TV消息处理失败: ${err.message}`);
     }
