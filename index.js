@@ -25,13 +25,14 @@ app.post('/tradingview', json(), async (req, res) => {
     const { HandleTV } = await import("./handleTV.js");
     const { body } = req;
     if (body.fromTVcheck === process.env.fromTVcheck) {
-        console.log("收到TradingView webhook Message:" + JSON.stringify(body));
+        console.log("收到TradingView webhook Message");
         res.status(200).json({ status: 'success' });
     } else {
-        console.log("???收到未校验的TradingView Webhook Message:" + "\n" + JSON.stringify(body));
+        console.log("???收到未校验的TradingView Webhook Message:" + JSON.stringify(body));
         // 虽然未验证的消息，但是仍然给发送者发送“我已经收到了”
         return res.status(200).json({ status: 'success' });
     }
+
     await HandleTV(body);
 }
 );
