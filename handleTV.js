@@ -66,7 +66,7 @@ export async function HandleTV(newDatasFromTV) {
         let newDatasFromSheet   =  { timestamp: 0 };
         let attampts            =  0 
         while (attampts < 60 && Number(newDatasFromSheet.timestamp) < newDatasFromTV.timestamp) {
-            await new Promise(res => setTimeout(res, 1000));
+            await new Promise(res => setTimeout(res, 5000));
             newDatasFromSheet = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP));
             attampts    += 1;
         }
