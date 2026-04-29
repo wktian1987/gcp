@@ -34,27 +34,27 @@ export async function HandleTV(newDatasFromTV) {
         newDatasFromTV.gcpGetTime     = GetTimeStringWithOffset(8);
 
         if (newDatasFromTV.timestamp > datas.realTradeTime) {
-            if (datas.crtFund === "toFill") {
-                // 数据初始化
-                datas.crtFund       =   Number(datas.inFund);
-                datas.crtCoin       =   Number(datas.inCoin);
-                datas.allFund       =   datas.crtFund + datas.crtCoin * newDatasFromTV.BaseCoinPrice;
-                datas.initialFund   =   datas.allFund;
-                datas.hghestFund    =   datas.allFund;
-                datas.lowestFund    =   datas.allFund;
-                datas.allCoin       =   datas.crtFund / newDatasFromTV.BaseCoinPrice + datas.crtCoin;
-                datas.initialCoin   =   datas.allCoin;
-                datas.hghestCoin    =   datas.allCoin;
-                datas.lowestCoin    =   datas.allCoin;
-                datas.allPosition   =   0;
-                datas.usedMargin    =   0;
-                datas.freeMargin    =   datas.crtFund + datas.crtCoin * newDatasFromTV.BaseCoinPrice * Number(datas.BaseCoinHairCut);
-                datas.allTradeFee   =   0;
-                datas.allFundFee    =   0;
-                datas.netProfit     =   0;
-                datas.openProfit    =   0;
-                datas.avgBuyPrice   =   0;
-            }
+            // if (datas.crtFund === "toFill") {
+            //     // 数据初始化
+            //     datas.crtFund       =   Number(datas.inFund);
+            //     datas.crtCoin       =   Number(datas.inCoin);
+            //     datas.allFund       =   datas.crtFund + datas.crtCoin * newDatasFromTV.BaseCoinPrice;
+            //     datas.initialFund   =   datas.allFund;
+            //     datas.hghestFund    =   datas.allFund;
+            //     datas.lowestFund    =   datas.allFund;
+            //     datas.allCoin       =   datas.crtFund / newDatasFromTV.BaseCoinPrice + datas.crtCoin;
+            //     datas.initialCoin   =   datas.allCoin;
+            //     datas.hghestCoin    =   datas.allCoin;
+            //     datas.lowestCoin    =   datas.allCoin;
+            //     datas.allPosition   =   0;
+            //     datas.usedMargin    =   0;
+            //     datas.freeMargin    =   datas.crtFund + datas.crtCoin * newDatasFromTV.BaseCoinPrice * Number(datas.BaseCoinHairCut);
+            //     datas.allTradeFee   =   0;
+            //     datas.allFundFee    =   0;
+            //     datas.netProfit     =   0;
+            //     datas.openProfit    =   0;
+            //     datas.avgBuyPrice   =   0;
+            // }
 
             // 收到新消息数据初始化
             const toFill = "toFill";
