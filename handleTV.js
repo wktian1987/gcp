@@ -23,6 +23,10 @@ export async function HandleTV(newDatasFromTV) {
         datas       = await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP);
         datas       = Object.fromEntries(datas);
 
+        if (!datas.ifNoError || datas.ifNoError === "FALSE") {
+            throw new Error(`!datas.ifNoError || datas.ifNoError === "FALSE"`) ;
+        }
+
         newDatasFromTV.tvUpdateTime   = GetTimeStringWithOffset(8, newDatasFromTV.timestamp);
         newDatasFromTV.gcpGetTime     = GetTimeStringWithOffset(8);
 
@@ -69,8 +73,7 @@ export async function HandleTV(newDatasFromTV) {
 
         console.log('✔ TV数据写入表格成功');
     } catch (err) {
-        console.error('✘ TV数据写入表格失败:', err);
-        throw err;
+        throw new Error('✘ TV消息处理失败:', err.message);
     }
 
 }

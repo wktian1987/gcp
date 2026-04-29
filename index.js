@@ -33,7 +33,11 @@ app.post('/tradingview', json(), async (req, res) => {
         return res.status(200).json({ status: 'success' });
     }
 
+    try {
     await HandleTV(body);
+    } catch(e){
+        console.error(e.message);
+    }
 }
 );
 

@@ -217,7 +217,7 @@ export async function GetNumericDataRange(sheets, spreadsheetId, sheetTitle) {
 }
 
 export async function SendSplitTGMessages(botToken, chatId, subject, text) {
-    const MAX_LENGTH = 4000;
+    const CHUNK_SIZE = 3800;
 
     if (!botToken || !chatId) {
         console.error("✘ 发送tg消息错误: TG_TOKEN 或 TG_CHAT_ID 为空！");
@@ -229,7 +229,6 @@ export async function SendSplitTGMessages(botToken, chatId, subject, text) {
 
     // 考虑到 HTML 标签 <pre> 的长度，实际内容的 MAX_LENGTH 应略小于 4096
     // 建议先分段，再转义，防止转义字符被切断导致 HTML 报错
-    const CHUNK_SIZE = 3800;
 
     let messageTimes = 1;
     let isManyMessages = false;
@@ -237,7 +236,6 @@ export async function SendSplitTGMessages(botToken, chatId, subject, text) {
         messageTimes = Math.ceil(fullRawText.length / CHUNK_SIZE);
         isManyMessages = true;
     }
-    console.log(`开始处理TG消息, 总长度: ${fullRawText.length}` + (isManyMessages ? `，需分 ${messageTimes} 段发送` : ""));
 
     for (let i = 0; i < fullRawText.length; i += CHUNK_SIZE) {
 
@@ -267,13 +265,11 @@ export async function SendSplitTGMessages(botToken, chatId, subject, text) {
 
             const result = await response.json(); // 必须加上这一行，否则 result 是 undefined
 
-            if (response.ok) {
-                console.log(isManyMessages ? `✔ 第 ${Math.floor(i / CHUNK_SIZE) + 1} 段TG消息发送成功。` : `✔ TG消息发送成功`);
-            } else {
-                console.error(`✘ TG消息发送失败: [${result.error_code}] ${result.description}`);
+            if (! response.ok) {
+                throw new error(`✘ TG消息发送失败: [${result.error_code}] ${result.description}`);
             }
         } catch (err) {
-            console.error(`✘ TG请求异常: ${err.message}`);
+            throw new error(`✘ TG消息发送失败: ${err.message}`);
         }
 
         await new Promise(res => setTimeout(res, 1000));
