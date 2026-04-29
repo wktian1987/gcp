@@ -26,7 +26,7 @@ export async function HandleTV(newDatasFromTV) {
         datas       = await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP);
         datas       = Object.fromEntries(datas);
 
-        if (!datas.ifNoError || datas.ifNoError === "FALSE" || datas.TradingSymbol !== newDatasFromTV.TradingSymbol) {
+        if (!datas.ifNoError || datas.ifNoError === "FALSE") { //|| datas.TradingSymbol !== newDatasFromTV.TradingSymbol) {
             throw new Error(`!datas.ifNoError || datas.ifNoError === "FALSE" || datas.TradingSymbol !== newDatasFromTV.TradingSymbol`) ;
         }
 
