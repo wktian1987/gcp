@@ -125,15 +125,15 @@ export async function CheckIfSheetExists(sheets, spreadsheetId, sheetTitle, ifNo
 /**
  * 
  * @param {*} sheets 
- * @param {string} sheetId 
+ * @param {string} spreadsheetId 
  * @param {*} fullRange 
  * @returns - 返回一个二维数组
  * 如果只有 "A!A1:B5" 这个区域内有数据的话，用"A!A:B" 会比"A!A1:B5" 效率不会差很多，可以不考虑
  */
-export async function GetDataFromSheet(sheets, sheetId, fullRange) {
+export async function GetDataFromSheet(sheets, spreadsheetId, fullRange) {
     try {
         const response = await sheets.spreadsheets.values.get({
-            spreadsheetId: sheetId,
+            spreadsheetId: spreadsheetId,
             range: fullRange,
         });
 

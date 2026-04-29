@@ -1,7 +1,8 @@
 import {GetTimeStringWithOffset         , 
         SendSplitTGMessages             ,
         GetSheetID                      ,                      
-        FormatMatrixToString            } from "./utility.js";
+        FormatMatrixToString,            
+        GetDataFromSheet} from "./utility.js";
 
 import { google } from 'googleapis';
 const auth = new google.auth.GoogleAuth({
@@ -11,21 +12,6 @@ const sheets = google.sheets({ version: 'v4', auth });
 
 
 export async function HandleTV(req, res) {
-    const { body } = req;
-    if (body.fromTVcheck === process.env.fromTVcheck) {
-        console.log("收到TradingView webhook Message:" + "\n" + JSON.stringify(body));
-        res.status(200).json({
-            status: 'success'
-        });
-    } else {
-        console.log("???收到未校验的TradingView Webhook Message:" + "\n" + JSON.stringify(body));
-        // 虽然未验证的消息，但是仍然给发送者发送“我已经收到了”
-        return res.status(200).json({
-            status: 'success'
-        });
-    }
-
-
     body.tvUpdateTime = GetTimeStringWithOffset(8, body.timestamp);
     body.gcpGetTime   = GetTimeStringWithOffset(8);
 
@@ -33,6 +19,28 @@ export async function HandleTV(req, res) {
     // 例如：直接转发到 TG 或 写入 Google Sheets
 
     const spreadsheetId = GetSheetID(body.botNumber);
+
+    //获取现存数据
+    let ranges = await GetDataFromSheet(sheets, spreadsheetId, "toGCP!A:B");
+    // ranges = matrx
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const range         = body.sheetTitle + '!A:B'; // 指定操作 A 到 B 列
 
     try {
