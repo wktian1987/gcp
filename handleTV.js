@@ -213,8 +213,8 @@ export async function HandleTV(newDatasFromTV) {
             datas.allTradeFee       =  isNaN(datas.allTradeFee )  ?  0              :  datas.allTradeFee                                                                        ;
             datas.allFundFee        =  isNaN(datas.allFundFee  )  ?  0              :  datas.allFundFee                                                                         ;
             datas.positionN         =  isNaN(datas.positionN   )  ?  0              :  datas.positionN                                                                          ;
-            datas.buyTimes          =  isNaN(datas.buyTimes    )  ?  0              :  Number(datas.buyTimes)                                                                   ;
-            datas.sellTimes         =  isNaN(datas.sellTimes   )  ?  0              :  Number(datas.sellTimes)                                                                  ;
+            datas.buyTimes          =  isNaN(datas.buyTimes    )  ?  0              :  datas.buyTimes                                                                           ;
+            datas.sellTimes         =  isNaN(datas.sellTimes   )  ?  0              :  datas.sellTimes                                                                          ;
             datas.crt_initialFund   =  (datas.allFund - datas.initialFund) / datas.initialFund                                                                                  ;
             datas.crt_hghestFund    =  (datas.allFund - datas.hghestFund ) / datas.hghestFund                                                                                   ;
             datas.crt_lowestFund    =  (datas.allFund - datas.lowestFund ) / datas.lowestFund                                                                                   ;
