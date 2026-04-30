@@ -148,7 +148,7 @@ export async function HandleTV(newDatasFromTV) {
                                                                                     Number(datas.crtCoin                        )     , 
                                                                                     Number(newDatasFromTV.TradingSymbolPrice    )     , 
                                                                                     Number(newDatasFromTV.BaseCoinPrice         )     , 
-                                                                                    Number(datas.aseCoinHairCut                )     , 
+                                                                                    Number(datas.BaseCoinHairCut                )     , 
                                                                                     Number(newDatasFromTV.Adn2B                 )     , 
                                                                                     Number(newDatasFromTV.waveUpChg             )     , 
                                                                                     Number(datas.hghestFund                     )     , 
