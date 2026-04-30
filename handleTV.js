@@ -10,9 +10,88 @@ const auth = new google.auth.GoogleAuth({
 });
 const sheets = google.sheets({ version: 'v4', auth });
 
-function GetLiquidatePrice() {
-    return 0;
+
+function GetLiquidateStopPrice( allPosition         ,
+                                avgBuyPrice         , 
+                                inFund              , 
+                                netProfit           , 
+                                crtCoin             , 
+                                operatePrice        , 
+                                bPrice              , 
+                                baseCoinHairCut     , 
+                                Adn2B               , 
+                                waveUpChg           , 
+                                hghestFund          , 
+                                hghestCoin          , 
+                                stopRate4F          , 
+                                stopRate4C          ,
+                                notStop4C           , 
+                                notStop4F           ) {
+    // 基础变量提取 (命名对齐你的 GetAccountStatusByPrice)
+    let C    = crtCoin              ;
+    let S    = bPrice               ;
+    let P    = operatePrice         ;
+    let L    = allPosition          ;
+    let K    = inFund + netProfit   ;
+    let A    = avgBuyPrice          ;
+    let H    = baseCoinHairCut      ;
+    let R    = waveUpChg            ;
+    
+    let liquidatePrice = null;
+    let stopPriceC     = null;
+    let stopPriceF     = null;
+
+    // ==========================================
+    // 1. 求 _liquidatePrice (爆仓价)
+    // 条件: V_f(P, Haircut) = R * L * P
+    // ==========================================
+    let slope_f_h       = (C * S * Adn2B * H / P) + L
+    let intercept_f_h   = K - (L * A) + (C * S * H * (1 - Adn2B))
+    
+    // 方程: slope_f_h * P + intercept_f_h = R * L * P
+    // 移项: P * (slope_f_h - R * L) = -intercept_f_h
+    liquidatePrice      = -intercept_f_h / (slope_f_h - R * L)
+
+    // ==========================================
+    // 2. 求 _stopPriceF (金本位止损价)
+    // 需要计算两个条件：stopRate4F (止损) 和 notStop4C (交叉限制)
+    // 最终取两者中较高的价格 (即下跌时先碰到的那个)
+    // ==========================================
+    let slope_f   = (C * S * Adn2B / P) + L
+    let intercept_f = K - (L * A) + (C * S * (1 - Adn2B))
+    
+    let targetF_1   = hghestFund * (1 + stopRate4F / 100)
+    let targetF_2   = hghestFund * (1 + notStop4F / 100)
+    
+    let resF1       = (targetF_1 - intercept_f) / slope_f
+    let resF2       = (targetF_2 - intercept_f) / slope_f
+    
+    // 根据你的逻辑，最终结果由交叉条件限制，此处取 math.min 对应下跌时更高的价格
+    stopPriceF = Math.min(resF1, resF2)
+
+    // ==========================================
+    // 3. 求 _stopPriceC (币本位止损价)
+    // 条件: V_f(P, H=1) / P_b(P) = TargetCoin
+    // ==========================================
+    let targetC_1 = hghestCoin * (1 + stopRate4C / 100)
+    let targetC_2 = hghestCoin * (1 + notStop4C / 100)
+    
+    // 币本位方程推导: (slope_f * P + intercept_f) / (S0 * (1 + (P-P0)/P0 * Adn2B)) = Target
+    // 令 m_slope = S0 * Adn2B / P0, m_intercept = S0 * (1 - Adn2B)
+    let m_slope     = S * Adn2B / P
+    let m_intercept = S * (1 - Adn2B)
+    
+    // 方程化简为一次方程: P * (slope_f - Target * m_slope) = Target * m_intercept - intercept_f
+    let resC1 = (targetC_1 * m_intercept - intercept_f) / (slope_f - targetC_1 * m_slope)
+    let resC2 = (targetC_2 * m_intercept - intercept_f) / (slope_f - targetC_2 * m_slope)
+    
+    stopPriceC = Math.min(resC1, resC2)
+
+    return [liquidatePrice, stopPriceC, stopPriceF]
+
 }
+
+
 
 export async function HandleTV(newDatasFromTV) {
     let datas = {};
@@ -30,10 +109,10 @@ export async function HandleTV(newDatasFromTV) {
             throw new Error(`!datas.ifNoError || datas.ifNoError === "FALSE" || datas.TradingSymbol !== newDatasFromTV.TradingSymbol`) ;
         }
 
-        newDatasFromTV.tvUpdateTime   = GetTimeStringWithOffset(8, newDatasFromTV.timestamp);
+        newDatasFromTV.tvUpdateTime   = GetTimeStringWithOffset(8, newDatasFromTV.timestAdn2B);
         newDatasFromTV.gcpGetTime     = GetTimeStringWithOffset(8);
 
-        if (newDatasFromTV.timestamp > datas.realTradeTime) {
+        if (newDatasFromTV.timestAdn2B > datas.realTradeTime) {
             // 收到新消息数据初始化
             const toFill = "toFill";
             datas.netProfit         =  (datas.netProfit      === toFill)  ?  0                                                                                                :  Number(datas.netProfit)                                                                                              ;
@@ -54,7 +133,8 @@ export async function HandleTV(newDatasFromTV) {
             datas.freeMargin        =  (datas.freeMargin     === toFill)  ?  datas.crtFund + datas.crtCoin * newDatasFromTV.BaseCoinPrice * Number(datas.BaseCoinHairCut)     :  datas.crtFund + datas.crtCoin * newDatasFromTV.BaseCoinPrice * Number(datas.BaseCoinHairCut) - datas.usedMargin      ;
             datas.allTradeFee       =  (datas.allTradeFee    === toFill)  ?  0                                                                                                :  Number(datas.allTradeFee)                                                                                            ;
             datas.allFundFee        =  (datas.allFundFee     === toFill)  ?  0                                                                                                :  Number(datas.allFundFee)                                                                                             ;
-            datas.liquidatePrice    =  (datas.liquidatePrice === toFill)  ?  0                                                                                                :  GetLiquidatePrice()                                                                                                  ;
+            datas.buyTimes          =  (datas.buyTimes       === toFill)  ?  0                                                                                                :  Number(datas.buyTimes)                                                                                               ;
+            datas.sellTimes         =  (datas.sellTimes      === toFill)  ?  0                                                                                                :  Number(datas.sellTimes)                                                                                              ;
 
             datas.crt_initialFund   =  (datas.allFund - datas.initialFund) / datas.initialFund  ;
             datas.crt_hghestFund    =  (datas.allFund - datas.hghestFund ) / datas.hghestFund   ;
@@ -62,6 +142,27 @@ export async function HandleTV(newDatasFromTV) {
             datas.crt_initialCoin   =  (datas.allCoin - datas.initialCoin) / datas.initialCoin  ;
             datas.crt_hghestCoin    =  (datas.allCoin - datas.hghestCoin ) / datas.hghestCoin   ;
             datas.crt_lowestCoin    =  (datas.allCoin - datas.lowestCoin ) / datas.lowestCoin   ;
+
+            let [liquidatePrice, stopPriceC, stopPriceF] = GetLiquidateStopPrice(   Number(datas.allPosition                    )     , 
+                                                                                    Number(datas.avgBuyPrice                    )     , 
+                                                                                    Number(datas.inFund                         )     , 
+                                                                                    Number(datas.netProfit                      )     , 
+                                                                                    Number(datas.crtCoin                        )     , 
+                                                                                    Number(newDatasFromTV.TradingSymbolPrice    )     , 
+                                                                                    Number(newDatasFromTV.BaseCoinPrice         )     , 
+                                                                                    Number(datas.baseCoinHairCut                )     , 
+                                                                                    Number(newDatasFromTV.Adn2B                 )     , 
+                                                                                    Number(newDatasFromTV.waveUpChg             )     , 
+                                                                                    Number(datas.hghestFund                     )     , 
+                                                                                    Number(datas.hghestCoin                     )     , 
+                                                                                    Number(datas.stopRate4F                     )     , 
+                                                                                    Number(datas.stopRate4C                     )     , 
+                                                                                    Number(datas.notStop4C                      )     , 
+                                                                                    Number(datas.notStop4F                      )     );
+
+            datas.liquidatePrice    =   liquidatePrice  ;
+            datas.stopPriceC        =   stopPriceC      ;
+            datas.stopRate4F        =   stopPriceF      ;
 
         } else {
             // 未到交易时刻的逻辑
@@ -89,6 +190,8 @@ export async function HandleTV(newDatasFromTV) {
         newDatasFromTV.allTradeFee      =  datas.allTradeFee        ;
         newDatasFromTV.allFundFee       =  datas.allFundFee         ;
         newDatasFromTV.liquidatePrice   =  datas.liquidatePrice     ;
+        newDatasFromTV.buyTimes         =  datas.buyTimes           ;
+        newDatasFromTV.sellTimes        =  datas.sellTimes          ;
         newDatasFromTV.crt_initialFund  =  datas.crt_initialFund    ;
         newDatasFromTV.crt_hghestFund   =  datas.crt_hghestFund     ;
         newDatasFromTV.crt_lowestFund   =  datas.crt_lowestFund     ;
@@ -114,16 +217,16 @@ export async function HandleTV(newDatasFromTV) {
         });
 
         let newDatasFromSheet   =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP));
-        let attampts            =  0;
+        let attAdn2Bts            =  0;
         let waitTime            =  1000;
 
-        while (attampts < 60 && Number(newDatasFromSheet.timestamp) < newDatasFromTV.timestamp) {
+        while (attAdn2Bts < 60 && Number(newDatasFromSheet.timestAdn2B) < newDatasFromTV.timestAdn2B) {
             await new Promise(res => setTimeout(res, waitTime));
             newDatasFromSheet = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP));
-            attampts    += 1;
-            waitTime    =  attampts * 1000;
+            attAdn2Bts    += 1;
+            waitTime    =  attAdn2Bts * 1000;
         }
-        if (Number(newDatasFromSheet.timestamp) >= newDatasFromTV.timestamp) {
+        if (Number(newDatasFromSheet.timestAdn2B) >= newDatasFromTV.timestAdn2B) {
             console.log('✔ TV数据写入表格成功');
             await SendSplitTGMessages(  process.env.TG_TOKEN                                        , 
                                         process.env.TG_CHAT_ID                                      , 
