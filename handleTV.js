@@ -91,14 +91,45 @@ function GetLiquidateStopPrice( allPosition         ,
 
 }
 
+const toFill        = "toFill"      ;
+const toGCPRanges   = "toGCP!A:B"   ;
 export async function HandleTV(newDatasFromTV) {
+    newDatasFromTV.timestamp		        =   Number( newDatasFromTV.timestamp          ) ;
+    newDatasFromTV.TradingSymbolPrice		=   Number( newDatasFromTV.TradingSymbolPrice ) ;
+    newDatasFromTV.targetHgh		        =   Number( newDatasFromTV.targetHgh          ) ;
+    newDatasFromTV.targetLow		        =   Number( newDatasFromTV.targetLow          ) ;
+    newDatasFromTV.roundHgh		            =   Number( newDatasFromTV.roundHgh           ) ;
+    newDatasFromTV.roundLow		            =   Number( newDatasFromTV.roundLow           ) ;
+    newDatasFromTV.tradeFeeRate		        =   Number( newDatasFromTV.tradeFeeRate       ) ;
+    newDatasFromTV.fundingRate		        =   Number( newDatasFromTV.fundingRate        ) ;
+    newDatasFromTV.barChgFR		            =   Number( newDatasFromTV.barChgFR           ) ;
+    newDatasFromTV.barChgA		            =   Number( newDatasFromTV.barChgA            ) ;
+    newDatasFromTV.barChgB		            =   Number( newDatasFromTV.barChgB            ) ;
+    newDatasFromTV.A2B		                =   Number( newDatasFromTV.A2B                ) ;
+    newDatasFromTV.Aup2B		            =   Number( newDatasFromTV.Aup2B              ) ;
+    newDatasFromTV.Adn2B		            =   Number( newDatasFromTV.Adn2B              ) ;
+    newDatasFromTV.B2A		                =   Number( newDatasFromTV.B2A                ) ;
+    newDatasFromTV.Bup2A		            =   Number( newDatasFromTV.Bup2A              ) ;
+    newDatasFromTV.Bdn2A		            =   Number( newDatasFromTV.Bdn2A              ) ;
+    newDatasFromTV.avgA2B		            =   Number( newDatasFromTV.avgA2B             ) ;
+    newDatasFromTV.avgAup2B		            =   Number( newDatasFromTV.avgAup2B           ) ;
+    newDatasFromTV.avgAdn2B		            =   Number( newDatasFromTV.avgAdn2B           ) ;
+    newDatasFromTV.avgB2A		            =   Number( newDatasFromTV.avgB2A             ) ;
+    newDatasFromTV.avgBup2A		            =   Number( newDatasFromTV.avgBup2A           ) ;
+    newDatasFromTV.avgBdn2A		            =   Number( newDatasFromTV.avgBdn2A           ) ;
+    newDatasFromTV.waveUpChg		        =   Number( newDatasFromTV.waveUpChg          ) ;
+    newDatasFromTV.waveDnChg		        =   Number( newDatasFromTV.waveDnChg          ) ;
+    newDatasFromTV.isDiffRatio		        =   Number( newDatasFromTV.isDiffRatio        ) ;
+    newDatasFromTV.ema_isDiffRatio		    =   Number( newDatasFromTV.ema_isDiffRatio    ) ;
+    newDatasFromTV.BaseCoinPrice		    =   Number( newDatasFromTV.BaseCoinPrice      ) ;
+
     let datas = {};
 
     try {
         const spreadsheetId = GetSheetID(newDatasFromTV.botNumber);
 
         //获取现存数据
-        let ranges  = await GetDataFromSheet(sheets, spreadsheetId, "toGCP!A:B");
+        let ranges  = await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges);
         ranges      = Object.fromEntries(ranges);
         datas       = await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP);
         datas       = Object.fromEntries(datas);
@@ -110,37 +141,72 @@ export async function HandleTV(newDatasFromTV) {
         newDatasFromTV.tvUpdateTime   = GetTimeStringWithOffset(8, newDatasFromTV.timestamp);
         newDatasFromTV.gcpGetTime     = GetTimeStringWithOffset(8);
 
-        if (newDatasFromTV.timestamp > datas.realTradeTime) {
-            // 收到新消息数据初始化
-            const toFill = "toFill";
-            datas.netProfit         =  (datas.netProfit      === toFill)  ?  0                                                                                                :  Number(datas.netProfit)                                                                                              ;
-            datas.avgBuyPrice       =  (datas.avgBuyPrice    === toFill)  ?  0                                                                                                :  Number(datas.avgBuyPrice)                                                                                            ;
-            datas.openProfit        =  (datas.openProfit     === toFill)  ?  0                                                                                                :  Number(datas.allPosition) * (newDatasFromTV.TradingSymbolPrice - datas.avgBuyPrice)                                  ;
-            datas.crtFund           =  (datas.crtFund        === toFill)  ?  Number(datas.inFund)                                                                             :  Number(datas.crtFund) + datas.openProfit                                                                             ;
-            datas.crtCoin           =  (datas.crtCoin        === toFill)  ?  Number(datas.inCoin)                                                                             :  Number(datas.crtCoin)                                                                                                ;
-            datas.allFund           =  (datas.allFund        === toFill)  ?  datas.crtFund + datas.crtCoin * newDatasFromTV.BaseCoinPrice                                     :  datas.crtFund + datas.crtCoin * newDatasFromTV.BaseCoinPrice                                                         ;
-            datas.initialFund       =  (datas.initialFund    === toFill)  ?  datas.allFund                                                                                    :  Number(datas.initialFund)                                                                                            ;
-            datas.hghestFund        =  (datas.hghestFund     === toFill)  ?  datas.allFund                                                                                    :  datas.allFund > Number(datas.hghestFund) ? datas.allFund : Number(datas.hghestFund)                                  ;
-            datas.lowestFund        =  (datas.lowestFund     === toFill)  ?  datas.allFund                                                                                    :  datas.allFund < Number(datas.lowestFund) ? datas.allFund : Number(datas.lowestFund)                                  ;
-            datas.allCoin           =  (datas.allCoin        === toFill)  ?  datas.crtFund / newDatasFromTV.BaseCoinPrice + datas.crtCoin                                     :  datas.crtFund / newDatasFromTV.BaseCoinPrice + datas.crtCoin                                                         ;
-            datas.initialCoin       =  (datas.initialCoin    === toFill)  ?  datas.allCoin                                                                                    :  Number(datas.initialCoin)                                                                                            ;
-            datas.hghestCoin        =  (datas.hghestCoin     === toFill)  ?  datas.allCoin                                                                                    :  datas.allCoin > Number(datas.hghestCoin) ? datas.allCoin : Number(datas.hghestCoin)                                  ;
-            datas.lowestCoin        =  (datas.lowestCoin     === toFill)  ?  datas.allCoin                                                                                    :  datas.allCoin < Number(datas.lowestCoin) ? datas.allCoin : Number(datas.lowestCoin)                                  ;
-            datas.allPosition       =  (datas.allPosition    === toFill)  ?  0                                                                                                :  Number(datas.allPosition)                                                                                            ;
-            datas.usedMargin        =  (datas.usedMargin     === toFill)  ?  0                                                                                                :  datas.allPosition * newDatasFromTV.TradingSymbolPrice / Number(datas.leverage)                                       ;
-            datas.freeMargin        =  (datas.freeMargin     === toFill)  ?  datas.crtFund + datas.crtCoin * newDatasFromTV.BaseCoinPrice * Number(datas.BaseCoinHairCut)     :  datas.crtFund + datas.crtCoin * newDatasFromTV.BaseCoinPrice * Number(datas.BaseCoinHairCut) - datas.usedMargin      ;
-            datas.allTradeFee       =  (datas.allTradeFee    === toFill)  ?  0                                                                                                :  Number(datas.allTradeFee)                                                                                            ;
-            datas.allFundFee        =  (datas.allFundFee     === toFill)  ?  0                                                                                                :  Number(datas.allFundFee)                                                                                             ;
-            datas.buyTimes          =  (datas.buyTimes       === toFill)  ?  0                                                                                                :  Number(datas.buyTimes)                                                                                               ;
-            datas.sellTimes         =  (datas.sellTimes      === toFill)  ?  0                                                                                                :  Number(datas.sellTimes)                                                                                              ;
 
-            datas.crt_avgBuyPrice   =  (newDatasFromTV.TradingSymbolPrice - datas.avgBuyPrice) / datas.avgBuyPrice;
-            datas.crt_initialFund   =  (datas.allFund - datas.initialFund) / datas.initialFund  ;
-            datas.crt_hghestFund    =  (datas.allFund - datas.hghestFund ) / datas.hghestFund   ;
-            datas.crt_lowestFund    =  (datas.allFund - datas.lowestFund ) / datas.lowestFund   ;
-            datas.crt_initialCoin   =  (datas.allCoin - datas.initialCoin) / datas.initialCoin  ;
-            datas.crt_hghestCoin    =  (datas.allCoin - datas.hghestCoin ) / datas.hghestCoin   ;
-            datas.crt_lowestCoin    =  (datas.allCoin - datas.lowestCoin ) / datas.lowestCoin   ;
+        datas.crtFund	        =   Number(datas.crtFund            )   ;
+        datas.crtCoin	        =   Number(datas.crtCoin            )   ;
+        datas.allFund	        =   Number(datas.allFund            )   ;
+        datas.initialFund	    =   Number(datas.initialFund        )   ;
+        datas.hghestFund	    =   Number(datas.hghestFund         )   ;
+        datas.lowestFund	    =   Number(datas.lowestFund         )   ;
+        datas.allCoin	        =   Number(datas.allCoin            )   ;
+        datas.initialCoin	    =   Number(datas.initialCoin        )   ;
+        datas.hghestCoin	    =   Number(datas.hghestCoin         )   ;
+        datas.lowestCoin	    =   Number(datas.lowestCoin         )   ;
+        datas.allPosition	    =   Number(datas.allPosition        )   ;
+        datas.usedMargin	    =   Number(datas.usedMargin         )   ;
+        datas.freeMargin	    =   Number(datas.freeMargin         )   ;
+        datas.allTradeFee	    =   Number(datas.allTradeFee        )   ;
+        datas.allFundFee	    =   Number(datas.allFundFee         )   ;
+        datas.netProfit	        =   Number(datas.netProfit          )   ;
+        datas.openProfit	    =   Number(datas.openProfit         )   ;
+        datas.avgBuyPrice	    =   Number(datas.avgBuyPrice        )   ;
+        datas.liquidatePrice	=   Number(datas.liquidatePrice     )   ;
+        datas.stopPriceC	    =   Number(datas.stopPriceC         )   ;
+        datas.stopPriceF	    =   Number(datas.stopPriceF         )   ;
+        datas.buyTimes	        =   Number(datas.buyTimes           )   ;
+        datas.sellTimes	        =   Number(datas.sellTimes          )   ;
+        datas.realTradeTime	    =   Number(datas.realTradeTime      )   ;
+        datas.inFund	        =   Number(datas.inFund             )   ;
+        datas.inCoin	        =   Number(datas.inCoin             )   ;
+        datas.leverage	        =   Number(datas.leverage           )   ;
+        datas.MaxGrid	        =   Number(datas.MaxGrid            )   ;
+        datas.BaseCoinHairCut	=   Number(datas.BaseCoinHairCut    )   ;
+        datas.stopRate4F	    =   Number(datas.stopRate4F         )   ;
+        datas.stopRate4C	    =   Number(datas.stopRate4C         )   ;
+        datas.notStop4C	        =   Number(datas.notStop4C          )   ;
+        datas.notStop4F	        =   Number(datas.notStop4F          )   ;
+
+
+        if (newDatasFromTV.timestamp > datas.realTradeTime) {
+
+            // 收到新消息数据初始化
+            datas.netProfit         =  isNaN(datas.netProfit   )  ?  0              :  datas.netProfit                                                                          ;
+            datas.avgBuyPrice       =  isNaN(datas.avgBuyPrice )  ?  0              :  datas.avgBuyPrice                                                                        ;
+            datas.allPosition       =  isNaN(datas.allPosition )  ?  0              :  datas.allPosition                                                                        ;
+            datas.openProfit        =  datas.allPosition * (newDatasFromTV.TradingSymbolPrice - datas.avgBuyPrice)                                                              ;
+            datas.crtFund           =  isNaN(datas.crtFund     )  ?  datas.inFund   :  datas.inFund + datas.netProfit + datas.openProfit                                        ;
+            datas.crtCoin           =  isNaN(datas.crtCoin     )  ?  datas.inCoin   :  datas.crtCoin                                                                            ;
+            datas.allFund           =  datas.crtFund + datas.crtCoin * newDatasFromTV.BaseCoinPrice                                                                             ;
+            datas.initialFund       =  isNaN(datas.initialFund )  ?  datas.allFund  :  datas.initialFund                                                                        ;
+            datas.hghestFund        =  isNaN(datas.hghestFund  )  ?  datas.allFund  :  ( datas.allFund > datas.hghestFund ? datas.allFund : datas.hghestFund )                  ;
+            datas.lowestFund        =  isNaN(datas.lowestFund  )  ?  datas.allFund  :  ( datas.allFund < datas.lowestFund ? datas.allFund : datas.lowestFund )                  ;
+            datas.allCoin           =  datas.crtFund / newDatasFromTV.BaseCoinPrice + datas.crtCoin                                                                             ;
+            datas.initialCoin       =  isNaN(datas.initialCoin )  ?  datas.allCoin  :  datas.initialCoin                                                                        ;
+            datas.hghestCoin        =  isNaN(datas.hghestCoin  )  ?  datas.allCoin  :  ( datas.allCoin > datas.hghestCoin ? datas.allCoin : datas.hghestCoin )                  ;
+            datas.lowestCoin        =  isNaN(datas.lowestCoin  )  ?  datas.allCoin  :  ( datas.allCoin < datas.lowestCoin ? datas.allCoin : datas.lowestCoin )                  ;
+            datas.usedMargin        =  datas.allPosition * newDatasFromTV.TradingSymbolPrice / datas.leverage                                                                   ;
+            datas.freeMargin        =  datas.crtFund + datas.crtCoin * newDatasFromTV.BaseCoinPrice * datas.BaseCoinHairCut - datas.usedMargin                                  ;
+            datas.allTradeFee       =  isNaN(datas.allTradeFee )  ?  0              :  datas.allTradeFee                                                                        ;
+            datas.allFundFee        =  isNaN(datas.allFundFee  )  ?  0              :  datas.allFundFee                                                                         ;
+            datas.buyTimes          =  isNaN(datas.buyTimes    )  ?  0              :  Number(datas.buyTimes)                                                                   ;
+            datas.sellTimes         =  isNaN(datas.sellTimes   )  ?  0              :  Number(datas.sellTimes)                                                                  ;
+            datas.crt_avgBuyPrice   =  (newDatasFromTV.TradingSymbolPrice - datas.avgBuyPrice) / datas.avgBuyPrice                                                              ;
+            datas.crt_initialFund   =  (datas.allFund - datas.initialFund) / datas.initialFund                                                                                  ;
+            datas.crt_hghestFund    =  (datas.allFund - datas.hghestFund ) / datas.hghestFund                                                                                   ;
+            datas.crt_lowestFund    =  (datas.allFund - datas.lowestFund ) / datas.lowestFund                                                                                   ;
+            datas.crt_initialCoin   =  (datas.allCoin - datas.initialCoin) / datas.initialCoin                                                                                  ;
+            datas.crt_hghestCoin    =  (datas.allCoin - datas.hghestCoin ) / datas.hghestCoin                                                                                   ;
+            datas.crt_lowestCoin    =  (datas.allCoin - datas.lowestCoin ) / datas.lowestCoin                                                                                   ;
 
             let [liquidatePrice, stopPriceC, stopPriceF] = GetLiquidateStopPrice(   Number(datas.allPosition                    )     , 
                                                                                     Number(datas.avgBuyPrice                    )     , 
@@ -163,7 +229,7 @@ export async function HandleTV(newDatasFromTV) {
             datas.stopPriceC        =   stopPriceC      ;
             datas.stopPriceF        =   stopPriceF      ;
 
-            // datas.tocrt_liquidatePrice  =  (datas.liquidatePrice - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
+            datas.tocrt_liquidatePrice  =  (datas.liquidatePrice - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
             datas.tocrt_stopPriceC      =  (datas.stopPriceC     - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
             datas.tocrt_stopPriceF      =  (datas.stopPriceF     - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
 
@@ -197,16 +263,16 @@ export async function HandleTV(newDatasFromTV) {
         newDatasFromTV.stopPriceF           =  datas.stopPriceF             ;
         newDatasFromTV.buyTimes             =  datas.buyTimes               ;
         newDatasFromTV.sellTimes            =  datas.sellTimes              ;
-        // newDatasFromTV.crt_avgBuyPrice      =  datas.crt_avgBuyPrice        ;
+        newDatasFromTV.crt_avgBuyPrice      =  datas.crt_avgBuyPrice        ;
         newDatasFromTV.crt_initialFund      =  datas.crt_initialFund        ;
         newDatasFromTV.crt_hghestFund       =  datas.crt_hghestFund         ;
         newDatasFromTV.crt_lowestFund       =  datas.crt_lowestFund         ;
         newDatasFromTV.crt_initialCoin      =  datas.crt_initialCoin        ;
         newDatasFromTV.crt_hghestCoin       =  datas.crt_hghestCoin         ;
         newDatasFromTV.crt_lowestCoin       =  datas.crt_lowestCoin         ;
-        // newDatasFromTV.tocrt_liquidatePrice =  datas.tocrt_liquidatePrice   ;
-        // newDatasFromTV.tocrt_stopPriceC     =  datas.tocrt_stopPriceC       ;
-        // newDatasFromTV.tocrt_stopPriceF     =  datas.tocrt_stopPriceF       ;
+        newDatasFromTV.tocrt_liquidatePrice =  datas.tocrt_liquidatePrice   ;
+        newDatasFromTV.tocrt_stopPriceC     =  datas.tocrt_stopPriceC       ;
+        newDatasFromTV.tocrt_stopPriceF     =  datas.tocrt_stopPriceF       ;
 
         const writeToRange = newDatasFromTV.sheetTitle + '!A:B'; // 指定操作 A 到 B 列
         // 1. 先清空该区域的所有数据
