@@ -221,7 +221,7 @@ export async function HandleTV(newDatasFromTV) {
             datas.crt_initialCoin   =  (datas.allCoin - datas.initialCoin) / datas.initialCoin                                                                                  ;
             datas.crt_hghestCoin    =  (datas.allCoin - datas.hghestCoin ) / datas.hghestCoin                                                                                   ;
             datas.crt_lowestCoin    =  (datas.allCoin - datas.lowestCoin ) / datas.lowestCoin                                                                                   ;
-            datas.crt_avgBuyPrice   =  (newDatasFromTV.TradingSymbolPrice - datas.avgBuyPrice) / datas.avgBuyPrice                                                              ;
+            // datas.crt_avgBuyPrice   =  (newDatasFromTV.TradingSymbolPrice - datas.avgBuyPrice) / datas.avgBuyPrice                                                              ;
 
 
             if (isNaN(datas.gridDifficulty) || isNaN(datas.enDifficulty) || isNaN(datas.exDifficulty)) {
@@ -252,9 +252,9 @@ export async function HandleTV(newDatasFromTV) {
             datas.stopPriceC        =   stopPriceC      ;
             datas.stopPriceF        =   stopPriceF      ;
 
-            datas.tocrt_liquidatePrice  =  (datas.liquidatePrice - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
-            datas.tocrt_stopPriceC      =  (datas.stopPriceC     - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
-            datas.tocrt_stopPriceF      =  (datas.stopPriceF     - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
+            // datas.tocrt_liquidatePrice  =  (datas.liquidatePrice - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
+            // datas.tocrt_stopPriceC      =  (datas.stopPriceC     - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
+            // datas.tocrt_stopPriceF      =  (datas.stopPriceF     - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
 
         } else {
             // 未到交易时刻的逻辑
