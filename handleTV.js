@@ -163,7 +163,7 @@ export async function HandleTV(newDatasFromTV) {
             datas.stopPriceC        =   stopPriceC      ;
             datas.stopPriceF        =   stopPriceF      ;
 
-            datas.tocrt_liquidatePrice  =  (datas.liquidatePrice - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
+            // datas.tocrt_liquidatePrice  =  (datas.liquidatePrice - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
             datas.tocrt_stopPriceC      =  (datas.stopPriceC     - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
             datas.tocrt_stopPriceF      =  (datas.stopPriceF     - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
 
@@ -197,16 +197,16 @@ export async function HandleTV(newDatasFromTV) {
         newDatasFromTV.stopPriceF           =  datas.stopPriceF             ;
         newDatasFromTV.buyTimes             =  datas.buyTimes               ;
         newDatasFromTV.sellTimes            =  datas.sellTimes              ;
-        newDatasFromTV.crt_avgBuyPrice      =  datas.crt_avgBuyPrice        ;
+        // newDatasFromTV.crt_avgBuyPrice      =  datas.crt_avgBuyPrice        ;
         newDatasFromTV.crt_initialFund      =  datas.crt_initialFund        ;
         newDatasFromTV.crt_hghestFund       =  datas.crt_hghestFund         ;
         newDatasFromTV.crt_lowestFund       =  datas.crt_lowestFund         ;
         newDatasFromTV.crt_initialCoin      =  datas.crt_initialCoin        ;
         newDatasFromTV.crt_hghestCoin       =  datas.crt_hghestCoin         ;
         newDatasFromTV.crt_lowestCoin       =  datas.crt_lowestCoin         ;
-        newDatasFromTV.tocrt_liquidatePrice =  datas.tocrt_liquidatePrice   ;
-        newDatasFromTV.tocrt_stopPriceC     =  datas.tocrt_stopPriceC       ;
-        newDatasFromTV.tocrt_stopPriceF     =  datas.tocrt_stopPriceF       ;
+        // newDatasFromTV.tocrt_liquidatePrice =  datas.tocrt_liquidatePrice   ;
+        // newDatasFromTV.tocrt_stopPriceC     =  datas.tocrt_stopPriceC       ;
+        // newDatasFromTV.tocrt_stopPriceF     =  datas.tocrt_stopPriceF       ;
 
         const writeToRange = newDatasFromTV.sheetTitle + '!A:B'; // 指定操作 A 到 B 列
         // 1. 先清空该区域的所有数据
