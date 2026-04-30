@@ -11,6 +11,14 @@ const auth = new google.auth.GoogleAuth({
 const sheets = google.sheets({ version: 'v4', auth });
 
 
+function GetGridDifficulty(positionN, difficultyCoefficient, maxGridNumber) { 
+    let gridDifficulty   =   Math.pow(positionN, (difficultyCoefficient + 1)) / Math.pow(maxGridNumber, difficultyCoefficient) + (maxGridNumber-positionN) / maxGridNumber  ;
+    let enDifficulty     =   gridDifficulty / maxGridNumber  ;
+    let exDifficulty     =   (maxGridNumber - gridDifficulty) / maxGridNumber  ;
+    return [gridDifficulty, enDifficulty, exDifficulty]  ;
+}
+
+
 function GetLiquidateStopPrice( allPosition         ,
                                 avgBuyPrice         , 
                                 inFund              , 
@@ -142,39 +150,45 @@ export async function HandleTV(newDatasFromTV) {
         newDatasFromTV.gcpGetTime     = GetTimeStringWithOffset(8);
 
 
-        datas.crtFund	        =   Number(datas.crtFund            )   ;
-        datas.crtCoin	        =   Number(datas.crtCoin            )   ;
-        datas.allFund	        =   Number(datas.allFund            )   ;
-        datas.initialFund	    =   Number(datas.initialFund        )   ;
-        datas.hghestFund	    =   Number(datas.hghestFund         )   ;
-        datas.lowestFund	    =   Number(datas.lowestFund         )   ;
-        datas.allCoin	        =   Number(datas.allCoin            )   ;
-        datas.initialCoin	    =   Number(datas.initialCoin        )   ;
-        datas.hghestCoin	    =   Number(datas.hghestCoin         )   ;
-        datas.lowestCoin	    =   Number(datas.lowestCoin         )   ;
-        datas.allPosition	    =   Number(datas.allPosition        )   ;
-        datas.usedMargin	    =   Number(datas.usedMargin         )   ;
-        datas.freeMargin	    =   Number(datas.freeMargin         )   ;
-        datas.allTradeFee	    =   Number(datas.allTradeFee        )   ;
-        datas.allFundFee	    =   Number(datas.allFundFee         )   ;
-        datas.netProfit	        =   Number(datas.netProfit          )   ;
-        datas.openProfit	    =   Number(datas.openProfit         )   ;
-        datas.avgBuyPrice	    =   Number(datas.avgBuyPrice        )   ;
-        datas.liquidatePrice	=   Number(datas.liquidatePrice     )   ;
-        datas.stopPriceC	    =   Number(datas.stopPriceC         )   ;
-        datas.stopPriceF	    =   Number(datas.stopPriceF         )   ;
-        datas.buyTimes	        =   Number(datas.buyTimes           )   ;
-        datas.sellTimes	        =   Number(datas.sellTimes          )   ;
-        datas.realTradeTime	    =   Number(datas.realTradeTime      )   ;
-        datas.inFund	        =   Number(datas.inFund             )   ;
-        datas.inCoin	        =   Number(datas.inCoin             )   ;
-        datas.leverage	        =   Number(datas.leverage           )   ;
-        datas.MaxGrid	        =   Number(datas.MaxGrid            )   ;
-        datas.BaseCoinHairCut	=   Number(datas.BaseCoinHairCut    )   ;
-        datas.stopRate4F	    =   Number(datas.stopRate4F         )   ;
-        datas.stopRate4C	    =   Number(datas.stopRate4C         )   ;
-        datas.notStop4C	        =   Number(datas.notStop4C          )   ;
-        datas.notStop4F	        =   Number(datas.notStop4F          )   ;
+        datas.crtFund	            =   Number(datas.crtFund                )   ;
+        datas.crtCoin	            =   Number(datas.crtCoin                )   ;
+        datas.allFund	            =   Number(datas.allFund                )   ;
+        datas.initialFund	        =   Number(datas.initialFund            )   ;
+        datas.hghestFund	        =   Number(datas.hghestFund             )   ;
+        datas.lowestFund	        =   Number(datas.lowestFund             )   ;
+        datas.allCoin	            =   Number(datas.allCoin                )   ;
+        datas.initialCoin	        =   Number(datas.initialCoin            )   ;
+        datas.hghestCoin	        =   Number(datas.hghestCoin             )   ;
+        datas.lowestCoin	        =   Number(datas.lowestCoin             )   ;
+        datas.allPosition	        =   Number(datas.allPosition            )   ;
+        datas.usedMargin	        =   Number(datas.usedMargin             )   ;
+        datas.freeMargin	        =   Number(datas.freeMargin             )   ;
+        datas.allTradeFee	        =   Number(datas.allTradeFee            )   ;
+        datas.allFundFee	        =   Number(datas.allFundFee             )   ;
+        datas.netProfit	            =   Number(datas.netProfit              )   ;
+        datas.openProfit	        =   Number(datas.openProfit             )   ;
+        datas.avgBuyPrice	        =   Number(datas.avgBuyPrice            )   ;
+        datas.positionN             =   Number(datas.positionN              )   ;
+        datas.gridDifficulty	    =   Number(datas.gridDifficulty         )   ;
+        datas.enDifficulty	        =   Number(datas.enDifficulty           )   ;
+        datas.exDifficulty	        =   Number(datas.exDifficulty           )   ;
+        datas.liquidatePrice	    =   Number(datas.liquidatePrice         )   ;
+        datas.stopPriceC	        =   Number(datas.stopPriceC             )   ;
+        datas.stopPriceF	        =   Number(datas.stopPriceF             )   ;
+        datas.buyTimes	            =   Number(datas.buyTimes               )   ;
+        datas.sellTimes	            =   Number(datas.sellTimes              )   ;
+
+        datas.realTradeTime	        =   Number(datas.realTradeTime          )   ;
+        datas.inFund	            =   Number(datas.inFund                 )   ;
+        datas.inCoin	            =   Number(datas.inCoin                 )   ;
+        datas.leverage	            =   Number(datas.leverage               )   ;
+        datas.MaxGrid	            =   Number(datas.MaxGrid                )   ;
+        datas.BaseCoinHairCut	    =   Number(datas.BaseCoinHairCut        )   ;
+        datas.stopRate4F	        =   Number(datas.stopRate4F             )   ;
+        datas.stopRate4C	        =   Number(datas.stopRate4C             )   ;
+        datas.notStop4C	            =   Number(datas.notStop4C              )   ;
+        datas.notStop4F	            =   Number(datas.notStop4F              )   ;
+        datas.difficultyCoefficient =   Number(datas.difficultyCoefficient  )   ;
 
 
         if (newDatasFromTV.timestamp > datas.realTradeTime) {
@@ -198,15 +212,24 @@ export async function HandleTV(newDatasFromTV) {
             datas.freeMargin        =  datas.crtFund + datas.crtCoin * newDatasFromTV.BaseCoinPrice * datas.BaseCoinHairCut - datas.usedMargin                                  ;
             datas.allTradeFee       =  isNaN(datas.allTradeFee )  ?  0              :  datas.allTradeFee                                                                        ;
             datas.allFundFee        =  isNaN(datas.allFundFee  )  ?  0              :  datas.allFundFee                                                                         ;
+            datas.positionN         =  isNaN(datas.positionN   )  ?  0              :  datas.positionN                                                                          ;
             datas.buyTimes          =  isNaN(datas.buyTimes    )  ?  0              :  Number(datas.buyTimes)                                                                   ;
             datas.sellTimes         =  isNaN(datas.sellTimes   )  ?  0              :  Number(datas.sellTimes)                                                                  ;
-            datas.crt_avgBuyPrice   =  (newDatasFromTV.TradingSymbolPrice - datas.avgBuyPrice) / datas.avgBuyPrice                                                              ;
             datas.crt_initialFund   =  (datas.allFund - datas.initialFund) / datas.initialFund                                                                                  ;
             datas.crt_hghestFund    =  (datas.allFund - datas.hghestFund ) / datas.hghestFund                                                                                   ;
             datas.crt_lowestFund    =  (datas.allFund - datas.lowestFund ) / datas.lowestFund                                                                                   ;
             datas.crt_initialCoin   =  (datas.allCoin - datas.initialCoin) / datas.initialCoin                                                                                  ;
             datas.crt_hghestCoin    =  (datas.allCoin - datas.hghestCoin ) / datas.hghestCoin                                                                                   ;
             datas.crt_lowestCoin    =  (datas.allCoin - datas.lowestCoin ) / datas.lowestCoin                                                                                   ;
+            datas.crt_avgBuyPrice   =  (newDatasFromTV.TradingSymbolPrice - datas.avgBuyPrice) / datas.avgBuyPrice                                                              ;
+
+
+            if (isNaN(datas.gridDifficulty) || isNaN(datas.enDifficulty) || isNaN(datas.exDifficulty)) {
+                let [gridDifficulty, enDifficulty, exDifficulty] = GetGridDifficulty(datas.positionN, datas.difficultyCoefficient, datas.MaxGrid)  ;
+                datas.gridDifficulty    =  gridDifficulty   ;
+                datas.enDifficulty      =  enDifficulty     ;
+                datas.exDifficulty      =  exDifficulty     ;
+            }
 
             let [liquidatePrice, stopPriceC, stopPriceF] = GetLiquidateStopPrice(   Number(datas.allPosition                    )     , 
                                                                                     Number(datas.avgBuyPrice                    )     , 
@@ -238,38 +261,41 @@ export async function HandleTV(newDatasFromTV) {
             console.log("收到TradingView消息, 但未到交易时刻");
         }
 
+        newDatasFromTV.crtFund	            =   datas.crtFund               ;
+        newDatasFromTV.crtCoin	            =   datas.crtCoin               ;
+        newDatasFromTV.allFund	            =   datas.allFund               ;
+        newDatasFromTV.initialFund	        =   datas.initialFund           ;
+        newDatasFromTV.hghestFund	        =   datas.hghestFund            ;
+        newDatasFromTV.lowestFund	        =   datas.lowestFund            ;
+        newDatasFromTV.allCoin	            =   datas.allCoin               ;
+        newDatasFromTV.initialCoin	        =   datas.initialCoin           ;
+        newDatasFromTV.hghestCoin	        =   datas.hghestCoin            ;
+        newDatasFromTV.lowestCoin	        =   datas.lowestCoin            ;
+        newDatasFromTV.allPosition	        =   datas.allPosition           ;
+        newDatasFromTV.usedMargin	        =   datas.usedMargin            ;
+        newDatasFromTV.freeMargin	        =   datas.freeMargin            ;
+        newDatasFromTV.allTradeFee	        =   datas.allTradeFee           ;
+        newDatasFromTV.allFundFee	        =   datas.allFundFee            ;
+        newDatasFromTV.netProfit	        =   datas.netProfit             ;
+        newDatasFromTV.openProfit	        =   datas.openProfit            ;
+        newDatasFromTV.avgBuyPrice	        =   datas.avgBuyPrice           ;
+        newDatasFromTV.positionN            =   datas.positionN             ;
+        newDatasFromTV.gridDifficulty	    =   datas.gridDifficulty        ;
+        newDatasFromTV.enDifficulty	        =   datas.enDifficulty          ;
+        newDatasFromTV.exDifficulty	        =   datas.exDifficulty          ;
+        newDatasFromTV.liquidatePrice	    =   datas.liquidatePrice        ;
+        newDatasFromTV.stopPriceC	        =   datas.stopPriceC            ;
+        newDatasFromTV.stopPriceF	        =   datas.stopPriceF            ;
+        newDatasFromTV.buyTimes	            =   datas.buyTimes              ;
+        newDatasFromTV.sellTimes	        =   datas.sellTimes             ;
 
-
-        newDatasFromTV.netProfit            =  datas.netProfit              ; 
-        newDatasFromTV.avgBuyPrice          =  datas.avgBuyPrice            ; 
-        newDatasFromTV.openProfit           =  datas.openProfit             ; 
-        newDatasFromTV.crtFund              =  datas.crtFund                ; 
-        newDatasFromTV.crtCoin              =  datas.crtCoin                ; 
-        newDatasFromTV.allFund              =  datas.allFund                ; 
-        newDatasFromTV.initialFund          =  datas.initialFund            ; 
-        newDatasFromTV.hghestFund           =  datas.hghestFund             ; 
-        newDatasFromTV.lowestFund           =  datas.lowestFund             ; 
-        newDatasFromTV.allCoin              =  datas.allCoin                ; 
-        newDatasFromTV.initialCoin          =  datas.initialCoin            ; 
-        newDatasFromTV.hghestCoin           =  datas.hghestCoin             ; 
-        newDatasFromTV.lowestCoin           =  datas.lowestCoin             ; 
-        newDatasFromTV.allPosition          =  datas.allPosition            ; 
-        newDatasFromTV.usedMargin           =  datas.usedMargin             ; 
-        newDatasFromTV.freeMargin           =  datas.freeMargin             ;
-        newDatasFromTV.allTradeFee          =  datas.allTradeFee            ;
-        newDatasFromTV.allFundFee           =  datas.allFundFee             ;
-        newDatasFromTV.liquidatePrice       =  datas.liquidatePrice         ;
-        newDatasFromTV.stopPriceC           =  datas.stopPriceC             ;
-        newDatasFromTV.stopPriceF           =  datas.stopPriceF             ;
-        newDatasFromTV.buyTimes             =  datas.buyTimes               ;
-        newDatasFromTV.sellTimes            =  datas.sellTimes              ;
-        newDatasFromTV.crt_avgBuyPrice      =  datas.crt_avgBuyPrice        ;
         newDatasFromTV.crt_initialFund      =  datas.crt_initialFund        ;
         newDatasFromTV.crt_hghestFund       =  datas.crt_hghestFund         ;
         newDatasFromTV.crt_lowestFund       =  datas.crt_lowestFund         ;
         newDatasFromTV.crt_initialCoin      =  datas.crt_initialCoin        ;
         newDatasFromTV.crt_hghestCoin       =  datas.crt_hghestCoin         ;
         newDatasFromTV.crt_lowestCoin       =  datas.crt_lowestCoin         ;
+        newDatasFromTV.crt_avgBuyPrice      =  datas.crt_avgBuyPrice        ;
         newDatasFromTV.tocrt_liquidatePrice =  datas.tocrt_liquidatePrice   ;
         newDatasFromTV.tocrt_stopPriceC     =  datas.tocrt_stopPriceC       ;
         newDatasFromTV.tocrt_stopPriceF     =  datas.tocrt_stopPriceF       ;
