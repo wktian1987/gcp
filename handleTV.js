@@ -231,22 +231,22 @@ export async function HandleTV(newDatasFromTV) {
                 datas.exDifficulty      =  exDifficulty     ;
             }
 
-            let [liquidatePrice, stopPriceC, stopPriceF] = GetLiquidateStopPrice(   Number(datas.allPosition                    )     , 
-                                                                                    Number(datas.avgBuyPrice                    )     , 
-                                                                                    Number(datas.inFund                         )     , 
-                                                                                    Number(datas.netProfit                      )     , 
-                                                                                    Number(datas.crtCoin                        )     , 
-                                                                                    Number(newDatasFromTV.TradingSymbolPrice    )     , 
-                                                                                    Number(newDatasFromTV.BaseCoinPrice         )     , 
-                                                                                    Number(datas.BaseCoinHairCut                )     , 
-                                                                                    Number(newDatasFromTV.Adn2B                 )     , 
-                                                                                    Number(newDatasFromTV.waveUpChg             )     , 
-                                                                                    Number(datas.hghestFund                     )     , 
-                                                                                    Number(datas.hghestCoin                     )     , 
-                                                                                    Number(datas.stopRate4F                     )     , 
-                                                                                    Number(datas.stopRate4C                     )     , 
-                                                                                    Number(datas.notStop4C                      )     , 
-                                                                                    Number(datas.notStop4F                      )     );
+            let [liquidatePrice, stopPriceC, stopPriceF] = GetLiquidateStopPrice(   datas.allPosition                   , 
+                                                                                    datas.avgBuyPrice                   , 
+                                                                                    datas.inFund                        , 
+                                                                                    datas.netProfit                     , 
+                                                                                    datas.crtCoin                       , 
+                                                                                    newDatasFromTV.TradingSymbolPrice   , 
+                                                                                    newDatasFromTV.BaseCoinPrice        , 
+                                                                                    datas.BaseCoinHairCut               , 
+                                                                                    newDatasFromTV.Adn2B                , 
+                                                                                    newDatasFromTV.waveUpChg            , 
+                                                                                    datas.hghestFund                    , 
+                                                                                    datas.hghestCoin                    , 
+                                                                                    datas.stopRate4F                    , 
+                                                                                    datas.stopRate4C                    , 
+                                                                                    datas.notStop4C                     , 
+                                                                                    datas.notStop4F                     );
 
             datas.liquidatePrice    =   liquidatePrice  ;
             datas.stopPriceC        =   stopPriceC      ;
@@ -295,10 +295,10 @@ export async function HandleTV(newDatasFromTV) {
         newDatasFromTV.crt_initialCoin      =  datas.crt_initialCoin        ;
         newDatasFromTV.crt_hghestCoin       =  datas.crt_hghestCoin         ;
         newDatasFromTV.crt_lowestCoin       =  datas.crt_lowestCoin         ;
-        newDatasFromTV.crt_avgBuyPrice      =  datas.crt_avgBuyPrice        ;
-        newDatasFromTV.tocrt_liquidatePrice =  datas.tocrt_liquidatePrice   ;
-        newDatasFromTV.tocrt_stopPriceC     =  datas.tocrt_stopPriceC       ;
-        newDatasFromTV.tocrt_stopPriceF     =  datas.tocrt_stopPriceF       ;
+        // newDatasFromTV.crt_avgBuyPrice      =  datas.crt_avgBuyPrice        ;
+        // newDatasFromTV.tocrt_liquidatePrice =  datas.tocrt_liquidatePrice   ;
+        // newDatasFromTV.tocrt_stopPriceC     =  datas.tocrt_stopPriceC       ;
+        // newDatasFromTV.tocrt_stopPriceF     =  datas.tocrt_stopPriceF       ;
 
         const writeToRange = newDatasFromTV.sheetTitle + '!A:B'; // 指定操作 A 到 B 列
         // 1. 先清空该区域的所有数据
