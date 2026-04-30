@@ -91,8 +91,6 @@ function GetLiquidateStopPrice( allPosition         ,
 
 }
 
-
-
 export async function HandleTV(newDatasFromTV) {
     let datas = {};
 
@@ -150,7 +148,7 @@ export async function HandleTV(newDatasFromTV) {
                                                                                     Number(datas.crtCoin                        )     , 
                                                                                     Number(newDatasFromTV.TradingSymbolPrice    )     , 
                                                                                     Number(newDatasFromTV.BaseCoinPrice         )     , 
-                                                                                    Number(datas.baseCoinHairCut                )     , 
+                                                                                    Number(datas.aseCoinHairCut                )     , 
                                                                                     Number(newDatasFromTV.Adn2B                 )     , 
                                                                                     Number(newDatasFromTV.waveUpChg             )     , 
                                                                                     Number(datas.hghestFund                     )     , 
