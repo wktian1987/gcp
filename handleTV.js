@@ -190,6 +190,8 @@ export async function HandleTV(newDatasFromTV) {
         newDatasFromTV.allTradeFee      =  datas.allTradeFee        ;
         newDatasFromTV.allFundFee       =  datas.allFundFee         ;
         newDatasFromTV.liquidatePrice   =  datas.liquidatePrice     ;
+        newDatasFromTV.stopPriceC       =  datas.stopPriceC         ;
+        newDatasFromTV.stopPriceF       =  datas.stopPriceF         ;
         newDatasFromTV.buyTimes         =  datas.buyTimes           ;
         newDatasFromTV.sellTimes        =  datas.sellTimes          ;
         newDatasFromTV.crt_initialFund  =  datas.crt_initialFund    ;
