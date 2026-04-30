@@ -134,6 +134,7 @@ export async function HandleTV(newDatasFromTV) {
             datas.buyTimes          =  (datas.buyTimes       === toFill)  ?  0                                                                                                :  Number(datas.buyTimes)                                                                                               ;
             datas.sellTimes         =  (datas.sellTimes      === toFill)  ?  0                                                                                                :  Number(datas.sellTimes)                                                                                              ;
 
+            datas.crt_avgBuyPrice   =  (newDatasFromTV.TradingSymbolPrice - datas.avgBuyPrice) / datas.avgBuyPrice;
             datas.crt_initialFund   =  (datas.allFund - datas.initialFund) / datas.initialFund  ;
             datas.crt_hghestFund    =  (datas.allFund - datas.hghestFund ) / datas.hghestFund   ;
             datas.crt_lowestFund    =  (datas.allFund - datas.lowestFund ) / datas.lowestFund   ;
@@ -162,6 +163,10 @@ export async function HandleTV(newDatasFromTV) {
             datas.stopPriceC        =   stopPriceC      ;
             datas.stopPriceF        =   stopPriceF      ;
 
+            datas.tocrt_liquidatePrice  =  (datas.liquidatePrice - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice;
+            datas.tocrt_stopPriceC      =  (datas.stopPriceC     - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice;
+            datas.tocrt_stopPriceF      =  (datas.stopPriceF     - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice;
+
         } else {
             // 未到交易时刻的逻辑
             console.log("收到TradingView消息, 但未到交易时刻");
@@ -169,35 +174,39 @@ export async function HandleTV(newDatasFromTV) {
 
 
 
-        newDatasFromTV.netProfit        =  datas.netProfit          ; 
-        newDatasFromTV.avgBuyPrice      =  datas.avgBuyPrice        ; 
-        newDatasFromTV.openProfit       =  datas.openProfit         ; 
-        newDatasFromTV.crtFund          =  datas.crtFund            ; 
-        newDatasFromTV.crtCoin          =  datas.crtCoin            ; 
-        newDatasFromTV.allFund          =  datas.allFund            ; 
-        newDatasFromTV.initialFund      =  datas.initialFund        ; 
-        newDatasFromTV.hghestFund       =  datas.hghestFund         ; 
-        newDatasFromTV.lowestFund       =  datas.lowestFund         ; 
-        newDatasFromTV.allCoin          =  datas.allCoin            ; 
-        newDatasFromTV.initialCoin      =  datas.initialCoin        ; 
-        newDatasFromTV.hghestCoin       =  datas.hghestCoin         ; 
-        newDatasFromTV.lowestCoin       =  datas.lowestCoin         ; 
-        newDatasFromTV.allPosition      =  datas.allPosition        ; 
-        newDatasFromTV.usedMargin       =  datas.usedMargin         ; 
-        newDatasFromTV.freeMargin       =  datas.freeMargin         ;
-        newDatasFromTV.allTradeFee      =  datas.allTradeFee        ;
-        newDatasFromTV.allFundFee       =  datas.allFundFee         ;
-        newDatasFromTV.liquidatePrice   =  datas.liquidatePrice     ;
-        newDatasFromTV.stopPriceC       =  datas.stopPriceC         ;
-        newDatasFromTV.stopPriceF       =  datas.stopPriceF         ;
-        newDatasFromTV.buyTimes         =  datas.buyTimes           ;
-        newDatasFromTV.sellTimes        =  datas.sellTimes          ;
-        newDatasFromTV.crt_initialFund  =  datas.crt_initialFund    ;
-        newDatasFromTV.crt_hghestFund   =  datas.crt_hghestFund     ;
-        newDatasFromTV.crt_lowestFund   =  datas.crt_lowestFund     ;
-        newDatasFromTV.crt_initialCoin  =  datas.crt_initialCoin    ;
-        newDatasFromTV.crt_hghestCoin   =  datas.crt_hghestCoin     ;
-        newDatasFromTV.crt_lowestCoin   =  datas.crt_lowestCoin     ;
+        newDatasFromTV.netProfit            =  datas.netProfit              ; 
+        newDatasFromTV.avgBuyPrice          =  datas.avgBuyPrice            ; 
+        newDatasFromTV.openProfit           =  datas.openProfit             ; 
+        newDatasFromTV.crtFund              =  datas.crtFund                ; 
+        newDatasFromTV.crtCoin              =  datas.crtCoin                ; 
+        newDatasFromTV.allFund              =  datas.allFund                ; 
+        newDatasFromTV.initialFund          =  datas.initialFund            ; 
+        newDatasFromTV.hghestFund           =  datas.hghestFund             ; 
+        newDatasFromTV.lowestFund           =  datas.lowestFund             ; 
+        newDatasFromTV.allCoin              =  datas.allCoin                ; 
+        newDatasFromTV.initialCoin          =  datas.initialCoin            ; 
+        newDatasFromTV.hghestCoin           =  datas.hghestCoin             ; 
+        newDatasFromTV.lowestCoin           =  datas.lowestCoin             ; 
+        newDatasFromTV.allPosition          =  datas.allPosition            ; 
+        newDatasFromTV.usedMargin           =  datas.usedMargin             ; 
+        newDatasFromTV.freeMargin           =  datas.freeMargin             ;
+        newDatasFromTV.allTradeFee          =  datas.allTradeFee            ;
+        newDatasFromTV.allFundFee           =  datas.allFundFee             ;
+        newDatasFromTV.liquidatePrice       =  datas.liquidatePrice         ;
+        newDatasFromTV.stopPriceC           =  datas.stopPriceC             ;
+        newDatasFromTV.stopPriceF           =  datas.stopPriceF             ;
+        newDatasFromTV.buyTimes             =  datas.buyTimes               ;
+        newDatasFromTV.sellTimes            =  datas.sellTimes              ;
+        newDatasFromTV.crt_avgBuyPrice      =  datas.crt_avgBuyPrice        ;
+        newDatasFromTV.crt_initialFund      =  datas.crt_initialFund        ;
+        newDatasFromTV.crt_hghestFund       =  datas.crt_hghestFund         ;
+        newDatasFromTV.crt_lowestFund       =  datas.crt_lowestFund         ;
+        newDatasFromTV.crt_initialCoin      =  datas.crt_initialCoin        ;
+        newDatasFromTV.crt_hghestCoin       =  datas.crt_hghestCoin         ;
+        newDatasFromTV.crt_lowestCoin       =  datas.crt_lowestCoin         ;
+        newDatasFromTV.tocrt_liquidatePrice =  datas.tocrt_liquidatePrice   ;
+        newDatasFromTV.tocrt_stopPriceC     =  datas.tocrt_stopPriceC       ;
+        newDatasFromTV.tocrt_stopPriceF     =  datas.tocrt_stopPriceF       ;
 
         const writeToRange = newDatasFromTV.sheetTitle + '!A:B'; // 指定操作 A 到 B 列
         // 1. 先清空该区域的所有数据
