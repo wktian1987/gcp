@@ -221,7 +221,7 @@ export async function HandleTV(newDatasFromTV) {
             datas.crt_initialCoin   =  (datas.allCoin - datas.initialCoin) / datas.initialCoin                                                                                  ;
             datas.crt_hghestCoin    =  (datas.allCoin - datas.hghestCoin ) / datas.hghestCoin                                                                                   ;
             datas.crt_lowestCoin    =  (datas.allCoin - datas.lowestCoin ) / datas.lowestCoin                                                                                   ;
-            // datas.crt_avgBuyPrice   =  (newDatasFromTV.TradingSymbolPrice - datas.avgBuyPrice) / datas.avgBuyPrice                                                              ;
+            datas.crt_avgBuyPrice   =  (newDatasFromTV.TradingSymbolPrice - datas.avgBuyPrice) / datas.avgBuyPrice                                                              ;
 
 
             if (isNaN(datas.gridDifficulty) || isNaN(datas.enDifficulty) || isNaN(datas.exDifficulty)) {
@@ -252,9 +252,9 @@ export async function HandleTV(newDatasFromTV) {
             datas.stopPriceC        =   stopPriceC      ;
             datas.stopPriceF        =   stopPriceF      ;
 
-            // datas.tocrt_liquidatePrice  =  (datas.liquidatePrice - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
-            // datas.tocrt_stopPriceC      =  (datas.stopPriceC     - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
-            // datas.tocrt_stopPriceF      =  (datas.stopPriceF     - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
+            datas.tocrt_liquidatePrice  =  (datas.liquidatePrice - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
+            datas.tocrt_stopPriceC      =  (datas.stopPriceC     - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
+            datas.tocrt_stopPriceF      =  (datas.stopPriceF     - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
 
         } else {
             // 未到交易时刻的逻辑
@@ -295,10 +295,10 @@ export async function HandleTV(newDatasFromTV) {
         newDatasFromTV.crt_initialCoin      =  datas.crt_initialCoin        ;
         newDatasFromTV.crt_hghestCoin       =  datas.crt_hghestCoin         ;
         newDatasFromTV.crt_lowestCoin       =  datas.crt_lowestCoin         ;
-        // newDatasFromTV.crt_avgBuyPrice      =  datas.crt_avgBuyPrice        ;
-        // newDatasFromTV.tocrt_liquidatePrice =  datas.tocrt_liquidatePrice   ;
-        // newDatasFromTV.tocrt_stopPriceC     =  datas.tocrt_stopPriceC       ;
-        // newDatasFromTV.tocrt_stopPriceF     =  datas.tocrt_stopPriceF       ;
+        newDatasFromTV.crt_avgBuyPrice      =  datas.crt_avgBuyPrice        ;
+        newDatasFromTV.tocrt_liquidatePrice =  datas.tocrt_liquidatePrice   ;
+        newDatasFromTV.tocrt_stopPriceC     =  datas.tocrt_stopPriceC       ;
+        newDatasFromTV.tocrt_stopPriceF     =  datas.tocrt_stopPriceF       ;
 
         const writeToRange = newDatasFromTV.sheetTitle + '!A:B'; // 指定操作 A 到 B 列
         // 1. 先清空该区域的所有数据
