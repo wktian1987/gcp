@@ -162,7 +162,7 @@ export async function HandleTV(newDatasFromTV) {
 
             datas.liquidatePrice    =   liquidatePrice  ;
             datas.stopPriceC        =   stopPriceC      ;
-            datas.stopRate4F        =   stopPriceF      ;
+            datas.stopPriceF        =   stopPriceF      ;
 
         } else {
             // 未到交易时刻的逻辑
@@ -219,14 +219,14 @@ export async function HandleTV(newDatasFromTV) {
         });
 
         let newDatasFromSheet   =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP));
-        let attAdn2Bts            =  0;
+        let attempts            =  0;
         let waitTime            =  1000;
 
-        while (attAdn2Bts < 60 && Number(newDatasFromSheet.timestamp) < newDatasFromTV.timestamp) {
+        while (attempts < 60 && Number(newDatasFromSheet.timestamp) < newDatasFromTV.timestamp) {
             await new Promise(res => setTimeout(res, waitTime));
             newDatasFromSheet = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP));
-            attAdn2Bts    += 1;
-            waitTime    =  attAdn2Bts * 1000;
+            attempts    += 1;
+            waitTime    =  attempts * 1000;
         }
         if (Number(newDatasFromSheet.timestamp) >= newDatasFromTV.timestamp) {
             console.log('✔ TV数据写入表格成功');
