@@ -33,8 +33,8 @@ function GetLiquidateStopPrice( allPosition         ,
                                 hghestCoin          , 
                                 stopRate4F          , 
                                 stopRate4C          ,
-                                notStop4C           , 
-                                notStop4F           ) {
+                                notStop4F           , 
+                                notStop4C           ) {
     // 基础变量提取 (命名对齐你的 GetAccountStatusByPrice)
     let C    = crtCoin              ;
     let S    = bPrice               ;
@@ -245,8 +245,8 @@ export async function HandleTV(newDatasFromTV) {
                                                                                     datas.hghestCoin                    , 
                                                                                     datas.stopRate4F                    , 
                                                                                     datas.stopRate4C                    , 
-                                                                                    datas.notStop4C                     , 
-                                                                                    datas.notStop4F                     );
+                                                                                    datas.notStop4F                     , 
+                                                                                    datas.notStop4C                     );
 
             datas.liquidatePrice    =   liquidatePrice  ;
             datas.stopPriceC        =   stopPriceC      ;
