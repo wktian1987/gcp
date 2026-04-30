@@ -109,10 +109,10 @@ export async function HandleTV(newDatasFromTV) {
             throw new Error(`!datas.ifNoError || datas.ifNoError === "FALSE" || datas.TradingSymbol !== newDatasFromTV.TradingSymbol`) ;
         }
 
-        newDatasFromTV.tvUpdateTime   = GetTimeStringWithOffset(8, newDatasFromTV.timestAdn2B);
+        newDatasFromTV.tvUpdateTime   = GetTimeStringWithOffset(8, newDatasFromTV.timestamp);
         newDatasFromTV.gcpGetTime     = GetTimeStringWithOffset(8);
 
-        if (newDatasFromTV.timestAdn2B > datas.realTradeTime) {
+        if (newDatasFromTV.timestamp > datas.realTradeTime) {
             // 收到新消息数据初始化
             const toFill = "toFill";
             datas.netProfit         =  (datas.netProfit      === toFill)  ?  0                                                                                                :  Number(datas.netProfit)                                                                                              ;
@@ -220,13 +220,13 @@ export async function HandleTV(newDatasFromTV) {
         let attAdn2Bts            =  0;
         let waitTime            =  1000;
 
-        while (attAdn2Bts < 60 && Number(newDatasFromSheet.timestAdn2B) < newDatasFromTV.timestAdn2B) {
+        while (attAdn2Bts < 60 && Number(newDatasFromSheet.timestamp) < newDatasFromTV.timestamp) {
             await new Promise(res => setTimeout(res, waitTime));
             newDatasFromSheet = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP));
             attAdn2Bts    += 1;
             waitTime    =  attAdn2Bts * 1000;
         }
-        if (Number(newDatasFromSheet.timestAdn2B) >= newDatasFromTV.timestAdn2B) {
+        if (Number(newDatasFromSheet.timestamp) >= newDatasFromTV.timestamp) {
             console.log('✔ TV数据写入表格成功');
             await SendSplitTGMessages(  process.env.TG_TOKEN                                        , 
                                         process.env.TG_CHAT_ID                                      , 
