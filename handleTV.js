@@ -99,42 +99,84 @@ function GetLiquidateStopPrice( allPosition         ,
 
 }
 
-const toFill        = "toFill"      ;
-const toGCPRanges   = "toGCP!A:B"   ;
-export async function HandleTV(newDatasFromTV) {
-    newDatasFromTV.timestamp		        =   Number( newDatasFromTV.timestamp          ) ;
-    newDatasFromTV.TradingSymbolPrice		=   Number( newDatasFromTV.TradingSymbolPrice ) ;
-    newDatasFromTV.targetHgh		        =   Number( newDatasFromTV.targetHgh          ) ;
-    newDatasFromTV.targetLow		        =   Number( newDatasFromTV.targetLow          ) ;
-    newDatasFromTV.roundHgh		            =   Number( newDatasFromTV.roundHgh           ) ;
-    newDatasFromTV.roundLow		            =   Number( newDatasFromTV.roundLow           ) ;
-    newDatasFromTV.tradeFeeRate		        =   Number( newDatasFromTV.tradeFeeRate       ) ;
-    newDatasFromTV.fundingRate		        =   Number( newDatasFromTV.fundingRate        ) ;
-    newDatasFromTV.barChgFR		            =   Number( newDatasFromTV.barChgFR           ) ;
-    newDatasFromTV.barChgA		            =   Number( newDatasFromTV.barChgA            ) ;
-    newDatasFromTV.barChgB		            =   Number( newDatasFromTV.barChgB            ) ;
-    newDatasFromTV.A2B		                =   Number( newDatasFromTV.A2B                ) ;
-    newDatasFromTV.Aup2B		            =   Number( newDatasFromTV.Aup2B              ) ;
-    newDatasFromTV.Adn2B		            =   Number( newDatasFromTV.Adn2B              ) ;
-    newDatasFromTV.B2A		                =   Number( newDatasFromTV.B2A                ) ;
-    newDatasFromTV.Bup2A		            =   Number( newDatasFromTV.Bup2A              ) ;
-    newDatasFromTV.Bdn2A		            =   Number( newDatasFromTV.Bdn2A              ) ;
-    newDatasFromTV.avgA2B		            =   Number( newDatasFromTV.avgA2B             ) ;
-    newDatasFromTV.avgAup2B		            =   Number( newDatasFromTV.avgAup2B           ) ;
-    newDatasFromTV.avgAdn2B		            =   Number( newDatasFromTV.avgAdn2B           ) ;
-    newDatasFromTV.avgB2A		            =   Number( newDatasFromTV.avgB2A             ) ;
-    newDatasFromTV.avgBup2A		            =   Number( newDatasFromTV.avgBup2A           ) ;
-    newDatasFromTV.avgBdn2A		            =   Number( newDatasFromTV.avgBdn2A           ) ;
-    newDatasFromTV.waveUpChg		        =   Number( newDatasFromTV.waveUpChg          ) ;
-    newDatasFromTV.waveDnChg		        =   Number( newDatasFromTV.waveDnChg          ) ;
-    newDatasFromTV.isDiffRatio		        =   Number( newDatasFromTV.isDiffRatio        ) ;
-    newDatasFromTV.ema_isDiffRatio		    =   Number( newDatasFromTV.ema_isDiffRatio    ) ;
-    newDatasFromTV.BaseCoinPrice		    =   Number( newDatasFromTV.BaseCoinPrice      ) ;
+
+const   accStatus_normal                    =  "normal"                                     ;
+const   accStatus_liquidated                =  "liquidated"                                 ;
+const   accStatus_stopC                     =  "stop due to Coinloss"                       ;
+const   accStatus_stopF                     =  "stop due to Fundloss"                       ;
+const   accStatus_stopCF                    =  "stop due to Coinloss and Fundloss"          ;
+
+const   BuyReason_belowTarget               =  "below targetLow"                            ;
+
+const   SellReason_aboveTarget              =  "above targetHigh"                           ;
+const   SellReason_enoughProfit             =  "get enough profit"                          ;
+const   SellReason_stop4C                   =  "stop loss below highestCoin too much"       ;
+const   SellReason_stop4F                   =  "stop loss below highestFund too much"       ;
+const   SellReason_liquidate                =  "liquidation sell"                           ;
+const   SellReason_cutBfLiquid              =  "cut before liquidation"                     ;
+const   SellReason_cutHighBuyOrder          =  "cut order with too high buyPrice"           ;
+
+const   NotBuySellReason_notInCanTrdTime    =  "not in can trading time"                    ;
+const   NotBuySellReason_waitLast           =  "wait for last trading end"                  ;
+const   NotBuySellReason_justTrade          =  "just a trade executed and need wait"        ;
+const   NotBuySellReason_liquidate          =  "already liquidated"                         ;
+
+const   NotBuyReason_notBuySell             =  "cant buy sell "                             ;
+const   NotBuyReason_aboveLastUnclose       =  "above lastUncloseOrder.buyPrice"            ;
+const   NotBuyReason_sellthisTime           =  "this time has sell/liquid order"            ;
+const   NotBuyReason_difctyLimit            =  "cant buy due to gridDifficulty"             ;
+const   NotBuyReason_aboveHighToBuy         =  "above highestToBuyPrice"                    ;
+const   NotBuyReason_belowLowToBuy          =  "below lowestToBuyPrice"                     ;
+const   NotBuyReason_closeToRndHigh         =  "close to roundHigh"                         ;
+const   NotBuyReason_closeToRndLow          =  "close to roundLow"                          ;
+const   NotBuyReason_noAdqtFund             =  "no adequate fund to buy"                    ;
+const   NotBuyReason_maxEnExTooSmall        =  "after calculate maxEnExPosition too small"  ;
+const   NotBuyReason_overMaxGridN           =  "account.gridNum over maxGridNumber"         ;
+const   NotBuyReason_stopTriggered          =  "stop loss triggered"                        ;
+const   NotBuyReason_closeToliquidWarn      =  "close to liquidation warning"               ;
+const   NotBuyReason_closeToStop            =  "close to stopF or stopC"                    ;
+
+const   NotSellReason_notBuySell            =  "cant buy sell "                             ;
+const   NotSellReason_noPosition            =  "no positions"                               ;
+const   NotSellReason_belowLowToSell        =  "below lowestToSellPrice"                    ;
+const   NotSellReason_cantProfit            =  "cant get enough Profit"                     ;
+
+const   toFill          = "toFill"      ;
+const   toGCPRanges     = "toGCP!A:B"   ;
+export async function HandleTV(newDatas) {
+    newDatas.timestamp		        =   Number( newDatas.timestamp          ) ;
+    newDatas.TradingSymbolPrice	    =   Number( newDatas.TradingSymbolPrice ) ;
+    newDatas.targetHgh		        =   Number( newDatas.targetHgh          ) ;
+    newDatas.targetLow		        =   Number( newDatas.targetLow          ) ;
+    newDatas.roundHgh		        =   Number( newDatas.roundHgh           ) ;
+    newDatas.roundLow		        =   Number( newDatas.roundLow           ) ;
+    newDatas.tradeFeeRate		    =   Number( newDatas.tradeFeeRate       ) ;
+    newDatas.fundingRate		    =   Number( newDatas.fundingRate        ) ;
+    newDatas.barChgFR		        =   Number( newDatas.barChgFR           ) ;
+    newDatas.barChgA		        =   Number( newDatas.barChgA            ) ;
+    newDatas.barChgB		        =   Number( newDatas.barChgB            ) ;
+    newDatas.A2B		            =   Number( newDatas.A2B                ) ;
+    newDatas.Aup2B		            =   Number( newDatas.Aup2B              ) ;
+    newDatas.Adn2B		            =   Number( newDatas.Adn2B              ) ;
+    newDatas.B2A		            =   Number( newDatas.B2A                ) ;
+    newDatas.Bup2A		            =   Number( newDatas.Bup2A              ) ;
+    newDatas.Bdn2A		            =   Number( newDatas.Bdn2A              ) ;
+    newDatas.avgA2B		            =   Number( newDatas.avgA2B             ) ;
+    newDatas.avgAup2B		        =   Number( newDatas.avgAup2B           ) ;
+    newDatas.avgAdn2B		        =   Number( newDatas.avgAdn2B           ) ;
+    newDatas.avgB2A		            =   Number( newDatas.avgB2A             ) ;
+    newDatas.avgBup2A		        =   Number( newDatas.avgBup2A           ) ;
+    newDatas.avgBdn2A		        =   Number( newDatas.avgBdn2A           ) ;
+    newDatas.waveUpChg		        =   Number( newDatas.waveUpChg          ) ;
+    newDatas.waveDnChg		        =   Number( newDatas.waveDnChg          ) ;
+    newDatas.isDiffRatio		    =   Number( newDatas.isDiffRatio        ) ;
+    newDatas.ema_isDiffRatio	    =   Number( newDatas.ema_isDiffRatio    ) ;
+    newDatas.BaseCoinPrice		    =   Number( newDatas.BaseCoinPrice      ) ;
 
     let datas = {};
 
     try {
-        const spreadsheetId = GetSheetID(newDatasFromTV.botNumber);
+        const spreadsheetId = GetSheetID(newDatas.botNumber);
 
         //获取现存数据
         let ranges  = await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges);
@@ -146,8 +188,8 @@ export async function HandleTV(newDatasFromTV) {
             throw new Error(`!datas.ifNoError || datas.ifNoError === "FALSE" || datas.TradingSymbol !== newDatasFromTV.TradingSymbol`) ;
         }
 
-        newDatasFromTV.tvUpdateTime   = GetTimeStringWithOffset(8, newDatasFromTV.timestamp);
-        newDatasFromTV.gcpGetTime     = GetTimeStringWithOffset(8);
+        newDatas.tvUpdateTime   = GetTimeStringWithOffset(8, newDatas.timestamp);
+        newDatas.gcpGetTime     = GetTimeStringWithOffset(8);
 
 
         datas.crtFund	            =   Number(datas.crtFund                )   ;
@@ -191,25 +233,25 @@ export async function HandleTV(newDatasFromTV) {
         datas.difficultyCoefficient =   Number(datas.difficultyCoefficient  )   ;
 
 
-        if (newDatasFromTV.timestamp > datas.realTradeTime) {
+        if (newDatas.timestamp > datas.realTradeTime) {
 
             // 收到新消息数据初始化
             datas.netProfit         =  isNaN(datas.netProfit   )  ?  0              :  datas.netProfit                                                                          ;
             datas.avgBuyPrice       =  isNaN(datas.avgBuyPrice )  ?  0              :  datas.avgBuyPrice                                                                        ;
             datas.allPosition       =  isNaN(datas.allPosition )  ?  0              :  datas.allPosition                                                                        ;
-            datas.openProfit        =  datas.allPosition * (newDatasFromTV.TradingSymbolPrice - datas.avgBuyPrice)                                                              ;
+            datas.openProfit        =  datas.allPosition * (newDatas.TradingSymbolPrice - datas.avgBuyPrice)                                                                    ;
             datas.crtFund           =  isNaN(datas.crtFund     )  ?  datas.inFund   :  datas.inFund + datas.netProfit + datas.openProfit                                        ;
             datas.crtCoin           =  isNaN(datas.crtCoin     )  ?  datas.inCoin   :  datas.crtCoin                                                                            ;
-            datas.allFund           =  datas.crtFund + datas.crtCoin * newDatasFromTV.BaseCoinPrice                                                                             ;
+            datas.allFund           =  datas.crtFund + datas.crtCoin * newDatas.BaseCoinPrice                                                                                   ;
             datas.initialFund       =  isNaN(datas.initialFund )  ?  datas.allFund  :  datas.initialFund                                                                        ;
             datas.hghestFund        =  isNaN(datas.hghestFund  )  ?  datas.allFund  :  ( datas.allFund > datas.hghestFund ? datas.allFund : datas.hghestFund )                  ;
             datas.lowestFund        =  isNaN(datas.lowestFund  )  ?  datas.allFund  :  ( datas.allFund < datas.lowestFund ? datas.allFund : datas.lowestFund )                  ;
-            datas.allCoin           =  datas.crtFund / newDatasFromTV.BaseCoinPrice + datas.crtCoin                                                                             ;
+            datas.allCoin           =  datas.crtFund / newDatas.BaseCoinPrice + datas.crtCoin                                                                                   ;
             datas.initialCoin       =  isNaN(datas.initialCoin )  ?  datas.allCoin  :  datas.initialCoin                                                                        ;
             datas.hghestCoin        =  isNaN(datas.hghestCoin  )  ?  datas.allCoin  :  ( datas.allCoin > datas.hghestCoin ? datas.allCoin : datas.hghestCoin )                  ;
             datas.lowestCoin        =  isNaN(datas.lowestCoin  )  ?  datas.allCoin  :  ( datas.allCoin < datas.lowestCoin ? datas.allCoin : datas.lowestCoin )                  ;
-            datas.usedMargin        =  datas.allPosition * newDatasFromTV.TradingSymbolPrice / datas.leverage                                                                   ;
-            datas.freeMargin        =  datas.crtFund + datas.crtCoin * newDatasFromTV.BaseCoinPrice * datas.BaseCoinHairCut - datas.usedMargin                                  ;
+            datas.usedMargin        =  datas.allPosition * newDatas.TradingSymbolPrice / datas.leverage                                                                         ;
+            datas.freeMargin        =  datas.crtFund + datas.crtCoin * newDatas.BaseCoinPrice * datas.BaseCoinHairCut - datas.usedMargin                                        ;
             datas.allTradeFee       =  isNaN(datas.allTradeFee )  ?  0              :  datas.allTradeFee                                                                        ;
             datas.allFundFee        =  isNaN(datas.allFundFee  )  ?  0              :  datas.allFundFee                                                                         ;
             datas.positionN         =  isNaN(datas.positionN   )  ?  0              :  datas.positionN                                                                          ;
@@ -221,7 +263,7 @@ export async function HandleTV(newDatasFromTV) {
             datas.crt_initialCoin   =  (datas.allCoin - datas.initialCoin) / datas.initialCoin                                                                                  ;
             datas.crt_hghestCoin    =  (datas.allCoin - datas.hghestCoin ) / datas.hghestCoin                                                                                   ;
             datas.crt_lowestCoin    =  (datas.allCoin - datas.lowestCoin ) / datas.lowestCoin                                                                                   ;
-            datas.crt_avgBuyPrice   =  (newDatasFromTV.TradingSymbolPrice - datas.avgBuyPrice) / datas.avgBuyPrice                                                              ;
+            datas.crt_avgBuyPrice   =  (newDatas.TradingSymbolPrice - datas.avgBuyPrice) / datas.avgBuyPrice                                                                    ;
 
 
             if (isNaN(datas.gridDifficulty) || isNaN(datas.enDifficulty) || isNaN(datas.exDifficulty)) {
@@ -236,11 +278,11 @@ export async function HandleTV(newDatasFromTV) {
                                                                                     datas.inFund                        , 
                                                                                     datas.netProfit                     , 
                                                                                     datas.crtCoin                       , 
-                                                                                    newDatasFromTV.TradingSymbolPrice   , 
-                                                                                    newDatasFromTV.BaseCoinPrice        , 
+                                                                                    newDatas.TradingSymbolPrice         , 
+                                                                                    newDatas.BaseCoinPrice              , 
                                                                                     datas.BaseCoinHairCut               , 
-                                                                                    newDatasFromTV.Adn2B                , 
-                                                                                    newDatasFromTV.waveUpChg            , 
+                                                                                    newDatas.Adn2B                      , 
+                                                                                    newDatas.waveUpChg                  , 
                                                                                     datas.hghestFund                    , 
                                                                                     datas.hghestCoin                    , 
                                                                                     datas.stopRate4F                    , 
@@ -252,82 +294,96 @@ export async function HandleTV(newDatasFromTV) {
             datas.stopPriceC        =   stopPriceC      ;
             datas.stopPriceF        =   stopPriceF      ;
 
-            datas.tocrt_liquidatePrice  =  (datas.liquidatePrice - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
-            datas.tocrt_stopPriceC      =  (datas.stopPriceC     - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
-            datas.tocrt_stopPriceF      =  (datas.stopPriceF     - newDatasFromTV.TradingSymbolPrice) / newDatasFromTV.TradingSymbolPrice   ;
+            datas.tocrt_liquidatePrice  =  (datas.liquidatePrice - newDatas.TradingSymbolPrice) / newDatas.TradingSymbolPrice   ;
+            datas.tocrt_stopPriceC      =  (datas.stopPriceC     - newDatas.TradingSymbolPrice) / newDatas.TradingSymbolPrice   ;
+            datas.tocrt_stopPriceF      =  (datas.stopPriceF     - newDatas.TradingSymbolPrice) / newDatas.TradingSymbolPrice   ;
+
+            // 账户状态判断
+            datas.accStatus =  accStatus_normal ; 
+            if (newDatas.TradingSymbolPrice < datas.liquidatePrice) {datas.accStatus = accStatus_liquidated   ;}
+            if (newDatas.TradingSymbolPrice < datas.stopPriceC    ) {datas.accStatus = accStatus_stopC        ;}
+            if (newDatas.TradingSymbolPrice < datas.stopPriceF    ) {datas.accStatus = accStatus_stopF        ;}
+            if (newDatas.TradingSymbolPrice < datas.stopPriceC    &&
+                newDatas.TradingSymbolPrice < datas.stopPriceF    ) {datas.accStatus = accStatus_stopCF       ;}
+            
+
+
+
 
         } else {
             // 未到交易时刻的逻辑
             console.log("收到TradingView消息, 但未到交易时刻");
         }
 
-        newDatasFromTV.crtFund	            =   datas.crtFund               ;
-        newDatasFromTV.crtCoin	            =   datas.crtCoin               ;
-        newDatasFromTV.allFund	            =   datas.allFund               ;
-        newDatasFromTV.initialFund	        =   datas.initialFund           ;
-        newDatasFromTV.hghestFund	        =   datas.hghestFund            ;
-        newDatasFromTV.lowestFund	        =   datas.lowestFund            ;
-        newDatasFromTV.allCoin	            =   datas.allCoin               ;
-        newDatasFromTV.initialCoin	        =   datas.initialCoin           ;
-        newDatasFromTV.hghestCoin	        =   datas.hghestCoin            ;
-        newDatasFromTV.lowestCoin	        =   datas.lowestCoin            ;
-        newDatasFromTV.allPosition	        =   datas.allPosition           ;
-        newDatasFromTV.usedMargin	        =   datas.usedMargin            ;
-        newDatasFromTV.freeMargin	        =   datas.freeMargin            ;
-        newDatasFromTV.allTradeFee	        =   datas.allTradeFee           ;
-        newDatasFromTV.allFundFee	        =   datas.allFundFee            ;
-        newDatasFromTV.netProfit	        =   datas.netProfit             ;
-        newDatasFromTV.openProfit	        =   datas.openProfit            ;
-        newDatasFromTV.avgBuyPrice	        =   datas.avgBuyPrice           ;
-        newDatasFromTV.positionN            =   datas.positionN             ;
-        newDatasFromTV.gridDifficulty	    =   datas.gridDifficulty        ;
-        newDatasFromTV.enDifficulty	        =   datas.enDifficulty          ;
-        newDatasFromTV.exDifficulty	        =   datas.exDifficulty          ;
-        newDatasFromTV.liquidatePrice	    =   datas.liquidatePrice        ;
-        newDatasFromTV.stopPriceC	        =   datas.stopPriceC            ;
-        newDatasFromTV.stopPriceF	        =   datas.stopPriceF            ;
-        newDatasFromTV.buyTimes	            =   datas.buyTimes              ;
-        newDatasFromTV.sellTimes	        =   datas.sellTimes             ;
 
-        newDatasFromTV.crt_initialFund      =  datas.crt_initialFund        ;
-        newDatasFromTV.crt_hghestFund       =  datas.crt_hghestFund         ;
-        newDatasFromTV.crt_lowestFund       =  datas.crt_lowestFund         ;
-        newDatasFromTV.crt_initialCoin      =  datas.crt_initialCoin        ;
-        newDatasFromTV.crt_hghestCoin       =  datas.crt_hghestCoin         ;
-        newDatasFromTV.crt_lowestCoin       =  datas.crt_lowestCoin         ;
-        newDatasFromTV.crt_avgBuyPrice      =  datas.crt_avgBuyPrice        ;
-        newDatasFromTV.tocrt_liquidatePrice =  datas.tocrt_liquidatePrice   ;
-        newDatasFromTV.tocrt_stopPriceC     =  datas.tocrt_stopPriceC       ;
-        newDatasFromTV.tocrt_stopPriceF     =  datas.tocrt_stopPriceF       ;
+        newDatas.crtFund	            =   datas.crtFund               ;
+        newDatas.crtCoin	            =   datas.crtCoin               ;
+        newDatas.allFund	            =   datas.allFund               ;
+        newDatas.initialFund	        =   datas.initialFund           ;
+        newDatas.hghestFund	            =   datas.hghestFund            ;
+        newDatas.lowestFund	            =   datas.lowestFund            ;
+        newDatas.allCoin	            =   datas.allCoin               ;
+        newDatas.initialCoin	        =   datas.initialCoin           ;
+        newDatas.hghestCoin	            =   datas.hghestCoin            ;
+        newDatas.lowestCoin	            =   datas.lowestCoin            ;
+        newDatas.allPosition	        =   datas.allPosition           ;
+        newDatas.usedMargin	            =   datas.usedMargin            ;
+        newDatas.freeMargin	            =   datas.freeMargin            ;
+        newDatas.allTradeFee	        =   datas.allTradeFee           ;
+        newDatas.allFundFee	            =   datas.allFundFee            ;
+        newDatas.netProfit	            =   datas.netProfit             ;
+        newDatas.openProfit	            =   datas.openProfit            ;
+        newDatas.avgBuyPrice	        =   datas.avgBuyPrice           ;
+        newDatas.positionN              =   datas.positionN             ;
+        newDatas.gridDifficulty	        =   datas.gridDifficulty        ;
+        newDatas.enDifficulty	        =   datas.enDifficulty          ;
+        newDatas.exDifficulty	        =   datas.exDifficulty          ;
+        newDatas.liquidatePrice	        =   datas.liquidatePrice        ;
+        newDatas.stopPriceC	            =   datas.stopPriceC            ;
+        newDatas.stopPriceF	            =   datas.stopPriceF            ;
+        newDatas.buyTimes	            =   datas.buyTimes              ;
+        newDatas.sellTimes	            =   datas.sellTimes             ;
+        newDatas.accStatus              =   datas.accStatus             ;
 
-        const writeToRange = newDatasFromTV.sheetTitle + '!A:B'; // 指定操作 A 到 B 列
+        newDatas.crt_initialFund        =  datas.crt_initialFund        ;
+        newDatas.crt_hghestFund         =  datas.crt_hghestFund         ;
+        newDatas.crt_lowestFund         =  datas.crt_lowestFund         ;
+        newDatas.crt_initialCoin        =  datas.crt_initialCoin        ;
+        newDatas.crt_hghestCoin         =  datas.crt_hghestCoin         ;
+        newDatas.crt_lowestCoin         =  datas.crt_lowestCoin         ;
+        newDatas.crt_avgBuyPrice        =  datas.crt_avgBuyPrice        ;
+        newDatas.tocrt_liquidatePrice   =  datas.tocrt_liquidatePrice   ;
+        newDatas.tocrt_stopPriceC       =  datas.tocrt_stopPriceC       ;
+        newDatas.tocrt_stopPriceF       =  datas.tocrt_stopPriceF       ;
+
+        const writeToRange = newDatas.sheetTitle + '!A:B'; // 指定操作 A 到 B 列
         // 1. 先清空该区域的所有数据
         await sheets.spreadsheets.values.clear({
-            spreadsheetId,
-            range: writeToRange,
+            spreadsheetId                   ,
+            range           : writeToRange  ,
         });
 
         // 2. 写入新数据
         await sheets.spreadsheets.values.update({
-            spreadsheetId:spreadsheetId,
-            range: writeToRange,
-            valueInputOption: 'USER_ENTERED', // 允许自动识别数字/日期格式
-            requestBody: {
-                values: Object.entries(newDatasFromTV),
-            },
+            spreadsheetId                                   ,
+            range               : writeToRange              ,
+            valueInputOption    : 'USER_ENTERED'            , // 允许自动识别数字/日期格式
+            requestBody         : {
+                values: Object.entries(newDatas)    ,
+            }                                               ,
         });
 
         let newDatasFromSheet   =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP));
         let attempts            =  0;
         let waitTime            =  1000;
 
-        while (attempts < 60 && Number(newDatasFromSheet.timestamp) < newDatasFromTV.timestamp) {
+        while (attempts < 60 && Number(newDatasFromSheet.timestamp) < newDatas.timestamp) {
             await new Promise(res => setTimeout(res, waitTime));
             newDatasFromSheet = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP));
             attempts    += 1;
             waitTime    =  attempts * 1000;
         }
-        if (Number(newDatasFromSheet.timestamp) >= newDatasFromTV.timestamp) {
+        if (Number(newDatasFromSheet.timestamp) >= newDatas.timestamp) {
             console.log('✔ TV数据写入表格成功');
             await SendSplitTGMessages(  process.env.TG_TOKEN                                        , 
                                         process.env.TG_CHAT_ID                                      , 
@@ -341,8 +397,6 @@ export async function HandleTV(newDatasFromTV) {
                                         "But FAIL write to Google Sheets"                           ); 
             throw new Error("TV数据写入表格失败");
         }
-
-        // 发送tg消息
 
     } catch (err) {
         throw new Error(`TV消息处理失败: ${err.message}`);
