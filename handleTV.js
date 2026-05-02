@@ -146,15 +146,22 @@ const   toGCPRanges     = "toGCP!A:B"   ;
 export async function HandleTV(newDatas) {
     newDatas.timestamp		        =   Number( newDatas.timestamp          ) ;
     newDatas.TradingSymbolPrice	    =   Number( newDatas.TradingSymbolPrice ) ;
-    newDatas.targetHgh		        =   Number( newDatas.targetHgh          ) ;
-    newDatas.targetLow		        =   Number( newDatas.targetLow          ) ;
-    newDatas.roundHgh		        =   Number( newDatas.roundHgh           ) ;
-    newDatas.roundLow		        =   Number( newDatas.roundLow           ) ;
     newDatas.tradeFeeRate		    =   Number( newDatas.tradeFeeRate       ) ;
     newDatas.fundingRate		    =   Number( newDatas.fundingRate        ) ;
+    newDatas.roundHgh		        =   Number( newDatas.roundHgh           ) ;
+    newDatas.roundLow		        =   Number( newDatas.roundLow           ) ;
+    newDatas.waveUpChg		        =   Number( newDatas.waveUpChg          ) ;
+    newDatas.waveDnChg		        =   Number( newDatas.waveDnChg          ) ;
+    newDatas.targetHgh		        =   Number( newDatas.targetHgh          ) ;
+    newDatas.targetLow		        =   Number( newDatas.targetLow          ) ;
+    newDatas.touchHghTimes          =   Number( newDatas.touchHghTimes      ) ;
+    newDatas.touchLowTimes          =   Number( newDatas.touchLowTimes      ) ;
     newDatas.barChgFR		        =   Number( newDatas.barChgFR           ) ;
     newDatas.barChgA		        =   Number( newDatas.barChgA            ) ;
     newDatas.barChgB		        =   Number( newDatas.barChgB            ) ;
+    newDatas.isDiffRatio		    =   Number( newDatas.isDiffRatio        ) ;
+    newDatas.ema_isDiffRatio	    =   Number( newDatas.ema_isDiffRatio    ) ;
+    newDatas.BaseCoinPrice		    =   Number( newDatas.BaseCoinPrice      ) ;
     newDatas.A2B		            =   Number( newDatas.A2B                ) ;
     newDatas.Aup2B		            =   Number( newDatas.Aup2B              ) ;
     newDatas.Adn2B		            =   Number( newDatas.Adn2B              ) ;
@@ -167,13 +174,6 @@ export async function HandleTV(newDatas) {
     newDatas.avgB2A		            =   Number( newDatas.avgB2A             ) ;
     newDatas.avgBup2A		        =   Number( newDatas.avgBup2A           ) ;
     newDatas.avgBdn2A		        =   Number( newDatas.avgBdn2A           ) ;
-    newDatas.waveUpChg		        =   Number( newDatas.waveUpChg          ) ;
-    newDatas.waveDnChg		        =   Number( newDatas.waveDnChg          ) ;
-    newDatas.isDiffRatio		    =   Number( newDatas.isDiffRatio        ) ;
-    newDatas.ema_isDiffRatio	    =   Number( newDatas.ema_isDiffRatio    ) ;
-    newDatas.BaseCoinPrice		    =   Number( newDatas.BaseCoinPrice      ) ;
-
-    let datas = {};
 
     try {
         const spreadsheetId = GetSheetID(newDatas.botNumber);
@@ -181,7 +181,7 @@ export async function HandleTV(newDatas) {
         //获取现存数据
         let ranges  = await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges);
         ranges      = Object.fromEntries(ranges);
-        datas       = await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP);
+        let datas   = await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP);
         datas       = Object.fromEntries(datas);
 
         if (!datas.ifNoError || datas.ifNoError === "FALSE") { //|| datas.TradingSymbol !== newDatasFromTV.TradingSymbol) {
@@ -191,9 +191,18 @@ export async function HandleTV(newDatas) {
         newDatas.tvUpdateTime   = GetTimeStringWithOffset(8, newDatas.timestamp);
         newDatas.gcpGetTime     = GetTimeStringWithOffset(8);
 
-
-        datas.crtFund	            =   Number(datas.crtFund                )   ;
-        datas.crtCoin	            =   Number(datas.crtCoin                )   ;
+        datas.liquidatePrice	    =   Number(datas.liquidatePrice         )   ;
+        datas.stopPriceC	        =   Number(datas.stopPriceC             )   ;
+        datas.stopPriceF	        =   Number(datas.stopPriceF             )   ;
+        datas.lowToBuy              =   Number(datas.lowToBuy               )   ;
+        datas.hghToBuy              =   Number(datas.hghToBuy               )   ;
+        datas.lowToSell             =   Number(datas.lowToSell              )   ;
+        datas.openProfit	        =   Number(datas.openProfit             )   ;
+        datas.usedMargin	        =   Number(datas.usedMargin             )   ;
+        datas.freeMargin	        =   Number(datas.freeMargin             )   ;
+        datas.netProfit	            =   Number(datas.netProfit              )   ;
+        datas.allTradeFee	        =   Number(datas.allTradeFee            )   ;
+        datas.allFundFee	        =   Number(datas.allFundFee             )   ;
         datas.allFund	            =   Number(datas.allFund                )   ;
         datas.initialFund	        =   Number(datas.initialFund            )   ;
         datas.hghestFund	        =   Number(datas.hghestFund             )   ;
@@ -202,21 +211,18 @@ export async function HandleTV(newDatas) {
         datas.initialCoin	        =   Number(datas.initialCoin            )   ;
         datas.hghestCoin	        =   Number(datas.hghestCoin             )   ;
         datas.lowestCoin	        =   Number(datas.lowestCoin             )   ;
+        datas.crtFund	            =   Number(datas.crtFund                )   ;
+        datas.crtCoin	            =   Number(datas.crtCoin                )   ;
         datas.allPosition	        =   Number(datas.allPosition            )   ;
-        datas.usedMargin	        =   Number(datas.usedMargin             )   ;
-        datas.freeMargin	        =   Number(datas.freeMargin             )   ;
-        datas.allTradeFee	        =   Number(datas.allTradeFee            )   ;
-        datas.allFundFee	        =   Number(datas.allFundFee             )   ;
-        datas.netProfit	            =   Number(datas.netProfit              )   ;
-        datas.openProfit	        =   Number(datas.openProfit             )   ;
         datas.avgBuyPrice	        =   Number(datas.avgBuyPrice            )   ;
-        datas.positionN             =   Number(datas.positionN              )   ;
+        datas.avgBuyPriceUnclose    =   Number(datas.avgBuyPriceUnclose     )   ;
+        datas.lstBuyPriceUnclose    =   Number(datas.lstBuyPriceUnclose     )   ;
+        datas.hghBuyPriceUnclose    =   Number(datas.hghBuyPriceUnclose     )   ;
+        datas.lowBuyPriceUnclose    =   Number(datas.lowBuyPriceUnclose     )   ;
+        datas.gridNum               =   Number(datas.gridNum                )   ;
         datas.gridDifficulty	    =   Number(datas.gridDifficulty         )   ;
         datas.enDifficulty	        =   Number(datas.enDifficulty           )   ;
         datas.exDifficulty	        =   Number(datas.exDifficulty           )   ;
-        datas.liquidatePrice	    =   Number(datas.liquidatePrice         )   ;
-        datas.stopPriceC	        =   Number(datas.stopPriceC             )   ;
-        datas.stopPriceF	        =   Number(datas.stopPriceF             )   ;
         datas.buyTimes	            =   Number(datas.buyTimes               )   ;
         datas.sellTimes	            =   Number(datas.sellTimes              )   ;
 
@@ -234,7 +240,6 @@ export async function HandleTV(newDatas) {
 
 
         if (newDatas.timestamp > datas.realTradeTime) {
-
             // 收到新消息数据初始化
             datas.netProfit         =  isNaN(datas.netProfit   )  ?  0              :  datas.netProfit                                                                          ;
             datas.avgBuyPrice       =  isNaN(datas.avgBuyPrice )  ?  0              :  datas.avgBuyPrice                                                                        ;
@@ -305,6 +310,8 @@ export async function HandleTV(newDatas) {
             if (newDatas.TradingSymbolPrice < datas.stopPriceF    ) {datas.accStatus = accStatus_stopF        ;}
             if (newDatas.TradingSymbolPrice < datas.stopPriceC    &&
                 newDatas.TradingSymbolPrice < datas.stopPriceF    ) {datas.accStatus = accStatus_stopCF       ;}
+
+            datas.therePosition     =  datas.gridNum > 0  ?  true  :  false  ; 
             
 
 
@@ -355,6 +362,9 @@ export async function HandleTV(newDatas) {
         newDatas.tocrt_liquidatePrice   =  datas.tocrt_liquidatePrice   ;
         newDatas.tocrt_stopPriceC       =  datas.tocrt_stopPriceC       ;
         newDatas.tocrt_stopPriceF       =  datas.tocrt_stopPriceF       ;
+
+        newDatas.typeOfTouch            =  typeof(newDatas.touchTargetHgh) ;
+
 
         const writeToRange = newDatas.sheetTitle + '!A:B'; // 指定操作 A 到 B 列
         // 1. 先清空该区域的所有数据
