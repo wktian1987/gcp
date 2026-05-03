@@ -5,7 +5,7 @@ import { google } from 'googleapis';
 
 import {
     GetTimeStringWithOffset,
-    GetSheetID,
+    GetSpreadsheetID,
     CheckIfSheetExists,
     SendSplitTGMessages
 } from './utility.js';
@@ -209,7 +209,7 @@ function convertToTextTable(rawContent) {
 export async function HandleUnreadGmails(req, res) {
     if (!res.writableEnded) res.status(200).send('ACK'); // 立即返回响应防止超时
 
-    const SPREADSHEET_ID = GetSheetID("TradingBot_00");
+    const SPREADSHEET_ID = GetSpreadsheetID("TradingBot_00");
     const handledEmailsSheetTitle = "handledEmails";
     // await CheckIfSheetExists(sheets, SPREADSHEET_ID, handledEmailsSheetTitle, true);
     let lock = null;
