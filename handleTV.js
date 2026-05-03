@@ -341,7 +341,7 @@ export async function HandleTV(newDatas) {
         //     throw new Error(`!datas.ifNoError || datas.ifNoError === "FALSE" || datas.TradingSymbol !== newDatasFromTV.TradingSymbol`) ;
         // }
 
-        newDatas.thisAlertMessage       =   datas.thisAlertMessage.replaceAll("__HuanHang__", "\n")  ;
+        newDatas.thisAlertMessage       =   String(datas.thisAlertMessage).replaceAll("__HuanHang__", "\n")  ;
 
         newDatas.runningWell            =   datas.runningWell           ;
         newDatas.accStatus              =   datas.accStatus             ;
