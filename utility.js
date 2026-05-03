@@ -71,6 +71,7 @@ export function ConvertRowsToHtmlTable(rows) {
         html += '</tr>';
     }
     html += '</tbody></table>';
+    html = String(html).replaceAll("\n", "<br/>")  ;
 
     return html;
 }
