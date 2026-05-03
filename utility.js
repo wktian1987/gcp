@@ -44,6 +44,37 @@ export function FormatMatrixToString(matrix, padding = 4) {
     }).join('\n');
 }
 
+/**
+ * 将二维数组转换为 HTML 表格字符串
+ * @param {Array[]} rows 从 Google Sheets 读取的原始数据
+ * @returns {string} HTML 字符串
+ */
+function convertToHtmlTable(rows) {
+    if (!rows || rows.length === 0) return '<p>无数据</p>';
+
+    let html = '<table border="1" style="border-collapse: collapse; width: 100%;">';
+    
+    // 处理表头 (第一行)
+    html += '<thead><tr>';
+    rows[0].forEach(header => {
+        html += `<th style="background-color: #f2f2f2; padding: 8px;">${header}</th>`;
+    });
+    html += '</tr></thead>';
+
+    // 处理数据行
+    html += '<tbody>';
+    for (let i = 1; i < rows.length; i++) {
+        html += '<tr>';
+        rows[i].forEach(cell => {
+            html += `<td style="padding: 8px;">${cell || ''}</td>`;
+        });
+        html += '</tr>';
+    }
+    html += '</tbody></table>';
+
+    return html;
+}
+
 export function GetSheetID(botNumber) {
     const sheet_00 = "1796Tns5Z5T8DODV9UkBhVMbPjXdP2WpUJrTPLX0V8dQ";
     const sheet_01 = "13G-kKQi9AzjzGJUQYmUMGQfUKupkvNaB9irQ8XaCWKs";
@@ -120,7 +151,6 @@ export async function CheckIfSheetExists(sheets, spreadsheetId, sheetTitle, ifNo
         throw new Error(`检查"${sheetTitle}"存在性时出错:` + err.message);
     }
 }
-
 
 /**
  * 
@@ -274,4 +304,32 @@ export async function SendSplitTGMessages(botToken, chatId, subject, text) {
 
         await new Promise(res => setTimeout(res, 1000));
     }
+}
+
+
+export async function SendEmail(mailUser, mailPass, receiver, mail_subject, mail_content) {
+    const { createTransport } = await import('nodemailer');
+    const transporter = createTransport(    {
+        service : 'gmail'                               ,
+        auth    : { user: mailUser, pass: mailPass }    }   )  ;
+
+// 3. 构建邮件选项
+    const mailOptions = {
+        from: `"GCP Router" <${mailUser}>`,
+        to: receiver,
+        subject: mail_subject,
+        html: mail_content // 传入你生成的 HTML Table 字符串
+    };
+
+    try {
+        // 4. 必须使用 await 确保发送完成，否则 GCP 容器可能会提前关闭
+        const info = await transporter.sendMail(mailOptions);
+        console.log('✔ 邮件发送成功: %s', info.messageId);
+        return info;
+    } catch (error) {
+        // 5. 捕获认证失败或网络超时
+        console.error('✘ 邮件发送异常:', error.message);
+        throw error; // 抛出错误供上层逻辑处理（比如重试）
+    }
+
 }

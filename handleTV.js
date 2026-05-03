@@ -141,8 +141,9 @@ const   NotSellReason_noPosition            =  "no positions"                   
 const   NotSellReason_belowLowToSell        =  "below lowestToSellPrice"                    ;
 const   NotSellReason_cantProfit            =  "cant get enough Profit"                     ;
 
-const   toFill          = "toFill"      ;
-const   toGCPRanges     = "toGCP!A:B"   ;
+const   toFill          = "toFill"          ;
+const   toGCPRanges     = "toGCP!A:B"       ;
+const   huanHang        = "__HuangHang__"   ;
 export async function HandleTV(newDatas) {
     newDatas.touchTargetHgh             =  (newDatas.touchTargetHgh          || String(newDatas.touchTargetHgh         ).toUpperCase() === "TRUE")  ?  true  :  false  ;
     newDatas.touchTargetLow             =  (newDatas.touchTargetLow          || String(newDatas.touchTargetLow         ).toUpperCase() === "TRUE")  ?  true  :  false  ;
@@ -341,7 +342,7 @@ export async function HandleTV(newDatas) {
         //     throw new Error(`!datas.ifNoError || datas.ifNoError === "FALSE" || datas.TradingSymbol !== newDatasFromTV.TradingSymbol`) ;
         // }
 
-        newDatas.thisAlertMessage       =   String(datas.thisAlertMessage).replaceAll("__HuanHang__", "\n")  ;
+        newDatas.thisAlertMessage       =   String(datas.thisAlertMessage).replaceAll(huanHang, "\n")  ;
 
         newDatas.runningWell            =   datas.runningWell           ;
         newDatas.accStatus              =   datas.accStatus             ;
