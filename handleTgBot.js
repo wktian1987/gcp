@@ -1,9 +1,10 @@
 import {
-    SendSplitTGMessages,
-    GetSheetID,
-    FormatMatrixToString,
-    GetDataFromSheet
-} from "./utility.js";
+    SendSplitTGMessages         ,
+    SendEmail                   ,
+    GetSpreadsheetID            ,
+    FormatMatrixToString        ,
+    ConvertRowsToHtmlTable      ,
+    GetDataFromSheet            } from "./utility.js";
 
 import { google } from 'googleapis';
 const auth = new google.auth.GoogleAuth({
@@ -11,10 +12,13 @@ const auth = new google.auth.GoogleAuth({
 });
 const sheets = google.sheets({ version: 'v4', auth });
 
+const mailUser          = process.env.GMAIL_USER        ;
+const mailPass          = process.env.GMAIL_APP_PASS    ;
+const receiver          = process.env.RECEIVER_EMAIL    ;
 
-const botToken          = process.env.TG_TOKEN;
-const myGroupAlertTgID  = process.env.TG_CHAT_ID;
-const myTgID            = process.env.myTgID;
+const botToken          = process.env.TG_TOKEN      ;
+const myGroupAlertTgID  = process.env.TG_CHAT_ID    ;
+const myTgID            = process.env.myTgID        ;
 // const myTgID = "6444592564";
 
 
@@ -44,7 +48,7 @@ export async function HandleTgBot(req, res) {
             return match ? `TradingBot_${match[1]}` : null;
         })(text);
 
-        const sheetId = GetSheetID(botNumber);
+        const thisSpreadsheetId = GetSpreadsheetID(botNumber);
 
 
         // 只处理我或者群内发来的消息
@@ -52,18 +56,38 @@ export async function HandleTgBot(req, res) {
             return res.status(200).send("ACK)");
         }
 
-        if (!botNumber || !sheetId) {
+        if (!botNumber || !thisSpreadsheetId) {
             await SendSplitTGMessages(botToken, chat_id, "命令错误", "请输入正确命令");
             return res.status(200).send("ACK)");
         }
 
-        const toGCPdata = await GetDataFromSheet(sheets, sheetId, "toGCP!A:B");
-        const toGCP = Object.fromEntries(toGCPdata);
-        const toTGData = await GetDataFromSheet(sheets, sheetId, toGCP.toTgBotRange);
-        const toTGDataString = FormatMatrixToString(toTGData);
+        const toGCPdata = await GetDataFromSheet(sheets, thisSpreadsheetId, "toGCP!A:B")    ;
+        const toGCP     = Object.fromEntries(toGCPdata)                                     ;
 
-        const chatId = chat_id === myTgID ? myTgID : myGroupAlertTgID;
-        await SendSplitTGMessages(botToken, chatId, botNumber, toTGDataString);
+        const toTGData          = await GetDataFromSheet(sheets, thisSpreadsheetId, toGCP.toTgBotRange)     ;
+        const toTGDataString    = FormatMatrixToString(toTGData)                                            ;
+        const chatId            = chat_id === myTgID ? myTgID : myGroupAlertTgID                            ;
+        const sendTGTask        = SendSplitTGMessages(botToken, chatId, botNumber, toTGDataString)          ;
+
+        const toEmailData   = await GetDataFromSheet(sheets, thisSpreadsheetId, toGCP.toEmailRange)         ;
+        const mail_subject  = botNumber                                                                     ;
+        const toEmailHtml   = ConvertRowsToHtmlTable(toEmailData)                                           ;
+        const sendMailTask  = SendEmail(mailUser, mailPass, receiver, mail_subject, toEmailHtml)            ;
+
+
+        // 执行并发任务
+        const handleResults = await Promise.allSettled([sendTGTask, sendMailTask]);
+
+        handleResults.forEach((result, index) => {
+            const taskName = index === 0 ? "发送TG消息" : "转发邮件";
+            if (result.status === "fulfilled") {
+                console.log(`✔ ${taskName}成功`);
+            } else {
+                console.error(`✘ ${taskName}失败: `, result.reason?.message || result.reason);
+            }
+        });
+
+
         res.status(200).send("ACK");
     } catch (err) {
         console.error(err);

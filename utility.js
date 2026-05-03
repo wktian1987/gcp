@@ -49,11 +49,11 @@ export function FormatMatrixToString(matrix, padding = 4) {
  * @param {Array[]} rows 从 Google Sheets 读取的原始数据
  * @returns {string} HTML 字符串
  */
-function convertToHtmlTable(rows) {
+export function ConvertRowsToHtmlTable(rows) {
     if (!rows || rows.length === 0) return '<p>无数据</p>';
 
     let html = '<table border="1" style="border-collapse: collapse; width: 100%;">';
-    
+
     // 处理表头 (第一行)
     html += '<thead><tr>';
     rows[0].forEach(header => {
@@ -75,7 +75,7 @@ function convertToHtmlTable(rows) {
     return html;
 }
 
-export function GetSheetID(botNumber) {
+export function GetSpreadsheetID(botNumber) {
     const sheet_00 = "1796Tns5Z5T8DODV9UkBhVMbPjXdP2WpUJrTPLX0V8dQ";
     const sheet_01 = "13G-kKQi9AzjzGJUQYmUMGQfUKupkvNaB9irQ8XaCWKs";
     const sheet_02 = "13G-kKQi9AzjzGJUQYmUMGQfUKupkvNaB9irQ8XaCWKs";
@@ -309,11 +309,12 @@ export async function SendSplitTGMessages(botToken, chatId, subject, text) {
 
 export async function SendEmail(mailUser, mailPass, receiver, mail_subject, mail_content) {
     const { createTransport } = await import('nodemailer');
-    const transporter = createTransport(    {
-        service : 'gmail'                               ,
-        auth    : { user: mailUser, pass: mailPass }    }   )  ;
+    const transporter = createTransport({
+        service: 'gmail',
+        auth: { user: mailUser, pass: mailPass }
+    });
 
-// 3. 构建邮件选项
+    // 构建邮件选项
     const mailOptions = {
         from: `"GCP Router" <${mailUser}>`,
         to: receiver,
@@ -322,13 +323,13 @@ export async function SendEmail(mailUser, mailPass, receiver, mail_subject, mail
     };
 
     try {
-        // 4. 必须使用 await 确保发送完成，否则 GCP 容器可能会提前关闭
+        // 必须使用 await 确保发送完成，否则 GCP 容器可能会提前关闭
         const info = await transporter.sendMail(mailOptions);
-        console.log('✔ 邮件发送成功: %s', info.messageId);
+        // console.log('✔ 邮件发送成功: %s', info.messageId);
         return info;
     } catch (error) {
-        // 5. 捕获认证失败或网络超时
-        console.error('✘ 邮件发送异常:', error.message);
+        // 捕获认证失败或网络超时
+        // console.error('✘ 邮件发送异常:', error.message);
         throw error; // 抛出错误供上层逻辑处理（比如重试）
     }
 

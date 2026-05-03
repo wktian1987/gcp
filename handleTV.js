@@ -1,6 +1,6 @@
 import {GetTimeStringWithOffset         , 
         SendSplitTGMessages             ,
-        GetSheetID                      ,                      
+        GetSpreadsheetID                      ,                      
         FormatMatrixToString,            
         GetDataFromSheet} from "./utility.js";
 
@@ -186,7 +186,7 @@ export async function HandleTV(newDatas) {
 
 
     try {
-        const spreadsheetId = GetSheetID(newDatas.botNumber);
+        const spreadsheetId = GetSpreadsheetID(newDatas.botNumber);
 
         //获取现存数据
         let ranges  = await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges);
@@ -328,10 +328,10 @@ export async function HandleTV(newDatas) {
 
             datas.therePosition     =  datas.gridNum > 0  ?  true  :  false  ; 
             
+            
+
 
             datas.thisAlertMessage  =  String(newDatasFromTV.thisAlertMessage).replaceAll(huanHang, "\n")  ;
-
-            datas.thisAlertMessage  =  "there is no Error!" + "\n"  ;
 
             datas.runningWell  =  true;
         } else {
