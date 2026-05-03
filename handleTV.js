@@ -329,8 +329,9 @@ export async function HandleTV(newDatas) {
             datas.therePosition     =  datas.gridNum > 0  ?  true  :  false  ; 
             
 
-            datas.thisAlertMessage  =  String(newDatasFromTV.thisAlertMessage)  ;
+            datas.thisAlertMessage  =  String(newDatasFromTV.thisAlertMessage).replaceAll(huanHang, "\n")  ;
 
+            datas.thisAlertMessage  =  "there is no Error!" + "\n"  ;
 
             datas.runningWell  =  true;
         } else {
@@ -343,7 +344,7 @@ export async function HandleTV(newDatas) {
         //     throw new Error(`!datas.ifNoError || datas.ifNoError === "FALSE" || datas.TradingSymbol !== newDatasFromTV.TradingSymbol`) ;
         // }
 
-        newDatas.thisAlertMessage       =   datas.thisAlertMessage.replaceAll(huanHang, "\n")  ;
+        newDatas.thisAlertMessage       =   datas.thisAlertMessage      ;
 
         newDatas.runningWell            =   datas.runningWell           ;
         newDatas.accStatus              =   datas.accStatus             ;
