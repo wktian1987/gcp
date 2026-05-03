@@ -331,7 +331,7 @@ export async function HandleTV(newDatas) {
             
 
 
-            datas.thisAlertMessage  =  String(newDatasFromTV.thisAlertMessage).replaceAll(huanHang, "\n")  ;
+            datas.thisAlertMessage  =  String(newDatas.thisAlertMessage).replaceAll(huanHang, "\n")  ;
 
             datas.runningWell  =  true;
         } else {
