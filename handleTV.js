@@ -144,10 +144,10 @@ const   NotSellReason_cantProfit            =  "cant get enough Profit"         
 const   toFill          = "toFill"      ;
 const   toGCPRanges     = "toGCP!A:B"   ;
 export async function HandleTV(newDatas) {
-    newDatas.touchTargetHgh             =  (newDatas.touchTargetHgh          || newDatas.touchTargetHgh         .toUpperCase() === "TRUE")  ?  true  :  false  ;
-    newDatas.touchTargetLow             =  (newDatas.touchTargetLow          || newDatas.touchTargetLow         .toUpperCase() === "TRUE")  ?  true  :  false  ;
-    newDatas.alreadyTouchHghThisWave    =  (newDatas.alreadyTouchHghThisWave || newDatas.alreadyTouchHghThisWave.toUpperCase() === "TRUE")  ?  true  :  false  ;
-    newDatas.alreadyTouchLowThisWave    =  (newDatas.alreadyTouchLowThisWave || newDatas.alreadyTouchLowThisWave.toUpperCase() === "TRUE")  ?  true  :  false  ;
+    newDatas.touchTargetHgh             =  (newDatas.touchTargetHgh          || String(newDatas.touchTargetHgh         ).toUpperCase() === "TRUE")  ?  true  :  false  ;
+    newDatas.touchTargetLow             =  (newDatas.touchTargetLow          || String(newDatas.touchTargetLow         ).toUpperCase() === "TRUE")  ?  true  :  false  ;
+    newDatas.alreadyTouchHghThisWave    =  (newDatas.alreadyTouchHghThisWave || String(newDatas.alreadyTouchHghThisWave).toUpperCase() === "TRUE")  ?  true  :  false  ;
+    newDatas.alreadyTouchLowThisWave    =  (newDatas.alreadyTouchLowThisWave || String(newDatas.alreadyTouchLowThisWave).toUpperCase() === "TRUE")  ?  true  :  false  ;
     newDatas.timestamp		            =   Number( newDatas.timestamp          ) ;
     newDatas.TradingSymbolPrice	        =   Number( newDatas.TradingSymbolPrice ) ;
     newDatas.tradeFeeRate		        =   Number( newDatas.tradeFeeRate       ) ;
@@ -258,7 +258,7 @@ export async function HandleTV(newDatas) {
             // 1, 未初始化时
             // 2, 正常运行时
             // 3, 出错时, 需重新初始化
-            datas.runningWell       =  (datas.runningWell || datas.runningWell.toUpperCase() === "TRUE")  ?  true  :  false  ;
+            datas.runningWell       =  (datas.runningWell || String(datas.runningWell).toUpperCase() === "TRUE")  ?  true  :  false  ;
 
             datas.netProfit         =  ( (!datas.runningWell) || isNaN(datas.netProfit   ) ) ?  0              :  datas.netProfit                                                   ;
             datas.avgBuyPrice       =  ( (!datas.runningWell) || isNaN(datas.avgBuyPrice ) ) ?  0              :  datas.avgBuyPrice                                                 ;
