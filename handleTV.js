@@ -193,11 +193,6 @@ export async function HandleTV(newDatas) {
         let datas   = await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP);
         datas       = Object.fromEntries(datas);
 
-        if (!datas.ifNoError || datas.ifNoError === "FALSE") { //|| datas.TradingSymbol !== newDatasFromTV.TradingSymbol) {
-            throw new Error(`!datas.ifNoError || datas.ifNoError === "FALSE" || datas.TradingSymbol !== newDatasFromTV.TradingSymbol`) ;
-        }
-
-
         datas.liquidatePrice	    =   Number(datas.liquidatePrice         )   ;
         datas.stopPriceC	        =   Number(datas.stopPriceC             )   ;
         datas.stopPriceF	        =   Number(datas.stopPriceF             )   ;
@@ -341,6 +336,10 @@ export async function HandleTV(newDatas) {
             console.log("收到TradingView消息, 但未到交易时刻");
         }
 
+
+        // if (!datas.ifNoError || datas.ifNoError === "FALSE") { //|| datas.TradingSymbol !== newDatasFromTV.TradingSymbol) {
+        //     throw new Error(`!datas.ifNoError || datas.ifNoError === "FALSE" || datas.TradingSymbol !== newDatasFromTV.TradingSymbol`) ;
+        // }
 
         newDatas.runningWell            =   datas.runningWell           ;
         newDatas.accStatus              =   datas.accStatus             ;
