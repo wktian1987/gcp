@@ -16,6 +16,35 @@ app.post('/schedule', json(), async (req, res) => {
 app.post('/tgBot', json(), async (req, res) => {
     console.log("✔ 收到/tgBot连接");
     const { HandleTgBot } = await import("./handleTgBot.js");
+    const msg   = req.body.message  ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
     await HandleTgBot(req, res);
 }
 );

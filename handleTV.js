@@ -245,8 +245,8 @@ export async function HandleTV(D) {
         D.basicHghToBuy             =   Number(d.basicHghToBuy              )   ;
         D.basicLowToBuy             =   Number(d.basicLowToBuy              )   ;
         D.basicLowToSell            =   Number(d.basicLowToSell             )   ;
-        D.notBuyCloseToRndHghStep   =   Number(D.notBuyCloseToRndHghStep    )   ;
-        D.notBuyCloseToRndLowStep   =   Number(D.notBuyCloseToRndLowStep    )   ;
+        D.notBuyCloseToRndHghStep   =   Number(d.notBuyCloseToRndHghStep    )   ;
+        D.notBuyCloseToRndLowStep   =   Number(d.notBuyCloseToRndLowStep    )   ;
         D.stopRate4F	            =   Number(d.stopRate4F                 )   ;
         D.stopRate4C	            =   Number(d.stopRate4C                 )   ;
         D.notStop4C	                =   Number(d.notStop4C                  )   ;
