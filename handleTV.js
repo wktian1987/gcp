@@ -317,7 +317,7 @@ export async function HandleTV(D) {
                                                                                     D.TradingSymbolPrice    , 
                                                                                     D.BaseCoinPrice         , 
                                                                                     D.BaseCoinHairCut       , 
-                                                                                    D.Adn2B                 , 
+                                                                                    D.avgAdn2B              , 
                                                                                     D.waveUpChg             , 
                                                                                     D.hghestFund            , 
                                                                                     D.hghestCoin            , 
@@ -357,10 +357,10 @@ export async function HandleTV(D) {
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            if (D.allFund > (1+D.barChgA)*D.rcd_hghFund) { D.thisAlertMessage  +=  'new rcd_hghFund' + '\n' ; }
-            if (D.allFund < (1-D.barChgA)*D.rcd_lowFund) { D.thisAlertMessage  +=  'new rcd_lowFund' + '\n' ; }
-            if (D.allCoin > (1+D.barChgA)*D.rcd_hghCoin) { D.thisAlertMessage  +=  'new rcd_hghCoin' + '\n' ; }
-            if (D.allCoin < (1-D.barChgA)*D.rcd_lowCoin) { D.thisAlertMessage  +=  'new rcd_lowCoin' + '\n' ; }
+            if (D.allFund > (1+D.barChgA)*D.rcd_hghFund) { D.thisAlertMessage += 'new rcd_hghFund' + '\n' ; D.rcd_hghFund = D.allFund ;}
+            if (D.allFund < (1-D.barChgA)*D.rcd_lowFund) { D.thisAlertMessage += 'new rcd_lowFund' + '\n' ; D.rcd_lowFund = D.allFund ;}
+            if (D.allCoin > (1+D.barChgA)*D.rcd_hghCoin) { D.thisAlertMessage += 'new rcd_hghCoin' + '\n' ; D.rcd_hghCoin = D.allCoin ;}
+            if (D.allCoin < (1-D.barChgA)*D.rcd_lowCoin) { D.thisAlertMessage += 'new rcd_lowCoin' + '\n' ; D.rcd_hghCoin = D.allCoin ;}
 
             D.canBuy            =  true     ;
             D.cantBuyReason     =  ""       ;
@@ -395,9 +395,18 @@ export async function HandleTV(D) {
             D.thisAlertMessage      +=  D.cantBuyReason + D.cantSellReason  ;
 
 
+            // 测试
+            let tradingSignal  =  {} ;
+
+            if (D.canBuy && D.touchTargetLow) {
+                tradingSignal.orderID       =  'od-' + D.tvUpdateTime           ;
+                tradingSignal.orderDate     =  GetTimeStringWithOffset(8)       ;
+                tradingSignal.confirmDate   =  null                             ;         
 
 
+            }
 
+            // 测试
 
 
             D.runningWell       =   true                ;
