@@ -335,12 +335,23 @@ export async function HandleTV(D) {
             D.tocrt_stopPriceF      =  (D.stopPriceF     - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
 
             // 账户状态判断
-            D.accStatus =  accStatus_normal ; 
-            if (D.TradingSymbolPrice < D.liquidatePrice) {D.accStatus = accStatus_liquidated   ;}
-            if (D.TradingSymbolPrice < D.stopPriceC    ) {D.accStatus = accStatus_stopC        ;}
-            if (D.TradingSymbolPrice < D.stopPriceF    ) {D.accStatus = accStatus_stopF        ;}
-            if (D.TradingSymbolPrice < D.stopPriceC    &&
-                D.TradingSymbolPrice < D.stopPriceF    ) {D.accStatus = accStatus_stopCF       ;}
+            D.accStatus =  'Normal' ; 
+            if (D.TradingSymbolPrice < D.liquidatePrice) {
+                D.accStatus         = 'liquidated'                      ;
+                D.thisAlertMessage  =  accStatus_liquidated     + '\n'  ;
+            }
+            if (D.TradingSymbolPrice < D.stopPriceC    ) {
+                D.accStatus         = 'stopC'                           ;
+                D.thisAlertMessage  =  accStatus_stopC          + '\n'  ;
+            }
+            if (D.TradingSymbolPrice < D.stopPriceF    ) {
+                D.accStatus         = 'stopF'                           ;
+                D.thisAlertMessage  =  accStatus_stopF          + '\n'  ;
+            }
+            if (D.TradingSymbolPrice < D.stopPriceC  &&  D.TradingSymbolPrice < D.stopPriceF ) {
+                D.accStatus         = 'stopCF'                          ;
+                D.thisAlertMessage  =  accStatus_stopCF         + '\n'  ;
+            }
 
             D.therePosition     =  D.gridNum > 0  ?  true  :  false  ; 
 
