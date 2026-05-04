@@ -271,7 +271,7 @@ export async function HandleTV(D) {
             D.netProfit         =  (!D.runningWell) || isNaN(D.netProfit   )  ?  0          :  D.netProfit                                                  ;
             D.openProfit        =  D.allPosition * (D.TradingSymbolPrice - D.avgBuyPrice)                                                                   ;
             D.crtFund           =  D.inFund + D.netProfit + D.openProfit                                                                                    ;
-            D.crtCoin           =  D.crtCoin                                                                                                                ;
+            D.crtCoin           =  D.inCoin                                                                                                                 ;
             D.usedMargin        =  D.allPosition * D.TradingSymbolPrice / D.leverage                                                                        ;
             D.freeMargin        =  D.crtFund + D.crtCoin * D.BaseCoinPrice * D.BaseCoinHairCut - D.usedMargin                                               ;
             D.allFund           =  D.crtFund + D.crtCoin * D.BaseCoinPrice                                                                                  ;
@@ -393,6 +393,10 @@ export async function HandleTV(D) {
                 D.cantSellReason    +=  'price < basicLowToSell' + '\n' ;
             }
             D.thisAlertMessage      +=  D.cantBuyReason + D.cantSellReason  ;
+
+
+
+
 
 
 
