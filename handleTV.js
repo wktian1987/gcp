@@ -381,11 +381,7 @@ export async function HandleTV(D) {
                 D.canSell           =   false                           ;
                 D.cantSellReason    +=  'price < basicLowToSell' + '\n' ;
             }
-
-            D.thisAlertMessage  +=  D.cantBuyReason     ;
-            D.thisAlertMessage  +=  D.cantSellReason    ;
-
-
+            D.thisAlertMessage      +=  D.cantBuyReason + D.cantSellReason  ;
 
 
 
