@@ -52,12 +52,13 @@ export function FormatMatrixToString(matrix, padding = 4) {
 export function ConvertRowsToHtmlTable(rows) {
     if (!rows || rows.length === 0) return '<p>无数据</p>';
 
-    let html = '<table border="1" style="border-collapse: collapse; width: 100%;">';
+    let html = '<table style="border-collapse: collapse; border: 1px solid; text-align: left; white-space: pre; font-family: monospace; font-size: 1em">';
+
 
     // 处理表头 (第一行)
     html += '<thead><tr>';
     rows[0].forEach(header => {
-        html += `<th style="background-color: #f2f2f2; padding: 8px;">${header}</th>`;
+        html += `<th style="border-collapse: collapse; border: 1px solid; text-align: left; white-space: pre; font-family: monospace; font-size: 1.2em">${header}</th>`;
     });
     html += '</tr></thead>';
 
@@ -66,7 +67,7 @@ export function ConvertRowsToHtmlTable(rows) {
     for (let i = 1; i < rows.length; i++) {
         html += '<tr>';
         rows[i].forEach(cell => {
-            html += `<td style="padding: 8px;">${cell || ''}</td>`;
+            html += `<td style="border-collapse: collapse; border: 1px solid; text-align: left; white-space: pre; font-family: monospace; font-size: 1em">${cell || ''}</td>`;
         });
         html += '</tr>';
     }
