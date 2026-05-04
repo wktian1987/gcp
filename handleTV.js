@@ -10,7 +10,6 @@ const auth = new google.auth.GoogleAuth({
 });
 const sheets = google.sheets({ version: 'v4', auth });
 
-const spreadsheetId = GetSpreadsheetID(D.botNumber);
 
 
 function GetGridDifficulty(positionN, difficultyCoefficient, maxGridNumber) { 
@@ -100,7 +99,7 @@ function GetLiquidateStopPrice( allPosition         ,
 
 }
 
-async function SendOrderToBroker(S) {
+async function SendOrderToBroker(S, sheets, spreadsheetId) {
     await sheets.spreadsheets.values.update(    { 
         spreadsheetId       : spreadsheetId                     ,
         range               : 'simBroker!A10'                   ,
@@ -211,7 +210,7 @@ export async function HandleTV(D) {
     D.gcpGetTime                =   GetTimeStringWithOffset(8)                      ;
 
     try {
-
+        const spreadsheetId = GetSpreadsheetID(D.botNumber);
         //获取现存数据
         let ranges  = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges ) ) ;
         let d       = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP) ) ;
@@ -450,7 +449,7 @@ export async function HandleTV(D) {
                 S.ing_reason        =  BuyReason_belowTarget            ;
                 S.ing_orderStatus   =  order_pending                    ;
 
-                S = await SendOrderToBroker(S) ;
+                S = await SendOrderToBroker(S, sheets, spreadsheetId) ;
 
                 Object.assign(D, S) ;
             }
