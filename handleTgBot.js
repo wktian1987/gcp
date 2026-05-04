@@ -22,18 +22,13 @@ const myTgID            = process.env.myTgID        ;
 // const myTgID = "6444592564";
 
 
-export async function HandleTgBot(req, res) {
-
-    // 1. 获取 Telegram Webhook 的核心数据
-    const body = req.body;
-    const msg = body.message;
-
-    // 2. 基础拦截：如果不是普通私聊或群聊消息，直接回复 200 并退出
+export async function HandleTgBot(msg) {
+    // 基础拦截：如果不是普通私聊或群聊消息，直接回复 200 并退出
     if (!msg) {
         return res.status(200).send("Ignore: Not a standard message");
     }
 
-    // 3. 核心拦截：非文本处理逻辑
+    // 核心拦截：非文本处理逻辑
     if (!msg.text) {
         return res.status(200).send("Blocked: Non-text content");
     }
@@ -83,14 +78,14 @@ export async function HandleTgBot(req, res) {
             if (result.status === "fulfilled") {
                 console.log(`✔ ${taskName}成功`);
             } else {
-                console.error(`✘ ${taskName}失败: `, result.reason?.message || result.reason);
+                let errorLog = `${taskName}失败: ` + result.reason?.message || result.reason  ;
+                console.error('✘ ' + errorLog);
+                throw new Error(errorLog) ;
             }
         });
 
-
-        res.status(200).send("ACK");
     } catch (err) {
         console.error(err);
-        res.status(500).send("Internal Server Error");
+        throw new Error(err.message) ;
     }
 }

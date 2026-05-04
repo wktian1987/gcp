@@ -16,36 +16,18 @@ app.post('/schedule', json(), async (req, res) => {
 app.post('/tgBot', json(), async (req, res) => {
     console.log("✔ 收到/tgBot连接");
     const { HandleTgBot } = await import("./handleTgBot.js");
+
+    res.status(200).send("ACK");
+
     const msg   = req.body.message  ;
 
+    try {
+        await HandleTgBot(meg);
+    } catch (e) {
+        console.error("✘ TgBot消息处理失败: ", e.message) ;
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-    await HandleTgBot(req, res);
+    }
 }
 );
 
