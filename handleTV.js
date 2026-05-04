@@ -18,7 +18,6 @@ function GetGridDifficulty(positionN, difficultyCoefficient, maxGridNumber) {
     return [gridDifficulty, enDifficulty, exDifficulty]  ;
 }
 
-
 function GetLiquidateStopPrice( allPosition         ,
                                 avgBuyPrice         , 
                                 inFund              , 
@@ -98,7 +97,6 @@ function GetLiquidateStopPrice( allPosition         ,
     return [liquidatePrice, stopPriceC, stopPriceF]
 
 }
-
 
 const   accStatus_normal                    =  "normal"                                     ;
 const   accStatus_liquidated                =  "liquidated"                                 ;
@@ -195,66 +193,67 @@ export async function HandleTV(D) {
         let ranges  = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges ) ) ;
         let d       = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP) ) ;
 
-        D.runningWell            =   (d.runningWell || String(d.runningWell).toUpperCase() === "TRUE")  ?  true  :  false  ;
-        D.accStatus              =   String(d.accStatus)   ;
-        D.liquidatePrice	     =   Number(d.liquidatePrice         )   ;
-        D.stopPriceC	         =   Number(d.stopPriceC             )   ;
-        D.stopPriceF	         =   Number(d.stopPriceF             )   ;
-        D.lowToBuy               =   Number(d.lowToBuy               )   ;
-        D.hghToBuy               =   Number(d.hghToBuy               )   ;
-        D.lowToSell              =   Number(d.lowToSell              )   ;
-        D.openProfit	         =   Number(d.openProfit             )   ;
-        D.usedMargin	         =   Number(d.usedMargin             )   ;
-        D.freeMargin	         =   Number(d.freeMargin             )   ;
-        D.netProfit	             =   Number(d.netProfit              )   ;
-        D.allTradeFee	         =   Number(d.allTradeFee            )   ;
-        D.allFundFee	         =   Number(d.allFundFee             )   ;
-        D.allFund	             =   Number(d.allFund                )   ;
-        D.initialFund	         =   Number(d.initialFund            )   ;
-        D.hghestFund	         =   Number(d.hghestFund             )   ;
-        D.lowestFund	         =   Number(d.lowestFund             )   ;
-        D.allCoin	             =   Number(d.allCoin                )   ;
-        D.initialCoin	         =   Number(d.initialCoin            )   ;
-        D.hghestCoin	         =   Number(d.hghestCoin             )   ;
-        D.lowestCoin	         =   Number(d.lowestCoin             )   ;
-        D.crtFund	             =   Number(d.crtFund                )   ;
-        D.crtCoin	             =   Number(d.crtCoin                )   ;
-        D.therePosition          =   (d.therePosition || String(d.therePosition).toUpperCase() === "TRUE")  ?  true  :  false  ;
-        D.allPosition	         =   Number(d.allPosition            )   ;
-        D.avgBuyPrice	         =   Number(d.avgBuyPrice            )   ;
-        D.avgBuyPriceUnclose     =   Number(d.avgBuyPriceUnclose     )   ;
-        D.lstBuyPriceUnclose     =   Number(d.lstBuyPriceUnclose     )   ;
-        D.hghBuyPriceUnclose     =   Number(d.hghBuyPriceUnclose     )   ;
-        D.lowBuyPriceUnclose     =   Number(d.lowBuyPriceUnclose     )   ;
-        D.gridNum                =   Number(d.gridNum                )   ;
-        D.gridDifficulty         =   Number(d.gridDifficulty         )   ;
-        D.enDifficulty	         =   Number(d.enDifficulty           )   ;
-        D.exDifficulty	         =   Number(d.exDifficulty           )   ;
-        D.buyTimes	             =   Number(d.buyTimes               )   ;
-        D.sellTimes	             =   Number(d.sellTimes              )   ;
+        D.runningWell               =   (d.runningWell || String(d.runningWell).toUpperCase() === "TRUE")  ?  true  :  false  ;
+        D.accStatus                 =   String(d.accStatus                  )   ;
+        D.liquidatePrice	        =   Number(d.liquidatePrice             )   ;
+        D.stopPriceC	            =   Number(d.stopPriceC                 )   ;
+        D.stopPriceF	            =   Number(d.stopPriceF                 )   ;
+        D.lowToBuy                  =   Number(d.lowToBuy                   )   ;
+        D.hghToBuy                  =   Number(d.hghToBuy                   )   ;
+        D.lowToSell                 =   Number(d.lowToSell                  )   ;
+        D.openProfit	            =   Number(d.openProfit                 )   ;
+        D.usedMargin	            =   Number(d.usedMargin                 )   ;
+        D.freeMargin	            =   Number(d.freeMargin                 )   ;
+        D.netProfit	                =   Number(d.netProfit                  )   ;
+        D.allTradeFee	            =   Number(d.allTradeFee                )   ;
+        D.allFundFee	            =   Number(d.allFundFee                 )   ;
+        D.allFund	                =   Number(d.allFund                    )   ;
+        D.initialFund	            =   Number(d.initialFund                )   ;
+        D.hghestFund	            =   Number(d.hghestFund                 )   ;
+        D.lowestFund	            =   Number(d.lowestFund                 )   ;
+        D.allCoin	                =   Number(d.allCoin                    )   ;
+        D.initialCoin	            =   Number(d.initialCoin                )   ;
+        D.hghestCoin	            =   Number(d.hghestCoin                 )   ;
+        D.lowestCoin	            =   Number(d.lowestCoin                 )   ;
+        D.crtFund	                =   Number(d.crtFund                    )   ;
+        D.crtCoin	                =   Number(d.crtCoin                    )   ;
+        D.therePosition             =   (d.therePosition || String(d.therePosition).toUpperCase() === "TRUE")  ?  true  :  false  ;
+        D.allPosition	            =   Number(d.allPosition                )   ;
+        D.avgBuyPrice	            =   Number(d.avgBuyPrice                )   ;
+        D.avgBuyPriceUnclose        =   Number(d.avgBuyPriceUnclose         )   ;
+        D.lstBuyPriceUnclose        =   Number(d.lstBuyPriceUnclose         )   ;
+        D.hghBuyPriceUnclose        =   Number(d.hghBuyPriceUnclose         )   ;
+        D.lowBuyPriceUnclose        =   Number(d.lowBuyPriceUnclose         )   ;
+        D.gridNum                   =   Number(d.gridNum                    )   ;
+        D.gridDifficulty            =   Number(d.gridDifficulty             )   ;
+        D.enDifficulty	            =   Number(d.enDifficulty               )   ;
+        D.exDifficulty	            =   Number(d.exDifficulty               )   ;
+        D.buyTimes	                =   Number(d.buyTimes                   )   ;
+        D.sellTimes	                =   Number(d.sellTimes                  )   ;
 
-        D.isReal                 =   (d.isReal || String(d.isReal).toUpperCase() === "TRUE")  ?  true  :  false  ;
-        D.realTradeTime	         =   Number(d.realTradeTime          )   ;
-        D.realTradeTimeTo        =   Number(d.realTradeTimeTo        )   ;
-        D.inFund	             =   Number(d.inFund                 )   ;
-        D.inCoin	             =   Number(d.inCoin                 )   ;
-        D.inTradingSymbolPrice   =   Number(d.inTradingSymbolPrice   )   ;
-        D.inBaseCoinPrice        =   Number(d.inBaseCoinPrice        )   ;
-        D.BaseCoinHairCut	     =   Number(d.BaseCoinHairCut        )   ;
-        D.leverage	             =   Number(d.leverage               )   ;
-        D.MaxGrid	             =   Number(d.MaxGrid                )   ;
-        D.minEnExPosition        =   Number(d.minEnExPosition        )   ;
-        D.basicHghToBuy          =   Number(d.basicHghToBuy          )   ;
-        D.basicLowToBuy          =   Number(d.basicLowToBuy          )   ;
-        D.basicLowToSell         =   Number(d.basicLowToSell         )   ;
-        D.stopRate4F	         =   Number(d.stopRate4F             )   ;
-        D.stopRate4C	         =   Number(d.stopRate4C             )   ;
-        D.notStop4C	             =   Number(d.notStop4C              )   ;
-        D.notStop4F	             =   Number(d.notStop4F              )   ;
-        D.difficultyCoefficient  =   Number(d.difficultyCoefficient  )   ;
+        D.isReal                    =   (d.isReal || String(d.isReal).toUpperCase() === "TRUE")  ?  true  :  false  ;
+        D.realTradeTime	            =   Number(d.realTradeTime              )   ;
+        D.realTradeTimeTo           =   Number(d.realTradeTimeTo            )   ;
+        D.inFund	                =   Number(d.inFund                     )   ;
+        D.inCoin	                =   Number(d.inCoin                     )   ;
+        D.inTradingSymbolPrice      =   Number(d.inTradingSymbolPrice       )   ;
+        D.inBaseCoinPrice           =   Number(d.inBaseCoinPrice            )   ;
+        D.BaseCoinHairCut	        =   Number(d.BaseCoinHairCut            )   ;
+        D.leverage	                =   Number(d.leverage                   )   ;
+        D.MaxGrid	                =   Number(d.MaxGrid                    )   ;
+        D.minEnExPosition           =   Number(d.minEnExPosition            )   ;
+        D.basicHghToBuy             =   Number(d.basicHghToBuy              )   ;
+        D.basicLowToBuy             =   Number(d.basicLowToBuy              )   ;
+        D.basicLowToSell            =   Number(d.basicLowToSell             )   ;
+        D.notBuyCloseToRndHghStep   =   Number(D.notBuyCloseToRndHghStep    )   ;
+        D.notBuyCloseToRndLowStep   =   Number(D.notBuyCloseToRndLowStep    )   ;
+        D.stopRate4F	            =   Number(d.stopRate4F                 )   ;
+        D.stopRate4C	            =   Number(d.stopRate4C                 )   ;
+        D.notStop4C	                =   Number(d.notStop4C                  )   ;
+        D.notStop4F	                =   Number(d.notStop4F                  )   ;
+        D.difficultyCoefficient     =   Number(d.difficultyCoefficient      )   ;
 
         d = null ;
-
 
         if (D.timestamp > D.realTradeTime) {
             // 收到新消息数据初始化
@@ -334,12 +333,49 @@ export async function HandleTV(D) {
                 D.TradingSymbolPrice < D.stopPriceF    ) {D.accStatus = accStatus_stopCF       ;}
 
             D.therePosition     =  D.gridNum > 0  ?  true  :  false  ; 
+
+            /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            D.canBuy            =  true     ;
+            D.cantBuyReason     =  ""       ;
+            D.canSell           =  true     ;
+            D.cantSellReason    =  ""       ;
             
-            
+            D.closeToRndHgh     =  D.roundHgh / Math.pow((1+D.waveUpChg), D.notBuyCloseToRndHghStep)  ;
+            D.closeToRndLow     =  D.roundLow / Math.pow((1+D.waveDnChg), D.notBuyCloseToRndLowStep)  ;
+            D.hghToBuy          =  Math.min(D.basicHghToBuy, D.closeToRndHgh    )   ;
+            D.lowToBuy          =  Math.max(D.basicLowToBuy, D.closeToRndLow    )   ;
+            D.lowToSell         =  Math.max(D.basicLowToSell                    )   ;
+            if (D.TradingSymbolPrice > D.basicHghToBuy) {
+                D.canBuy            =   false                           ;
+                D.cantBuyReason     +=  'price > basicHghToBuy'  + '\n' ;
+            }
+            if (D.TradingSymbolPrice > D.closeToRndHgh) {
+                D.canBuy            =   false                           ;
+                D.cantBuyReason     +=  'price closeToRndHgh'    + '\n' ;
+            }
+            if (D.TradingSymbolPrice < D.basicLowToBuy) {
+                D.canBuy            =   false                           ;
+                D.cantBuyReason     +=  'price < basicLowToBuy'  + '\n' ;
+            } 
+            if (D.TradingSymbolPrice < D.closeToRndLow) {
+                D.canBuy            =   false                           ;
+                D.cantBuyReason     +=  'price closeToRndLow'    + '\n' ;
+            }
+            if (D.TradingSymbolPrice < D.basicLowToSell) {
+                D.canSell           =   false                           ;
+                D.cantSellReason    +=  'price < basicLowToSell' + '\n' ;
+            }
 
 
 
-            D.runningWell  =  true;
+
+
+
+            D.runningWell       =   true                ;
+
+            D.thisAlertMessage  +=  D.cantBuyReason     ;
+            D.thisAlertMessage  +=  D.cantSellReason    ;
         } else {
             // 未到交易时刻的逻辑
             console.log("收到TradingView消息, 但未到交易时刻");
