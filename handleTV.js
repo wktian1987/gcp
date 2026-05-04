@@ -10,6 +10,8 @@ const auth = new google.auth.GoogleAuth({
 });
 const sheets = google.sheets({ version: 'v4', auth });
 
+const spreadsheetId = GetSpreadsheetID(D.botNumber);
+
 
 function GetGridDifficulty(positionN, difficultyCoefficient, maxGridNumber) { 
     let gridDifficulty   =   Math.pow(positionN, (difficultyCoefficient + 1)) / Math.pow(maxGridNumber, difficultyCoefficient) + (maxGridNumber-positionN) / maxGridNumber  ;
@@ -98,6 +100,20 @@ function GetLiquidateStopPrice( allPosition         ,
 
 }
 
+async function SendOrderToBroker(S) {
+    await sheets.spreadsheets.values.update(    { 
+        spreadsheetId       : spreadsheetId                     ,
+        range               : 'simBroker!A10'                   ,
+        valueInputOption    : 'USER_ENTERED'                    ,
+        requestBody         : {values: Object.entries(S)}       } )  ;
+    
+    const res_broker =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A2:A9') )  ;
+
+    S.ing_orderID   =  res_broker.orderID  ;
+    
+    return S ;
+}
+
 const   accStatus_normal                    =  "normal"                                     ;
 const   accStatus_liquidated                =  "liquidated"                                 ;
 const   accStatus_stopC                     =  "stop due to Coinloss"                       ;
@@ -139,9 +155,17 @@ const   NotSellReason_noPosition            =  "no positions"                   
 const   NotSellReason_belowLowToSell        =  "below lowestToSellPrice"                    ;
 const   NotSellReason_cantProfit            =  "cant get enough Profit"                     ;
 
-const   toFill          = "toFill"          ;
-const   toGCPRanges     = "toGCP!A:B"       ;
-const   huanHang        = "__HuangHang__"   ;
+const   toFill          =  "toFill"         ;
+const   toGCPRanges     =  "toGCP!A:B"      ;
+const   huanHang        =  "__HuangHang__"  ;
+const   order_T_LMT     =  "LMT"            ;
+const   order_T_MKT     =  "MKT"            ; 
+const   order_BUY       =  "B"              ;
+const   order_SELL      =  "S"              ;
+const   order_pending   =  "pending"        ;
+const   order_waiting   =  "waiting"        ;
+const   order_pending   =  "pending"        ;
+
 export async function HandleTV(D) {
     D.touchTargetHgh            =   (D.touchTargetHgh          || String(D.touchTargetHgh         ).toUpperCase() === "TRUE")  ?  true  :  false  ;
     D.touchTargetLow            =   (D.touchTargetLow          || String(D.touchTargetLow         ).toUpperCase() === "TRUE")  ?  true  :  false  ;
@@ -187,7 +211,6 @@ export async function HandleTV(D) {
     D.gcpGetTime                =   GetTimeStringWithOffset(8)                      ;
 
     try {
-        const spreadsheetId = GetSpreadsheetID(D.botNumber);
 
         //获取现存数据
         let ranges  = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges ) ) ;
@@ -407,14 +430,29 @@ export async function HandleTV(D) {
 
 
             // 测试
-            let tradingSignal  =  {} ;
-
             if (D.canBuy && D.touchTargetLow) {
-                tradingSignal.orderID       =  'od-' + D.tvUpdateTime           ;
-                tradingSignal.orderDate     =  GetTimeStringWithOffset(8)       ;
-                tradingSignal.confirmDate   =  null                             ;         
+                let S = {} ;
+                S.ing_orderID       =  'od-' + D.tvUpdateTime           ;
+                S.ing_orderDate     =  GetTimeStringWithOffset(8)       ;
+                S.ing_confirmDate   =  null                             ;         
+                S.ing_serial        =  D.gridNum + 1                    ;
+                S.ing_buysell       =  order_BUY                        ;
+                S.ing_triggerPrice  =  D.TradingSymbolPrice             ;
+                S.ing_orderType     =  order_T_LMT                      ;
+                S.ing_orderPrice    =  D.ing_triggerPrice               ;
+                s.ing_confirmPrice  =  null                             ;
+                S.ing_qty           =  D.minEnExPosition * Math.max(1, Math.floor(D.freeMargin*D.leverage/D.TradingSymbolPrice/D.minEnExPosition) ) ;
+                S.ing_getProfit     =  null                             ;
+                S.ing_avgBuyPrice   =  null                             ;
+                S.ing_tradeFee      =  null                             ;
+                S.ing_allFund       =  null                             ;
+                S.ing_allCoin       =  null                             ;
+                S.ing_reason        =  BuyReason_belowTarget            ;
+                S.ing_orderStatus   =  order_pending                    ;
 
+                S = await SendOrderToBroker(S) ;
 
+                Object.assign(D, S) ;
             }
 
             // 测试
