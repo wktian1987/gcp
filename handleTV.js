@@ -292,12 +292,10 @@ export async function HandleTV(D) {
 
             D.crt_avgBuyPrice   =  (D.TradingSymbolPrice - D.avgBuyPrice) / D.avgBuyPrice                                                                    ;
 
-            if (isNaN(D.gridDifficulty) || isNaN(D.enDifficulty) || isNaN(D.exDifficulty)) {
-                let [gridDifficulty, enDifficulty, exDifficulty] = GetGridDifficulty(D.positionN, D.difficultyCoefficient, D.MaxGrid)  ;
-                D.gridDifficulty    =  gridDifficulty   ;
-                D.enDifficulty      =  enDifficulty     ;
-                D.exDifficulty      =  exDifficulty     ;
-            }
+            let [gridDifficulty, enDifficulty, exDifficulty] = GetGridDifficulty(D.positionN, D.difficultyCoefficient, D.MaxGrid)  ;
+            D.gridDifficulty    =  gridDifficulty   ;
+            D.enDifficulty      =  enDifficulty     ;
+            D.exDifficulty      =  exDifficulty     ;
 
             let [liquidatePrice, stopPriceC, stopPriceF] = GetLiquidateStopPrice(   D.allPosition           , 
                                                                                     D.avgBuyPrice           , 
