@@ -22,7 +22,7 @@ app.post('/tgBot', json(), async (req, res) => {
     const msg   = req.body.message  ;
 
     try {
-        await HandleTgBot(meg);
+        await HandleTgBot(msg);
     } catch (e) {
         console.error("✘ TgBot消息处理失败: ", e.message) ;
 
