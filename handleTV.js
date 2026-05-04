@@ -284,7 +284,7 @@ export async function HandleTV(D) {
             D.lowestCoin        =  (!D.runningWell) || isNaN(D.lowestCoin  )  ?  D.initialCoin  :  ( D.allCoin < D.lowestCoin ? D.allCoin : D.lowestCoin )  ;
             D.allTradeFee       =  (!D.runningWell) || isNaN(D.allTradeFee )  ?  0          :  D.allTradeFee                                                ;
             D.allFundFee        =  (!D.runningWell) || isNaN(D.allFundFee  )  ?  0          :  D.allFundFee                                                 ;
-            D.positionN         =  (!D.runningWell) || isNaN(D.positionN   )  ?  0          :  D.positionN                                                  ;
+            D.gridNum           =  (!D.runningWell) || isNaN(D.gridNum     )  ?  0          :  D.gridNum                                                    ;
             D.buyTimes          =  (!D.runningWell) || isNaN(D.buyTimes    )  ?  0          :  D.buyTimes                                                   ;
             D.sellTimes         =  (!D.runningWell) || isNaN(D.sellTimes   )  ?  0          :  D.sellTimes                                                  ;
 
@@ -302,7 +302,7 @@ export async function HandleTV(D) {
 
             D.crt_avgBuyPrice   =  (D.TradingSymbolPrice - D.avgBuyPrice) / D.avgBuyPrice   ;
 
-            let [gridDifficulty, enDifficulty, exDifficulty] = GetGridDifficulty(   D.positionN             ,
+            let [gridDifficulty, enDifficulty, exDifficulty] = GetGridDifficulty(   D.gridNum               ,
                                                                                     D.difficultyCoefficient , 
                                                                                     D.MaxGrid               )  ;
             D.gridDifficulty    =  gridDifficulty   ;
