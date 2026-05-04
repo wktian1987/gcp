@@ -343,7 +343,7 @@ export async function HandleTV(D) {
             if (D.TradingSymbolPrice < D.stopPriceC    ) {
                 D.accStatus         = 'stopC'                           ;
                 D.thisAlertMessage  =  accStatus_stopC          + '\n'  ;
-            }
+            } 
             if (D.TradingSymbolPrice < D.stopPriceF    ) {
                 D.accStatus         = 'stopF'                           ;
                 D.thisAlertMessage  =  accStatus_stopF          + '\n'  ;
@@ -357,10 +357,10 @@ export async function HandleTV(D) {
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            if (D.allFund > (1+D.barChgA)*D.rcd_hghFund) { D.thisAlertMessage  =  'new rcd_hghFund' + '\n' ; }
-            if (D.allFund < (1-D.barChgA)*D.rcd_lowFund) { D.thisAlertMessage  =  'new rcd_lowFund' + '\n' ; }
-            if (D.allCoin > (1+D.barChgB)*D.rcd_hghCoin) { D.thisAlertMessage  =  'new rcd_hghCoin' + '\n' ; }
-            if (D.allCoin < (1-D.barChgB)*D.rcd_lowCoin) { D.thisAlertMessage  =  'new rcd_lowCoin' + '\n' ; }
+            if (D.allFund > (1+D.barChgA)*D.rcd_hghFund) { D.thisAlertMessage  +=  'new rcd_hghFund' + '\n' ; }
+            if (D.allFund < (1-D.barChgA)*D.rcd_lowFund) { D.thisAlertMessage  +=  'new rcd_lowFund' + '\n' ; }
+            if (D.allCoin > (1+D.barChgA)*D.rcd_hghCoin) { D.thisAlertMessage  +=  'new rcd_hghCoin' + '\n' ; }
+            if (D.allCoin < (1-D.barChgA)*D.rcd_lowCoin) { D.thisAlertMessage  +=  'new rcd_lowCoin' + '\n' ; }
 
             D.canBuy            =  true     ;
             D.cantBuyReason     =  ""       ;
