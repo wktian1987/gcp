@@ -271,7 +271,7 @@ export async function HandleTV(D) {
             D.usedMargin        =  D.allPosition * D.TradingSymbolPrice / D.leverage                                                                        ;
             D.freeMargin        =  D.crtFund + D.crtCoin * D.BaseCoinPrice * D.BaseCoinHairCut - D.usedMargin                                               ;
             D.allFund           =  D.crtFund + D.crtCoin * D.BaseCoinPrice                                                                                  ;
-            D.allCoin           =  d.crtFund / D.BaseCoinPrice + d.crtCoin                                                                                  ;
+            D.allCoin           =  D.crtFund / D.BaseCoinPrice + D.crtCoin                                                                                  ;
             D.initialFund       =  D.inFund + D.inCoin * D.inBaseCoinPrice                                                                                  ;
             D.initialCoin       =  D.inFund / D.inBaseCoinPrice + D.inCoin                                                                                  ;
             D.hghestFund        =  (!D.runningWell) || isNaN(D.hghestFund  )  ?  D.initialFund  :  ( D.allFund > D.hghestFund ? D.allFund : D.hghestFund )  ;
@@ -290,7 +290,7 @@ export async function HandleTV(D) {
             D.crt_initialCoin   =  (D.allCoin - D.initialCoin) / D.initialCoin                                                                               ;
             D.crt_hghestCoin    =  (D.allCoin - D.hghestCoin ) / D.hghestCoin                                                                                ;
             D.crt_lowestCoin    =  (D.allCoin - D.lowestCoin ) / D.lowestCoin                                                                                ;
-            
+
             D.crt_avgBuyPrice   =  (D.TradingSymbolPrice - D.avgBuyPrice) / D.avgBuyPrice                                                                    ;
 
             if (isNaN(D.gridDifficulty) || isNaN(D.enDifficulty) || isNaN(D.exDifficulty)) {
