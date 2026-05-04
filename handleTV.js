@@ -164,7 +164,7 @@ const   order_BUY       =  "B"              ;
 const   order_SELL      =  "S"              ;
 const   order_pending   =  "pending"        ;
 const   order_waiting   =  "waiting"        ;
-const   order_pending   =  "pending"        ;
+const   order_confirm   =  "confirm"        ;
 
 export async function HandleTV(D) {
     D.touchTargetHgh            =   (D.touchTargetHgh          || String(D.touchTargetHgh         ).toUpperCase() === "TRUE")  ?  true  :  false  ;
