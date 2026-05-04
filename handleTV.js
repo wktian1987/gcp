@@ -223,7 +223,10 @@ export async function HandleTV(D) {
         D.avgBuyPriceUnclose        =   Number(d.avgBuyPriceUnclose         )   ;
         D.lstBuyPriceUnclose        =   Number(d.lstBuyPriceUnclose         )   ;
         D.hghBuyPriceUnclose        =   Number(d.hghBuyPriceUnclose         )   ;
-        D.lowBuyPriceUnclose        =   Number(d.lowBuyPriceUnclose         )   ;
+        D.lowBuyPriceUnclose        =   Number(d.lowBuyPriceUnclose         )   ; 
+        D.lstBuySerial              =   Number(D.lstBuySerial               )   ;
+        D.hghBuySerial              =   Number(D.hghBuySerial               )   ;
+        D.lowBuySerial              =   Number(D.lowBuySerial               )   ;
         D.gridNum                   =   Number(d.gridNum                    )   ;
         D.gridDifficulty            =   Number(d.gridDifficulty             )   ;
         D.enDifficulty	            =   Number(d.enDifficulty               )   ;
@@ -266,27 +269,35 @@ export async function HandleTV(D) {
             // 1, 未初始化时
             // 2, 正常运行时
             // 3, 出错时, 需重新初始化
-            D.allPosition       =  (!D.runningWell) || isNaN(D.allPosition )  ?  0          :  D.allPosition                                                ;
-            D.avgBuyPrice       =  (!D.runningWell) || isNaN(D.avgBuyPrice )  ?  0          :  D.avgBuyPrice                                                ;
-            D.netProfit         =  (!D.runningWell) || isNaN(D.netProfit   )  ?  0          :  D.netProfit                                                  ;
-            D.openProfit        =  D.allPosition * (D.TradingSymbolPrice - D.avgBuyPrice)                                                                   ;
-            D.crtFund           =  D.inFund + D.netProfit + D.openProfit                                                                                    ;
-            D.crtCoin           =  D.inCoin                                                                                                                 ;
-            D.usedMargin        =  D.allPosition * D.TradingSymbolPrice / D.leverage                                                                        ;
-            D.freeMargin        =  D.crtFund + D.crtCoin * D.BaseCoinPrice * D.BaseCoinHairCut - D.usedMargin                                               ;
-            D.allFund           =  D.crtFund + D.crtCoin * D.BaseCoinPrice                                                                                  ;
-            D.allCoin           =  D.crtFund / D.BaseCoinPrice + D.crtCoin                                                                                  ;
-            D.initialFund       =  D.inFund + D.inCoin * D.inBaseCoinPrice                                                                                  ;
-            D.initialCoin       =  D.inFund / D.inBaseCoinPrice + D.inCoin                                                                                  ;
-            D.hghestFund        =  (!D.runningWell) || isNaN(D.hghestFund  )  ?  D.initialFund  :  ( D.allFund > D.hghestFund ? D.allFund : D.hghestFund )  ;
-            D.lowestFund        =  (!D.runningWell) || isNaN(D.lowestFund  )  ?  D.initialFund  :  ( D.allFund < D.lowestFund ? D.allFund : D.lowestFund )  ;
-            D.hghestCoin        =  (!D.runningWell) || isNaN(D.hghestCoin  )  ?  D.initialCoin  :  ( D.allCoin > D.hghestCoin ? D.allCoin : D.hghestCoin )  ;
-            D.lowestCoin        =  (!D.runningWell) || isNaN(D.lowestCoin  )  ?  D.initialCoin  :  ( D.allCoin < D.lowestCoin ? D.allCoin : D.lowestCoin )  ;
-            D.allTradeFee       =  (!D.runningWell) || isNaN(D.allTradeFee )  ?  0          :  D.allTradeFee                                                ;
-            D.allFundFee        =  (!D.runningWell) || isNaN(D.allFundFee  )  ?  0          :  D.allFundFee                                                 ;
-            D.gridNum           =  (!D.runningWell) || isNaN(D.gridNum     )  ?  0          :  D.gridNum                                                    ;
-            D.buyTimes          =  (!D.runningWell) || isNaN(D.buyTimes    )  ?  0          :  D.buyTimes                                                   ;
-            D.sellTimes         =  (!D.runningWell) || isNaN(D.sellTimes   )  ?  0          :  D.sellTimes                                                  ;
+            D.allPosition           =  (!D.runningWell) || isNaN(D.allPosition )  ?  0          :  D.allPosition                                                ;
+            D.avgBuyPrice           =  (!D.runningWell) || isNaN(D.avgBuyPrice )  ?  0          :  D.avgBuyPrice                                                ;
+            D.netProfit             =  (!D.runningWell) || isNaN(D.netProfit   )  ?  0          :  D.netProfit                                                  ;
+            D.openProfit            =  D.allPosition * (D.TradingSymbolPrice - D.avgBuyPrice)                                                                   ;
+            D.crtFund               =  D.inFund + D.netProfit + D.openProfit                                                                                    ;
+            D.crtCoin               =  D.inCoin                                                                                                                 ;
+            D.usedMargin            =  D.allPosition * D.TradingSymbolPrice / D.leverage                                                                        ;
+            D.freeMargin            =  D.crtFund + D.crtCoin * D.BaseCoinPrice * D.BaseCoinHairCut - D.usedMargin                                               ;
+            D.allFund               =  D.crtFund + D.crtCoin * D.BaseCoinPrice                                                                                  ;
+            D.allCoin               =  D.crtFund / D.BaseCoinPrice + D.crtCoin                                                                                  ;
+            D.initialFund           =  D.inFund + D.inCoin * D.inBaseCoinPrice                                                                                  ;
+            D.initialCoin           =  D.inFund / D.inBaseCoinPrice + D.inCoin                                                                                  ;
+            D.hghestFund            =  (!D.runningWell) || isNaN(D.hghestFund  )  ?  D.initialFund  :  ( D.allFund > D.hghestFund ? D.allFund : D.hghestFund )  ;
+            D.lowestFund            =  (!D.runningWell) || isNaN(D.lowestFund  )  ?  D.initialFund  :  ( D.allFund < D.lowestFund ? D.allFund : D.lowestFund )  ;
+            D.hghestCoin            =  (!D.runningWell) || isNaN(D.hghestCoin  )  ?  D.initialCoin  :  ( D.allCoin > D.hghestCoin ? D.allCoin : D.hghestCoin )  ;
+            D.lowestCoin            =  (!D.runningWell) || isNaN(D.lowestCoin  )  ?  D.initialCoin  :  ( D.allCoin < D.lowestCoin ? D.allCoin : D.lowestCoin )  ;
+            D.allTradeFee           =  (!D.runningWell) || isNaN(D.allTradeFee )  ?  0          :  D.allTradeFee                                                ;
+            D.allFundFee            =  (!D.runningWell) || isNaN(D.allFundFee  )  ?  0          :  D.allFundFee                                                 ;
+            D.gridNum               =  (!D.runningWell) || isNaN(D.gridNum     )  ?  0          :  D.gridNum                                                    ;
+            D.buyTimes              =  (!D.runningWell) || isNaN(D.buyTimes    )  ?  0          :  D.buyTimes                                                   ;
+            D.sellTimes             =  (!D.runningWell) || isNaN(D.sellTimes   )  ?  0          :  D.sellTimes                                                  ;
+            D.avgBuyPriceUnclose    =  (!D.runningWell) || isNaN(D.avgBuyPriceUnclose )  ?  0  :  D.avgBuyPriceUnclose                                          ; 
+            D.lstBuyPriceUnclose    =  (!D.runningWell) || isNaN(D.lstBuyPriceUnclose )  ?  0  :  D.lstBuyPriceUnclose                                          ; 
+            D.hghBuyPriceUnclose    =  (!D.runningWell) || isNaN(D.hghBuyPriceUnclose )  ?  0  :  D.hghBuyPriceUnclose                                          ; 
+            D.lowBuyPriceUnclose    =  (!D.runningWell) || isNaN(D.lowBuyPriceUnclose )  ?  0  :  D.lowBuyPriceUnclose                                          ; 
+            D.lstBuySerial          =  (!D.runningWell) || isNaN(D.lstBuySerial       )  ?  0  :  D.lstBuySerial                                                ;
+            D.hghBuySerial          =  (!D.runningWell) || isNaN(D.hghBuySerial       )  ?  0  :  D.hghBuySerial                                                ;
+            D.lowBuySerial          =  (!D.runningWell) || isNaN(D.lowBuySerial       )  ?  0  :  D.lowBuySerial                                                ;
+
 
             D.rcd_hghFund       =  (!D.runningWell) || isNaN(D.rcd_hghFund )  ?  D.hghestFund  :  D.rcd_hghFund                                             ;
             D.rcd_lowFund       =  (!D.runningWell) || isNaN(D.rcd_lowFund )  ?  D.lowestFund  :  D.rcd_lowFund                                             ;
