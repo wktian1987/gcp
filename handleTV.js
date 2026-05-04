@@ -252,6 +252,11 @@ export async function HandleTV(D) {
         D.notStop4C	                =   Number(d.notStop4C                  )   ;
         D.notStop4F	                =   Number(d.notStop4F                  )   ;
         D.difficultyCoefficient     =   Number(d.difficultyCoefficient      )   ;
+        
+        D.rcd_hghFund               =   Number(d.rcd_hghFund                )   ;
+        D.rcd_lowFund               =   Number(d.rcd_lowFund                )   ;
+        D.rcd_hghCoin               =   Number(d.rcd_hghCoin                )   ;
+        D.rcd_lowCoin               =   Number(d.rcd_lowCoin                )   ;
 
         d = null ;
 
@@ -283,16 +288,23 @@ export async function HandleTV(D) {
             D.buyTimes          =  (!D.runningWell) || isNaN(D.buyTimes    )  ?  0          :  D.buyTimes                                                   ;
             D.sellTimes         =  (!D.runningWell) || isNaN(D.sellTimes   )  ?  0          :  D.sellTimes                                                  ;
 
-            D.crt_initialFund   =  (D.allFund - D.initialFund) / D.initialFund                                                                               ;
-            D.crt_hghestFund    =  (D.allFund - D.hghestFund ) / D.hghestFund                                                                                ;
-            D.crt_lowestFund    =  (D.allFund - D.lowestFund ) / D.lowestFund                                                                                ;
-            D.crt_initialCoin   =  (D.allCoin - D.initialCoin) / D.initialCoin                                                                               ;
-            D.crt_hghestCoin    =  (D.allCoin - D.hghestCoin ) / D.hghestCoin                                                                                ;
-            D.crt_lowestCoin    =  (D.allCoin - D.lowestCoin ) / D.lowestCoin                                                                                ;
+            D.rcd_hghFund       =  (!D.runningWell) || isNaN(D.rcd_hghFund )  ?  D.hghestFund  :  D.rcd_hghFund                                             ;
+            D.rcd_lowFund       =  (!D.runningWell) || isNaN(D.rcd_lowFund )  ?  D.lowestFund  :  D.rcd_lowFund                                             ;
+            D.rcd_hghCoin       =  (!D.runningWell) || isNaN(D.rcd_hghCoin )  ?  D.hghestCoin  :  D.rcd_hghCoin                                             ;
+            D.rcd_lowCoin       =  (!D.runningWell) || isNaN(D.rcd_lowCoin )  ?  D.lowestCoin  :  D.rcd_lowCoin                                             ;
 
-            D.crt_avgBuyPrice   =  (D.TradingSymbolPrice - D.avgBuyPrice) / D.avgBuyPrice                                                                    ;
+            D.crt_initialFund   =  (D.allFund - D.initialFund) / D.initialFund      ;
+            D.crt_hghestFund    =  (D.allFund - D.hghestFund ) / D.hghestFund       ;
+            D.crt_lowestFund    =  (D.allFund - D.lowestFund ) / D.lowestFund       ;
+            D.crt_initialCoin   =  (D.allCoin - D.initialCoin) / D.initialCoin      ;
+            D.crt_hghestCoin    =  (D.allCoin - D.hghestCoin ) / D.hghestCoin       ;
+            D.crt_lowestCoin    =  (D.allCoin - D.lowestCoin ) / D.lowestCoin       ;
 
-            let [gridDifficulty, enDifficulty, exDifficulty] = GetGridDifficulty(D.positionN, D.difficultyCoefficient, D.MaxGrid)  ;
+            D.crt_avgBuyPrice   =  (D.TradingSymbolPrice - D.avgBuyPrice) / D.avgBuyPrice   ;
+
+            let [gridDifficulty, enDifficulty, exDifficulty] = GetGridDifficulty(   D.positionN             ,
+                                                                                    D.difficultyCoefficient , 
+                                                                                    D.MaxGrid               )  ;
             D.gridDifficulty    =  gridDifficulty   ;
             D.enDifficulty      =  enDifficulty     ;
             D.exDifficulty      =  exDifficulty     ;
@@ -334,6 +346,11 @@ export async function HandleTV(D) {
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+            if (D.allFund > (1+D.barChgA)*D.rcd_hghFund) { D.thisAlertMessage  =  'new rcd_hghFund' + '\n' ; }
+            if (D.allFund < (1-D.barChgA)*D.rcd_lowFund) { D.thisAlertMessage  =  'new rcd_lowFund' + '\n' ; }
+            if (D.allCoin > (1+D.barChgB)*D.rcd_hghCoin) { D.thisAlertMessage  =  'new rcd_hghCoin' + '\n' ; }
+            if (D.allCoin < (1-D.barChgB)*D.rcd_lowCoin) { D.thisAlertMessage  =  'new rcd_lowCoin' + '\n' ; }
+
             D.canBuy            =  true     ;
             D.cantBuyReason     =  ""       ;
             D.canSell           =  true     ;
@@ -365,6 +382,8 @@ export async function HandleTV(D) {
                 D.cantSellReason    +=  'price < basicLowToSell' + '\n' ;
             }
 
+            D.thisAlertMessage  +=  D.cantBuyReason     ;
+            D.thisAlertMessage  +=  D.cantSellReason    ;
 
 
 
@@ -372,8 +391,6 @@ export async function HandleTV(D) {
 
             D.runningWell       =   true                ;
 
-            D.thisAlertMessage  +=  D.cantBuyReason     ;
-            D.thisAlertMessage  +=  D.cantSellReason    ;
         } else {
             // 未到交易时刻的逻辑
             console.log("收到TradingView消息, 但未到交易时刻");
