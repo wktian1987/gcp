@@ -58,7 +58,7 @@ export function ConvertRowsToHtmlTable(rows) {
     // 处理表头 (第一行)
     html += '<thead><tr>';
     rows[0].forEach(header => {
-        html += `<th style="border-collapse: collapse; border: 1px solid; text-align: left; white-space: pre; font-family: monospace; font-size: 1.1em; padding: 0, 0.5em">${header}</th>`;
+        html += `<th style="border-collapse: collapse; border: 1px solid; text-align: left; white-space: pre; font-family: monospace; font-size: 1.1em; padding: 0 0.5em">${header}</th>`;
     });
     html += '</tr></thead>';
 
@@ -67,7 +67,7 @@ export function ConvertRowsToHtmlTable(rows) {
     for (let i = 1; i < rows.length; i++) {
         html += '<tr>';
         rows[i].forEach(cell => {
-            html += `<td style="border-collapse: collapse; border: 1px solid; text-align: left; white-space: pre; font-family: monospace; font-size: 1em; padding: 0, 0.5em">${cell || ''}</td>`;
+            html += `<td style="border-collapse: collapse; border: 1px solid; text-align: left; white-space: pre; font-family: monospace; font-size: 1em; padding: 0 0.5em">${cell || ''}</td>`;
         });
         html += '</tr>';
     }
