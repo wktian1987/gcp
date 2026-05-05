@@ -102,11 +102,11 @@ function GetLiquidateStopPrice( allPosition         ,
 async function SendOrderToBroker(S, sheets, spreadsheetId) {
     await sheets.spreadsheets.values.update(    { 
         spreadsheetId       : spreadsheetId                     ,
-        range               : 'simBroker!A10:B'                 ,
+        range               : 'simBroker!A30:B'                 ,
         valueInputOption    : 'USER_ENTERED'                    ,
         requestBody         : {values: Object.entries(S)}       } )  ;
     
-    const res_broker =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A2:B9') )  ;
+    const res_broker =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A2:B29') )  ;
 
     S.ing_orderID   =  res_broker.orderID  ;
     
@@ -321,7 +321,7 @@ export async function HandleTV(D) {
             D.lstBuySerial          =  (!D.runningWell) || isNaN(D.lstBuySerial       )  ?  0  :  D.lstBuySerial                                                ;
             D.hghBuySerial          =  (!D.runningWell) || isNaN(D.hghBuySerial       )  ?  0  :  D.hghBuySerial                                                ;
             D.lowBuySerial          =  (!D.runningWell) || isNaN(D.lowBuySerial       )  ?  0  :  D.lowBuySerial                                                ;
-            D.last_orderTime        =  (!D.runningWell) || isNaN(D.last_orderTime     )  ?  0  :  D.last_orderTime                                              ;
+            D.last_orderTime        =  (!D.runningWell) || isNaN(D.last_orderTime     )  ?  D.realTradeTime  :  D.last_orderTime                                              ;
 
 
             D.rcd_hghFund       =  (!D.runningWell) || isNaN(D.rcd_hghFund )  ?  D.hghestFund  :  D.rcd_hghFund                                             ;
@@ -442,7 +442,7 @@ export async function HandleTV(D) {
                 S.ing_buysell       =  order_BUY                        ;
                 S.ing_triggerPrice  =  D.TradingSymbolPrice             ;
                 S.ing_orderType     =  order_T_LMT                      ;
-                S.ing_orderPrice    =  D.ing_triggerPrice               ;
+                S.ing_orderPrice    =  S.ing_triggerPrice               ;
                 S.ing_confirmPrice  =  null                             ;
                 S.ing_qty           =  D.minEnExPosition * Math.max(1, Math.floor(D.freeMargin*D.leverage/D.TradingSymbolPrice/D.minEnExPosition) ) ;
                 S.ing_getProfit     =  null                             ;
