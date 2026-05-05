@@ -441,7 +441,7 @@ export async function HandleTV(D) {
 
             // 测试
             // if (D.canBuy && D.touchTargetLow) {
-            if (canBuy && Date.now() > D.last_orderTime) {
+            if (D.canBuy && Date.now() > D.last_orderTime) {
                 let S = {} ;
                 S.ing_orderID       =  'od-' + D.tvUpdateTime           ;
                 S.ing_orderDate     =  GetTimeStringWithOffset(8)       ;
