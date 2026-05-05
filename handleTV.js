@@ -100,13 +100,19 @@ function GetLiquidateStopPrice( allPosition         ,
 }
 
 async function _SendOrderToBroker(S, sheets, spreadsheetId) {
+
+    await sheets.spreadsheets.values.clear( {
+        spreadsheetId                       ,
+        range           : 'simBroker!A30:B' } ) ;
+
+
     await sheets.spreadsheets.values.update(    { 
         spreadsheetId       : spreadsheetId                     ,
         range               : 'simBroker!A30:B'                 ,
         valueInputOption    : 'USER_ENTERED'                    ,
         requestBody         : {values: Object.entries(S)}       } )  ;
     
-    const res_broker =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A2:B29') )  ;
+    const res_broker =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A1:B29') )  ;
 
     S.ing_orderID		    = res_broker.orderID        ;
     S.ing_confirmDate		= res_broker.confirmDate    ;
