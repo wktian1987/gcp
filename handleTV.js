@@ -102,11 +102,11 @@ function GetLiquidateStopPrice( allPosition         ,
 async function SendOrderToBroker(S, sheets, spreadsheetId) {
     await sheets.spreadsheets.values.update(    { 
         spreadsheetId       : spreadsheetId                     ,
-        range               : 'simBroker!A10'                   ,
+        range               : 'simBroker!A10:B'                 ,
         valueInputOption    : 'USER_ENTERED'                    ,
         requestBody         : {values: Object.entries(S)}       } )  ;
     
-    const res_broker =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A2:A9') )  ;
+    const res_broker =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A2:B9') )  ;
 
     S.ing_orderID   =  res_broker.orderID  ;
     
@@ -283,6 +283,8 @@ export async function HandleTV(D) {
         D.rcd_hghCoin               =   Number(d.rcd_hghCoin                )   ;
         D.rcd_lowCoin               =   Number(d.rcd_lowCoin                )   ;
 
+        D.last_orderTime            =   Number(d.last_orderTime             )   ;
+
         d = null ;
 
         if (D.timestamp > D.realTradeTime) {
@@ -429,7 +431,8 @@ export async function HandleTV(D) {
 
 
             // 测试
-            if (D.canBuy && D.touchTargetLow) {
+            // if (D.canBuy && D.touchTargetLow) {
+            if (Date.now() > D.last_orderTime) {
                 let S = {} ;
                 S.ing_orderID       =  'od-' + D.tvUpdateTime           ;
                 S.ing_orderDate     =  GetTimeStringWithOffset(8)       ;
@@ -479,12 +482,10 @@ export async function HandleTV(D) {
 
         // 2. 写入新数据
         await sheets.spreadsheets.values.update({
-            spreadsheetId                                   ,
-            range               : writeToRange              ,
-            valueInputOption    : 'USER_ENTERED'            , // 允许自动识别数字/日期格式
-            requestBody         : {
-                values: Object.entries(D)    ,
-            }                                               ,
+            spreadsheetId                                               ,
+            range               : writeToRange                          ,
+            valueInputOption    : 'USER_ENTERED'                        , // 允许自动识别数字/日期格式
+            requestBody         : {values: Object.entries(D)    ,   }   ,
         });
 
         let newDatasFromSheet   =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP));
