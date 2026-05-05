@@ -321,6 +321,7 @@ export async function HandleTV(D) {
             D.lstBuySerial          =  (!D.runningWell) || isNaN(D.lstBuySerial       )  ?  0  :  D.lstBuySerial                                                ;
             D.hghBuySerial          =  (!D.runningWell) || isNaN(D.hghBuySerial       )  ?  0  :  D.hghBuySerial                                                ;
             D.lowBuySerial          =  (!D.runningWell) || isNaN(D.lowBuySerial       )  ?  0  :  D.lowBuySerial                                                ;
+            D.last_orderTime        =  (!D.runningWell) || isNaN(D.last_orderTime     )  ?  0  :  D.last_orderTime                                              ;
 
 
             D.rcd_hghFund       =  (!D.runningWell) || isNaN(D.rcd_hghFund )  ?  D.hghestFund  :  D.rcd_hghFund                                             ;
@@ -455,6 +456,7 @@ export async function HandleTV(D) {
                 S = await SendOrderToBroker(S, sheets, spreadsheetId) ;
 
                 Object.assign(D, S) ;
+                S.thisAlertMessage  +=  "New buy order" + "\n"  ;
             }
 
             // 测试
