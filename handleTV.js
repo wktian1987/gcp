@@ -99,7 +99,7 @@ function GetLiquidateStopPrice( allPosition         ,
 
 }
 
-async function SendOrderToBroker(S, sheets, spreadsheetId) {
+async function _SendOrderToBroker(S, sheets, spreadsheetId) {
     await sheets.spreadsheets.values.update(    { 
         spreadsheetId       : spreadsheetId                     ,
         range               : 'simBroker!A30:B'                 ,
@@ -275,6 +275,7 @@ export async function HandleTV(D) {
         D.leverage	                =   Number(d.leverage                   )   ;
         D.MaxGrid	                =   Number(d.MaxGrid                    )   ;
         D.minEnExPosition           =   Number(d.minEnExPosition            )   ;
+        D.ordersInterval            =   Number(d.ordersInterval             )   ;
         D.basicHghToBuy             =   Number(d.basicHghToBuy              )   ;
         D.basicLowToBuy             =   Number(d.basicLowToBuy              )   ;
         D.basicLowToSell            =   Number(d.basicLowToSell             )   ;
@@ -290,6 +291,25 @@ export async function HandleTV(D) {
         D.rcd_lowFund               =   Number(d.rcd_lowFund                )   ;
         D.rcd_hghCoin               =   Number(d.rcd_hghCoin                )   ;
         D.rcd_lowCoin               =   Number(d.rcd_lowCoin                )   ;
+
+        D.ing_orderID		        =	String(d.ing_orderID	            )	;
+        D.ing_orderDate		        =	String(d.ing_orderDate	            )	;
+        D.ing_confirmDate		    =	String(d.ing_confirmDate	        )	;
+        D.ing_serial		        =	Number(d.ing_serial	                )	;
+        D.ing_buysell		        =	String(d.ing_buysell	            )	;
+        D.ing_triggerPrice		    =	Number(d.ing_triggerPrice	        )	;
+        D.ing_orderType		        =	String(d.ing_orderType	            )	;
+        D.ing_orderPrice		    =	Number(d.ing_orderPrice	            )	;
+        D.ing_confirmPrice		    =	Number(d.ing_confirmPrice	        )	;
+        D.ing_boughtPrice		    =	Number(d.ing_boughtPrice	        )	;
+        D.ing_qty		            =	Number(d.ing_qty	                )	;
+        D.ing_getProfit		        =	Number(d.ing_getProfit	            )	;
+        D.ing_avgBuyPrice		    =	Number(d.ing_avgBuyPrice	        )	;
+        D.ing_tradeFee		        =	Number(d.ing_tradeFee	            )	;
+        D.ing_allFund		        =	Number(d.ing_allFund	            )	;
+        D.ing_allCoin		        =	Number(d.ing_allCoin	            )	;
+        D.ing_reason		        =	String(d.ing_reason	                )	;
+        D.ing_orderStatus		    =	String(d.ing_orderStatus	        )	;
 
         D.last_orderTime            =   Number(d.last_orderTime             )   ;
 
@@ -329,7 +349,7 @@ export async function HandleTV(D) {
             D.lstBuySerial          =  (!D.runningWell) || isNaN(D.lstBuySerial       )  ?  0  :  D.lstBuySerial                                                ;
             D.hghBuySerial          =  (!D.runningWell) || isNaN(D.hghBuySerial       )  ?  0  :  D.hghBuySerial                                                ;
             D.lowBuySerial          =  (!D.runningWell) || isNaN(D.lowBuySerial       )  ?  0  :  D.lowBuySerial                                                ;
-            D.last_orderTime        =  (!D.runningWell) || isNaN(D.last_orderTime     )  ?  D.realTradeTime  :  D.last_orderTime                                              ;
+            D.last_orderTime        =  (!D.runningWell) || isNaN(D.last_orderTime     )  ?  D.realTradeTime  :  D.last_orderTime                                ;
 
 
             D.rcd_hghFund       =  (!D.runningWell) || isNaN(D.rcd_hghFund )  ?  D.hghestFund  :  D.rcd_hghFund                                             ;
@@ -399,12 +419,14 @@ export async function HandleTV(D) {
 
             D.therePosition     =  D.gridNum > 0  ?  true  :  false  ; 
 
-            /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
             if (D.allFund > (1+D.barChgA)*D.rcd_hghFund) { D.thisAlertMessage += 'new rcd_hghFund' + '\n' ; D.rcd_hghFund = D.allFund ;}
             if (D.allFund < (1-D.barChgA)*D.rcd_lowFund) { D.thisAlertMessage += 'new rcd_lowFund' + '\n' ; D.rcd_lowFund = D.allFund ;}
             if (D.allCoin > (1+D.barChgA)*D.rcd_hghCoin) { D.thisAlertMessage += 'new rcd_hghCoin' + '\n' ; D.rcd_hghCoin = D.allCoin ;}
             if (D.allCoin < (1-D.barChgA)*D.rcd_lowCoin) { D.thisAlertMessage += 'new rcd_lowCoin' + '\n' ; D.rcd_hghCoin = D.allCoin ;}
+
+            /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            
 
             D.canBuy            =  true     ;
             D.cantBuyReason     =  ""       ;
@@ -462,7 +484,7 @@ export async function HandleTV(D) {
                 S.ing_reason        =  BuyReason_belowTarget            ;
                 S.ing_orderStatus   =  order_pending                    ;
 
-                S = await SendOrderToBroker(S, sheets, spreadsheetId) ;
+                S = await _SendOrderToBroker(S, sheets, spreadsheetId) ;
 
                 Object.assign(D, S) ;
                 S.thisAlertMessage  +=  "New buy order" + "\n"  ;
