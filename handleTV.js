@@ -426,7 +426,7 @@ export async function HandleTV(D) {
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            
+
 
             D.canBuy            =  true     ;
             D.cantBuyReason     =  ""       ;
@@ -464,31 +464,34 @@ export async function HandleTV(D) {
             // 测试
             // if (D.canBuy && D.touchTargetLow) {
             if (D.canBuy && Date.now() > D.last_orderTime) {
+                let nowTimestamp = Date.now()   ;
                 let S = {} ;
-                S.ing_orderID       =  'od-' + D.tvUpdateTime           ;
-                S.ing_orderDate     =  GetTimeStringWithOffset(8)       ;
-                S.ing_confirmDate   =  "NA"                             ;
-                S.ing_serial        =  D.gridNum + 1                    ;
-                S.ing_buysell       =  order_BUY                        ;
-                S.ing_triggerPrice  =  D.TradingSymbolPrice             ;
-                S.ing_orderType     =  order_T_LMT                      ;
-                S.ing_orderPrice    =  S.ing_triggerPrice               ;
-                S.ing_confirmPrice  =  "NA"                             ;
-                S.ing_boughtPrice   =  "NA"                             ;
-                S.ing_qty           =  D.minEnExPosition * Math.max(1, Math.floor(D.freeMargin*D.leverage/D.TradingSymbolPrice/D.minEnExPosition) ) ;
-                S.ing_getProfit     =  "NA"                             ;
-                S.ing_avgBuyPrice   =  "NA"                             ;
-                S.ing_tradeFee      =  "NA"                             ;
-                S.ing_allFund       =  "NA"                             ;
-                S.ing_allCoin       =  "NA"                             ;
-                S.ing_reason        =  BuyReason_belowTarget            ;
-                S.ing_orderStatus   =  order_pending                    ;
+                S.ing_orderID           =  'od-' + D.tvUpdateTime           ;
+                S.ing_orderTimestamp    =  nowTimestamp                     ;
+                S.ing_orderDate         =  GetTimeStringWithOffset(8)       ;
+                S.ing_confirmTimestamp  =  "NA"                             ;
+                S.ing_confirmDate       =  "NA"                             ;
+                S.ing_serial            =  D.gridNum + 1                    ;
+                S.ing_buysell           =  order_BUY                        ;
+                S.ing_triggerPrice      =  D.TradingSymbolPrice             ;
+                S.ing_orderType         =  order_T_LMT                      ;
+                S.ing_orderPrice        =  S.ing_triggerPrice               ;
+                S.ing_confirmPrice      =  "NA"                             ;
+                S.ing_boughtPrice       =  "NA"                             ;
+                S.ing_qty               =  D.minEnExPosition * Math.max(1, Math.floor(D.freeMargin*D.leverage/D.TradingSymbolPrice/D.minEnExPosition) ) ;
+                S.ing_getProfit         =  "NA"                             ;
+                S.ing_avgBuyPrice       =  "NA"                             ;
+                S.ing_tradeFee          =  "NA"                             ;
+                S.ing_allFund           =  "NA"                             ;
+                S.ing_allCoin           =  "NA"                             ;
+                S.ing_reason            =  BuyReason_belowTarget            ;
+                S.ing_orderStatus       =  order_pending                    ;
 
                 S = await _SendOrderToBroker(S, sheets, spreadsheetId) ;
 
                 Object.assign(D, S) ;
                 S.thisAlertMessage  +=  "New buy order" + "\n"  ;
-                S.last_orderTime    =   Date.now()              ;
+                S.last_orderTime    =   nowTimestamp            ;
             }
 
             // 测试
