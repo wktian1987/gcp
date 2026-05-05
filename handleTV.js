@@ -441,23 +441,24 @@ export async function HandleTV(D) {
 
             // 测试
             // if (D.canBuy && D.touchTargetLow) {
-            if (Date.now() > D.last_orderTime) {
+            if (canBuy && Date.now() > D.last_orderTime) {
                 let S = {} ;
                 S.ing_orderID       =  'od-' + D.tvUpdateTime           ;
                 S.ing_orderDate     =  GetTimeStringWithOffset(8)       ;
-                S.ing_confirmDate   =  null                             ;         
+                S.ing_confirmDate   =  "NA"                             ;
                 S.ing_serial        =  D.gridNum + 1                    ;
                 S.ing_buysell       =  order_BUY                        ;
                 S.ing_triggerPrice  =  D.TradingSymbolPrice             ;
                 S.ing_orderType     =  order_T_LMT                      ;
                 S.ing_orderPrice    =  S.ing_triggerPrice               ;
-                S.ing_confirmPrice  =  null                             ;
+                S.ing_confirmPrice  =  "NA"                             ;
+                S.ing_boughtPrice   =  "NA"                             ;
                 S.ing_qty           =  D.minEnExPosition * Math.max(1, Math.floor(D.freeMargin*D.leverage/D.TradingSymbolPrice/D.minEnExPosition) ) ;
-                S.ing_getProfit     =  null                             ;
-                S.ing_avgBuyPrice   =  null                             ;
-                S.ing_tradeFee      =  null                             ;
-                S.ing_allFund       =  null                             ;
-                S.ing_allCoin       =  null                             ;
+                S.ing_getProfit     =  "NA"                             ;
+                S.ing_avgBuyPrice   =  "NA"                             ;
+                S.ing_tradeFee      =  "NA"                             ;
+                S.ing_allFund       =  "NA"                             ;
+                S.ing_allCoin       =  "NA"                             ;
                 S.ing_reason        =  BuyReason_belowTarget            ;
                 S.ing_orderStatus   =  order_pending                    ;
 
@@ -465,6 +466,7 @@ export async function HandleTV(D) {
 
                 Object.assign(D, S) ;
                 S.thisAlertMessage  +=  "New buy order" + "\n"  ;
+                S.last_orderTime    =   Date.now()              ;
             }
 
             // 测试
