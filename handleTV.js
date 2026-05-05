@@ -443,7 +443,7 @@ export async function HandleTV(D) {
                 S.ing_triggerPrice  =  D.TradingSymbolPrice             ;
                 S.ing_orderType     =  order_T_LMT                      ;
                 S.ing_orderPrice    =  D.ing_triggerPrice               ;
-                s.ing_confirmPrice  =  null                             ;
+                S.ing_confirmPrice  =  null                             ;
                 S.ing_qty           =  D.minEnExPosition * Math.max(1, Math.floor(D.freeMargin*D.leverage/D.TradingSymbolPrice/D.minEnExPosition) ) ;
                 S.ing_getProfit     =  null                             ;
                 S.ing_avgBuyPrice   =  null                             ;
