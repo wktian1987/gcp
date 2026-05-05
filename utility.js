@@ -52,8 +52,7 @@ export function FormatMatrixToString(matrix, padding = 4) {
 export function ConvertRowsToHtmlTable(rows) {
     if (!rows || rows.length === 0) return '<p>无数据</p>';
 
-    let html = '<table style="border-collapse: collapse; border: 1px solid; text-align: left; white-space: pre; font-family: monospace; font-size: 1em; padding: 0, 0.5em">';
-
+    let html = '<table style="border-collapse: collapse; border: 1px solid; text-align: left; white-space: pre; font-family: monospace; font-size: 1em">';
 
     // 处理表头 (第一行)
     html += '<thead><tr>';
