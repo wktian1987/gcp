@@ -184,17 +184,18 @@ const   order_confirm   =  "confirm"        ;
 export async function HandleTV(D) {
     D.tvUpdateTime              =   GetTimeStringWithOffset(8, D.timestamp) ;
     D.gcpGetTime                =   GetTimeStringWithOffset(8)              ;
-    D                           =   CleanObjToNumStrBool(D)                 ;
+    CleanObjToNumStrBool(D) ;
 
     try {
         const spreadsheetId = GetSpreadsheetID(D.botNumber);
         //获取现存数据
         let ranges  =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges ) ) ;
-        let d       =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP) ) ;
-        d           =  CleanObjToNumStrBool(d)                                                          ;
-        Object.assign(D, d)                                                                             ;
-        d           = null                                                                              ;
-        D.thisAlertMessage  =  D.thisAlertMessage.trim().replaceAll(huanHang, "\n") ;
+        if (ranges.toGCP) {
+            const rawData = await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP);
+            // 先放rawData, 再放新的 D, 新数据会覆盖旧数据
+            D = Object.assign({}, CleanObjToNumStrBool(Object.fromEntries(rawData)), D);
+        }
+        D.thisAlertMessage  =  String(D.thisAlertMessage || "").trim().replaceAll(huanHang, "\n")       ;
 
         if (D.timestamp > D.realTradeTime) {
             // 收到新消息数据初始化
