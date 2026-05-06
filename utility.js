@@ -1,3 +1,39 @@
+export function NumStrBool(ns) {
+    // 1. 处理布尔类字符串判断 (忽略大小写)
+    if (typeof ns === 'string') {
+        const lowerNS = ns.toLowerCase().trim();
+        if (lowerNS === "true") return true;
+        if (lowerNS === "false") return false;
+    }
+    
+    // 2. 如果输入本身就是布尔类型，直接返回
+    if (typeof ns === 'boolean') return ns;
+
+    // 3. 尝试转换为数字
+    // 注意：Number("") 和 Number(null) 会变成 0
+    // 如果不希望空值变0，可以加判断：if (ns === "" || ns === null) return String(ns);
+    let NS = Number(ns);
+
+    // 4. 判断结果：是数字返回数字，否则转为字符串
+    return isNaN(NS) ? String(ns) : NS;
+}
+
+/**
+ * 清洗对象 A 中的所有属性
+ * @param {Object} obj - 需要转换的对象
+ */
+export function CleanObjectNumStrBool(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+
+    // 遍历对象的每一个键
+    Object.keys(obj).forEach(key => {
+        obj[key] = NumStrBool(obj[key]);
+    });
+
+    return obj; 
+}
+
+
 /**
  * 将时间戳转换为特定格式: 260423:140155.126
  * @param {number} offsetHours - 例如 东8区，填写8

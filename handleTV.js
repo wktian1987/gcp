@@ -1,8 +1,10 @@
-import {GetTimeStringWithOffset         , 
-        SendSplitTGMessages             ,
-        GetSpreadsheetID                      ,                      
-        FormatMatrixToString,            
-        GetDataFromSheet} from "./utility.js";
+import {    NumStrBool                      , 
+            CleanObjectNumStrBool           ,
+            GetTimeStringWithOffset         , 
+            SendSplitTGMessages             ,
+            GetSpreadsheetID                ,                      
+            FormatMatrixToString            ,            
+            GetDataFromSheet                } from "./utility.js";
 
 import { google } from 'googleapis';
 const auth = new google.auth.GoogleAuth({
@@ -299,7 +301,9 @@ export async function HandleTV(D) {
         D.rcd_lowCoin               =   Number(d.rcd_lowCoin                )   ;
 
         D.ing_orderID		        =	String(d.ing_orderID	            )	;
+        D.ing_orderTimestamp        =   Number(d.ing_orderTimestamp         )   ;
         D.ing_orderDate		        =	String(d.ing_orderDate	            )	;
+        D.ing_confirmTimestamp      =   Number(d.ing_confirmTimestamp       )   ;
         D.ing_confirmDate		    =	String(d.ing_confirmDate	        )	;
         D.ing_serial		        =	Number(d.ing_serial	                )	;
         D.ing_buysell		        =	String(d.ing_buysell	            )	;
@@ -531,13 +535,13 @@ export async function HandleTV(D) {
             requestBody         : {values: Object.entries(D)    ,   }   ,
         });
 
-        let newDatasFromSheet   =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP));
+        let newDatasFromSheet   =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toTgBotRange));
         let attempts            =  0;
         let waitTime            =  1000;
 
         while (attempts < 60 && Number(newDatasFromSheet.timestamp) < D.timestamp) {
             await new Promise(res => setTimeout(res, waitTime));
-            newDatasFromSheet = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP));
+            newDatasFromSheet = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toTgBotRange));
             attempts    += 1;
             waitTime    =  attempts * 1000;
         }
