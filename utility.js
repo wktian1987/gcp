@@ -1,18 +1,34 @@
 export function NumStrBool(ns) {
-    // 1. 处理布尔类字符串判断 (忽略大小写)
+    // Number("") 和 Number(null) 会变成 0
+    // 如果不希望空值变0，可以加判断：
+    if (ns === "" || ns === null || ns === undefined) return ns;
+
     if (typeof ns === 'string') {
+        // 处理布尔类字符串判断 (忽略大小写)
         const lowerNS = ns.toLowerCase().trim();
         if (lowerNS === "true") return true;
         if (lowerNS === "false") return false;
+        // 处理百分号 (新增逻辑)
+        if (lowerNS.endsWith('%')) {
+            let val = Number(lowerNS.replace('%', ''));
+            if (!isNaN(val)) return val / 100; // 返回 0.05
+        }
+        // 日期拦截逻辑
+        // 如果包含 "-" 或 "/"，且不是负数（负数后面紧跟数字），则视为日期字符串，直接返回
+        // 这里的正则识别格式如: 2026-05-06, 05/06/2026 等
+        if (lowerNS.includes('-') || lowerNS.includes('/')) {
+            // 排除掉负数的情况，例如 "-123.45" 应该继续走数字转换
+            if (!/^-?\d+(\.\d+)?(e[+-]?\d+)?$/.test(lowerNS)) {
+                return ns.trim();
+            }
+        }
     }
     
-    // 2. 如果输入本身就是布尔类型，直接返回
+    // 如果输入本身就是布尔类型，直接返回
     if (typeof ns === 'boolean') return ns;
 
-    // 3. 尝试转换为数字
-    // 注意：Number("") 和 Number(null) 会变成 0
-    // 如果不希望空值变0，可以加判断：if (ns === "" || ns === null) return String(ns);
-    let NS = Number(ns);
+    // 尝试转换为数字
+    let NS = Number(String(ns).trim().replace(/,/g, ''));
 
     // 4. 判断结果：是数字返回数字，否则转为字符串
     return isNaN(NS) ? String(ns) : NS;
@@ -22,7 +38,7 @@ export function NumStrBool(ns) {
  * 清洗对象 A 中的所有属性
  * @param {Object} obj - 需要转换的对象
  */
-export function CleanObjectNumStrBool(obj) {
+export function CleanObjToNumStrBool(obj) {
     if (!obj || typeof obj !== 'object') return obj;
 
     // 遍历对象的每一个键

@@ -1,5 +1,5 @@
 import {    NumStrBool                      , 
-            CleanObjectNumStrBool           ,
+            CleanObjToNumStrBool            ,
             GetTimeStringWithOffset         , 
             SendSplitTGMessages             ,
             GetSpreadsheetID                ,                      
@@ -182,148 +182,18 @@ const   order_waiting   =  "waiting"        ;
 const   order_confirm   =  "confirm"        ;
 
 export async function HandleTV(D) {
-    D.touchTargetHgh            =   (D.touchTargetHgh          || String(D.touchTargetHgh         ).toUpperCase() === "TRUE")  ?  true  :  false  ;
-    D.touchTargetLow            =   (D.touchTargetLow          || String(D.touchTargetLow         ).toUpperCase() === "TRUE")  ?  true  :  false  ;
-    D.alreadyTouchHghThisWave   =   (D.alreadyTouchHghThisWave || String(D.alreadyTouchHghThisWave).toUpperCase() === "TRUE")  ?  true  :  false  ;
-    D.alreadyTouchLowThisWave   =   (D.alreadyTouchLowThisWave || String(D.alreadyTouchLowThisWave).toUpperCase() === "TRUE")  ?  true  :  false  ;
-    D.TradingSymbol             =   String(D.TradingSymbol   )                              ;     
-    D.botNumber                 =   String(D.botNumber       )                              ;
-    D.sheetTitle                =   String(D.sheetTitle      )                              ;
-    D.fromTVcheck               =   String(D.fromTVcheck     )                              ;
-    D.thisAlertMessage          =   String(D.thisAlertMessage).replaceAll(huanHang, "\n")   ;
-    D.timestamp		            =   Number( D.timestamp          ) ;
-    D.TradingSymbolPrice	    =   Number( D.TradingSymbolPrice ) ;
-    D.tradeFeeRate		        =   Number( D.tradeFeeRate       ) ;
-    D.fundingRate		        =   Number( D.fundingRate        ) ;
-    D.roundHgh		            =   Number( D.roundHgh           ) ;
-    D.roundLow		            =   Number( D.roundLow           ) ;
-    D.waveUpChg		            =   Number( D.waveUpChg          ) ;
-    D.waveDnChg		            =   Number( D.waveDnChg          ) ;
-    D.targetHgh		            =   Number( D.targetHgh          ) ;
-    D.targetLow		            =   Number( D.targetLow          ) ;
-    D.touchHghTimes             =   Number( D.touchHghTimes      ) ;
-    D.touchLowTimes             =   Number( D.touchLowTimes      ) ;
-    D.barChgFR		            =   Number( D.barChgFR           ) ;
-    D.barChgA		            =   Number( D.barChgA            ) ;
-    D.barChgB		            =   Number( D.barChgB            ) ;
-    D.isDiffRatio		        =   Number( D.isDiffRatio        ) ;
-    D.ema_isDiffRatio	        =   Number( D.ema_isDiffRatio    ) ;
-    D.BaseCoinPrice		        =   Number( D.BaseCoinPrice      ) ;
-    D.A2B		                =   Number( D.A2B                ) ;
-    D.Aup2B		                =   Number( D.Aup2B              ) ;
-    D.Adn2B		                =   Number( D.Adn2B              ) ;
-    D.B2A		                =   Number( D.B2A                ) ;
-    D.Bup2A		                =   Number( D.Bup2A              ) ;
-    D.Bdn2A		                =   Number( D.Bdn2A              ) ;
-    D.avgA2B		            =   Number( D.avgA2B             ) ;
-    D.avgAup2B		            =   Number( D.avgAup2B           ) ;
-    D.avgAdn2B		            =   Number( D.avgAdn2B           ) ;
-    D.avgB2A		            =   Number( D.avgB2A             ) ;
-    D.avgBup2A		            =   Number( D.avgBup2A           ) ;
-    D.avgBdn2A		            =   Number( D.avgBdn2A           ) ;
-
-    D.tvUpdateTime              =   GetTimeStringWithOffset(8, D.timestamp)  ;
-    D.gcpGetTime                =   GetTimeStringWithOffset(8)                      ;
+    D.tvUpdateTime              =   GetTimeStringWithOffset(8, D.timestamp) ;
+    D.gcpGetTime                =   GetTimeStringWithOffset(8)              ;
+    D                           =   CleanObjToNumStrBool(D)                 ;
 
     try {
         const spreadsheetId = GetSpreadsheetID(D.botNumber);
         //获取现存数据
-        let ranges  = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges ) ) ;
-        let d       = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP) ) ;
-
-        D.runningWell               =   (d.runningWell || String(d.runningWell).toUpperCase() === "TRUE")  ?  true  :  false  ;
-        D.accStatus                 =   String(d.accStatus                  )   ;
-        D.liquidatePrice	        =   Number(d.liquidatePrice             )   ;
-        D.stopPriceC	            =   Number(d.stopPriceC                 )   ;
-        D.stopPriceF	            =   Number(d.stopPriceF                 )   ;
-        D.lowToBuy                  =   Number(d.lowToBuy                   )   ;
-        D.hghToBuy                  =   Number(d.hghToBuy                   )   ;
-        D.lowToSell                 =   Number(d.lowToSell                  )   ;
-        D.openProfit	            =   Number(d.openProfit                 )   ;
-        D.usedMargin	            =   Number(d.usedMargin                 )   ;
-        D.freeMargin	            =   Number(d.freeMargin                 )   ;
-        D.netProfit	                =   Number(d.netProfit                  )   ;
-        D.allTradeFee	            =   Number(d.allTradeFee                )   ;
-        D.allFundFee	            =   Number(d.allFundFee                 )   ;
-        D.allFund	                =   Number(d.allFund                    )   ;
-        D.initialFund	            =   Number(d.initialFund                )   ;
-        D.hghestFund	            =   Number(d.hghestFund                 )   ;
-        D.lowestFund	            =   Number(d.lowestFund                 )   ;
-        D.allCoin	                =   Number(d.allCoin                    )   ;
-        D.initialCoin	            =   Number(d.initialCoin                )   ;
-        D.hghestCoin	            =   Number(d.hghestCoin                 )   ;
-        D.lowestCoin	            =   Number(d.lowestCoin                 )   ;
-        D.crtFund	                =   Number(d.crtFund                    )   ;
-        D.crtCoin	                =   Number(d.crtCoin                    )   ;
-        D.therePosition             =   (d.therePosition || String(d.therePosition).toUpperCase() === "TRUE")  ?  true  :  false  ;
-        D.allPosition	            =   Number(d.allPosition                )   ;
-        D.avgBuyPrice	            =   Number(d.avgBuyPrice                )   ;
-        D.avgBuyPriceUnclose        =   Number(d.avgBuyPriceUnclose         )   ;
-        D.lstBuyPriceUnclose        =   Number(d.lstBuyPriceUnclose         )   ;
-        D.hghBuyPriceUnclose        =   Number(d.hghBuyPriceUnclose         )   ;
-        D.lowBuyPriceUnclose        =   Number(d.lowBuyPriceUnclose         )   ; 
-        D.lstBuySerial              =   Number(D.lstBuySerial               )   ;
-        D.hghBuySerial              =   Number(D.hghBuySerial               )   ;
-        D.lowBuySerial              =   Number(D.lowBuySerial               )   ;
-        D.gridNum                   =   Number(d.gridNum                    )   ;
-        D.gridDifficulty            =   Number(d.gridDifficulty             )   ;
-        D.enDifficulty	            =   Number(d.enDifficulty               )   ;
-        D.exDifficulty	            =   Number(d.exDifficulty               )   ;
-        D.buyTimes	                =   Number(d.buyTimes                   )   ;
-        D.sellTimes	                =   Number(d.sellTimes                  )   ;
-
-        D.isReal                    =   (d.isReal || String(d.isReal).toUpperCase() === "TRUE")  ?  true  :  false  ;
-        D.realTradeTime	            =   Number(d.realTradeTime              )   ;
-        D.realTradeTimeTo           =   Number(d.realTradeTimeTo            )   ;
-        D.inFund	                =   Number(d.inFund                     )   ;
-        D.inCoin	                =   Number(d.inCoin                     )   ;
-        D.inTradingSymbolPrice      =   Number(d.inTradingSymbolPrice       )   ;
-        D.inBaseCoinPrice           =   Number(d.inBaseCoinPrice            )   ;
-        D.BaseCoinHairCut	        =   Number(d.BaseCoinHairCut            )   ;
-        D.leverage	                =   Number(d.leverage                   )   ;
-        D.MaxGrid	                =   Number(d.MaxGrid                    )   ;
-        D.minEnExPosition           =   Number(d.minEnExPosition            )   ;
-        D.ordersInterval            =   Number(d.ordersInterval             )   ;
-        D.basicHghToBuy             =   Number(d.basicHghToBuy              )   ;
-        D.basicLowToBuy             =   Number(d.basicLowToBuy              )   ;
-        D.basicLowToSell            =   Number(d.basicLowToSell             )   ;
-        D.notBuyCloseToRndHghStep   =   Number(d.notBuyCloseToRndHghStep    )   ;
-        D.notBuyCloseToRndLowStep   =   Number(d.notBuyCloseToRndLowStep    )   ;
-        D.stopRate4F	            =   Number(d.stopRate4F                 )   ;
-        D.stopRate4C	            =   Number(d.stopRate4C                 )   ;
-        D.notStop4C	                =   Number(d.notStop4C                  )   ;
-        D.notStop4F	                =   Number(d.notStop4F                  )   ;
-        D.difficultyCoefficient     =   Number(d.difficultyCoefficient      )   ;
-        
-        D.rcd_hghFund               =   Number(d.rcd_hghFund                )   ;
-        D.rcd_lowFund               =   Number(d.rcd_lowFund                )   ;
-        D.rcd_hghCoin               =   Number(d.rcd_hghCoin                )   ;
-        D.rcd_lowCoin               =   Number(d.rcd_lowCoin                )   ;
-
-        D.ing_orderID		        =	String(d.ing_orderID	            )	;
-        D.ing_orderTimestamp        =   Number(d.ing_orderTimestamp         )   ;
-        D.ing_orderDate		        =	String(d.ing_orderDate	            )	;
-        D.ing_confirmTimestamp      =   Number(d.ing_confirmTimestamp       )   ;
-        D.ing_confirmDate		    =	String(d.ing_confirmDate	        )	;
-        D.ing_serial		        =	Number(d.ing_serial	                )	;
-        D.ing_buysell		        =	String(d.ing_buysell	            )	;
-        D.ing_triggerPrice		    =	Number(d.ing_triggerPrice	        )	;
-        D.ing_orderType		        =	String(d.ing_orderType	            )	;
-        D.ing_orderPrice		    =	Number(d.ing_orderPrice	            )	;
-        D.ing_confirmPrice		    =	Number(d.ing_confirmPrice	        )	;
-        D.ing_boughtPrice		    =	Number(d.ing_boughtPrice	        )	;
-        D.ing_qty		            =	Number(d.ing_qty	                )	;
-        D.ing_getProfit		        =	Number(d.ing_getProfit	            )	;
-        D.ing_avgBuyPrice		    =	Number(d.ing_avgBuyPrice	        )	;
-        D.ing_tradeFee		        =	Number(d.ing_tradeFee	            )	;
-        D.ing_allFund		        =	Number(d.ing_allFund	            )	;
-        D.ing_allCoin		        =	Number(d.ing_allCoin	            )	;
-        D.ing_reason		        =	String(d.ing_reason	                )	;
-        D.ing_orderStatus		    =	String(d.ing_orderStatus	        )	;
-
-        D.last_orderTime            =   Number(d.last_orderTime             )   ;
-
-        d = null ;
+        let ranges  =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges ) ) ;
+        let d       =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP) ) ;
+        d           =  CleanObjToNumStrBool(d)                                                          ;
+        Object.assign(D, d)                                                                             ;
+        d           = null                                                                              ;
 
         if (D.timestamp > D.realTradeTime) {
             // 收到新消息数据初始化
