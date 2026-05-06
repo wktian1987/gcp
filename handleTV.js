@@ -194,6 +194,7 @@ export async function HandleTV(D) {
         d           =  CleanObjToNumStrBool(d)                                                          ;
         Object.assign(D, d)                                                                             ;
         d           = null                                                                              ;
+        D.thisAlertMessage  =  D.thisAlertMessage.trim().replaceAll(huanHang, "\n") ;
 
         if (D.timestamp > D.realTradeTime) {
             // 收到新消息数据初始化
