@@ -307,7 +307,15 @@ export async function HandleTV(D) {
             if (D.allCoin < (1-D.barChgA)*D.rcd_lowCoin) { D.thisAlertMessage += 'new rcd_lowCoin' + '\n' ; D.rcd_hghCoin = D.allCoin ;}
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            if (D.ing_orderStatus === order_waiting) {
+                D.thisAlertMessage  +=  'cannot trade due to existing order waiting confirmed' + '\n'  ;
+            } 
 
+            D.inOrdersInterval =  false  ;
+            if (D.timestamp - D.last_orderTime < D.ordersInterval * 60000) {
+                D.inOrdersInterval  =  true  ;
+                D.thisAlertMessage  += 'cannot trade due to ordersInterval' + '\n'  ;
+            }
 
 
             D.canBuy            =  true     ;
@@ -340,12 +348,22 @@ export async function HandleTV(D) {
                 D.canSell           =   false                           ;
                 D.cantSellReason    +=  'price < basicLowToSell' + '\n' ;
             }
+
+
+
+
+            
             D.thisAlertMessage      +=  D.cantBuyReason + D.cantSellReason  ;
+            
+            if (D.inOrdersInterval || D.ing_orderStatus === order_waiting) {
+                D.canBuy    =  false  ;
+                D.canSell   =  false  ;
+            }
 
 
             // 测试
             // if (D.canBuy && D.touchTargetLow) {
-            if (D.canBuy && Date.now() > D.last_orderTime) {
+            if (D.canBuy) {
                 let nowTimestamp = Date.now()   ;
                 let S = {} ;
                 S.ing_orderID           =  'od-' + D.tvUpdateTime           ;
