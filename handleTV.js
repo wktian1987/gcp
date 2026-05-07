@@ -360,9 +360,9 @@ export async function HandleTV(d) {
 
                 S = await SendOrderToBroker(S, sheets, spreadsheetId) ;
 
-                Object.assign(D, S) ;
                 S.thisAlertMessage  +=  "New buy order" + "\n"  ;
                 S.last_orderTime    =   nowTimestamp            ;
+                Object.assign(D, S) ;
             }
 
             // 测试
