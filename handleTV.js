@@ -294,50 +294,50 @@ export async function HandleTV(d) {
                 let ifWaitingThenCancel = true  ;
                 if (D.ing_buysell = order_BUY  && D.TradingSymbolPrice < D.ing_orderPrice*(1+D.waveUpChg)) {ifWaitingThenCancel = false ;}
                 if (D.ing_buysell = order_SELL && D.TradingSymbolPrice > D.ing_orderPrice*(1+D.waveDnChg)) {ifWaitingThenCancel = false ;}
-                const res_broker = await CheckOrderConfirm(ifWaitingThenCancel)  ;
+                const res_broker = await CheckOrderConfirm(ifWaitingThenCancel) ; //, D.TradingSymbolPrice, D.ing_orderPrice, D.ing_buysell)  ;
                 if (res_broker.ing_orderStatus === "cancel" )  {
-                    S.ing_orderID               =  null  ;
-                    S.ing_orderTimestamp        =  null  ;
-                    S.ing_orderDate             =  null  ;
-                    S.ing_confirmTimestamp      =  null  ;
-                    S.ing_confirmDate           =  null  ;
-                    S.ing_serial                =  null  ;
-                    S.ing_buysell               =  null  ;
-                    S.ing_triggerPrice          =  null  ;
-                    S.ing_orderType             =  null  ;
-                    S.ing_orderPrice            =  null  ;
-                    S.ing_confirmPrice          =  null  ;
-                    S.ing_boughtPrice           =  null  ;
-                    S.ing_qty                   =  null  ;
-                    S.ing_getProfit             =  null  ;
-                    S.ing_avgBuyPrice           =  null  ;
-                    S.ing_tradeFee              =  null  ;
-                    S.ing_allFund               =  null  ;
-                    S.ing_allCoin               =  null  ;
-                    S.ing_reason                =  null  ;
-                    S.ing_orderStatus           =  null  ;
+                    delete D.ing_orderID            ; 
+                    delete D.ing_orderTimestamp     ; 
+                    delete D.ing_orderDate          ; 
+                    delete D.ing_confirmTimestamp   ; 
+                    delete D.ing_confirmDate        ; 
+                    delete D.ing_serial             ; 
+                    delete D.ing_buysell            ; 
+                    delete D.ing_triggerPrice       ; 
+                    delete D.ing_orderType          ; 
+                    delete D.ing_orderPrice         ; 
+                    delete D.ing_confirmPrice       ; 
+                    delete D.ing_boughtPrice        ; 
+                    delete D.ing_qty                ; 
+                    delete D.ing_getProfit          ; 
+                    delete D.ing_avgBuyPrice        ; 
+                    delete D.ing_tradeFee           ; 
+                    delete D.ing_allFund            ; 
+                    delete D.ing_allCoin            ; 
+                    delete D.ing_reason             ; 
+                    delete D.ing_orderStatus        ; 
                 }
 
                 if (res_broker.ing_orderStatus  === "confirm")  {
                     // 此时res_broker中已包括 last_orderTime
-                    Object.assign(S, res_broker)  ;
-                    const newTradehistory = [ [ S.ing_orderID       || "NA"  ,
-                                                S.ing_orderDate     || "NA"  ,
-                                                S.ing_confirmDate   || "NA"  ,
-                                                S.ing_serial        || "NA"  ,
-                                                S.ing_buysell       || "NA"  ,
-                                                S.ing_triggerPrice  || "NA"  ,
-                                                S.ing_orderType     || "NA"  ,
-                                                S.ing_orderPrice    || "NA"  ,
-                                                S.ing_confirmPrice  || "NA"  ,
-                                                S.ing_boughtPrice   || "NA"  ,
-                                                S.ing_qty           || "NA"  ,
-                                                S.ing_getProfit     || "NA"  ,
-                                                S.ing_avgBuyPrice   || "NA"  ,
-                                                S.ing_tradeFee      || "NA"  ,
-                                                S.ing_allFund       || "NA"  ,
-                                                S.ing_allCoin       || "NA"  ,
-                                                S.ing_reason        || "NA"  ] ]  ;
+                    Object.assign(D, res_broker)  ;
+                    const newTradehistory = [ [ D.ing_orderID       || "NA"  ,
+                                                D.ing_orderDate     || "NA"  ,
+                                                D.ing_confirmDate   || "NA"  ,
+                                                D.ing_serial        || "NA"  ,
+                                                D.ing_buysell       || "NA"  ,
+                                                D.ing_triggerPrice  || "NA"  ,
+                                                D.ing_orderType     || "NA"  ,
+                                                D.ing_orderPrice    || "NA"  ,
+                                                D.ing_confirmPrice  || "NA"  ,
+                                                D.ing_boughtPrice   || "NA"  ,
+                                                D.ing_qty           || "NA"  ,
+                                                D.ing_getProfit     || "NA"  ,
+                                                D.ing_avgBuyPrice   || "NA"  ,
+                                                D.ing_tradeFee      || "NA"  ,
+                                                D.ing_allFund       || "NA"  ,
+                                                D.ing_allCoin       || "NA"  ,
+                                                D.ing_reason        || "NA"  ] ]  ;
                     // orderID	orderDate	confirmDate	serial	buysell	triggerPrice	orderType	orderPrice	confirmPrice	boughtPrice	qty	getProfit	avgBuyPrice	tradeFee	allFund	allCoin	reason
                     await sheets.spreadsheets.values.append({
                         spreadsheetId,

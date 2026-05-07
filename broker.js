@@ -1,4 +1,5 @@
-import { CleanObjToNumStrBool } from "./utility.js";
+import {    CleanObjToNumStrBool    ,
+            GetDataFromSheet        } from "./utility.js";
 
 export async function SendOrderToBroker(S, sheets, spreadsheetId) {
 
@@ -29,10 +30,12 @@ export async function SendOrderToBroker(S, sheets, spreadsheetId) {
     return S ;
 }
 
-export async function CheckOrderConfirm(ifWaitingThenCancel) {
+export async function CheckOrderConfirm(ifWaitingThenCancel) { //, price, orderPrice, buysell) {
     const res_broker    = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A1:B29'));
     const res           = CleanObjToNumStrBool(res_broker) ;
+    // const S = CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A30:B')))  ;
     if (res.orderStatus = "confirm")  {
+    // if ( (buysell === "B" && price < orderPrice) || (buysell === "S" && price > orderPrice) ) {
         const S = CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A30:B')))  ;
         S.ing_orderID		    = res.orderID        ;
         S.ing_confirmDate		= res.confirmDate    ;
