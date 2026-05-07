@@ -27,7 +27,7 @@ app.post('/tgBot', json(), async (req, res) => {
         console.error("✘ TgBot消息处理失败: ", e.message) ;
 
 
-    }·
+    }
 }
 );
 
