@@ -33,19 +33,20 @@ app.post('/tgBot', json(), async (req, res) => {
 
 app.post('/tradingview', json(), async (req, res) => {
     console.log("✔ 收到/tradingview连接");
-    const { HandleTV } = await import("./handleTV.js");
     const { body } = req;
     if (body.fromTVcheck === process.env.fromTVcheck) {
         console.log("✔ 收到TradingView webhook Message");
         res.status(200).json({ status: 'success' });
     } else {
-        console.log("？ 收到未校验的TradingView Webhook Message:" + JSON.stringify(req)); //body
+        console.log("？ 收到未校验的TradingView Webhook Message:" + JSON.stringify(body)); 
         // 虽然未验证的消息，但是仍然给发送者发送“我已经收到了”
         return res.status(200).json({ status: 'success' });
     }
 
     try {
+        const { HandleTV } = await import("./handleTV.js");
         await HandleTV(body);
+        console.log("✔ HandleTV处理成功");
     } catch (e) {
         console.error("✘ HandleTV处理失败: ", e.message);
     }
