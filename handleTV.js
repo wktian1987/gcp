@@ -5,7 +5,8 @@ import {    NumStrBool                      ,
             GetSpreadsheetID                ,                      
             FormatMatrixToString            ,            
             GetDataFromSheet                } from "./utility.js";
-import { SendOrderToBroker } from "./broker.js";    
+import {    SendOrderToBroker               ,
+            CheckOrderConfirm               } from "./broker.js";    
 
 import { google } from 'googleapis';
 const auth = new google.auth.GoogleAuth({
@@ -289,6 +290,64 @@ export async function HandleTV(d) {
                 D.thisAlertMessage  += 'cannot trade due to ordersInterval' + '\n'  ;
             }
 
+            if (D.ifOrderWaiting) {
+                let ifWaitingThenCancel = true  ;
+                if (D.ing_buysell = order_BUY  && D.TradingSymbolPrice < D.ing_orderPrice*(1+D.waveUpChg)) {ifWaitingThenCancel = false ;}
+                if (D.ing_buysell = order_SELL && D.TradingSymbolPrice > D.ing_orderPrice*(1+D.waveDnChg)) {ifWaitingThenCancel = false ;}
+                const res_broker = await CheckOrderConfirm(ifWaitingThenCancel)  ;
+                if (res_broker.ing_orderStatus === "cancel" )  {
+                    S.ing_orderID               =  null  ;
+                    S.ing_orderTimestamp        =  null  ;
+                    S.ing_orderDate             =  null  ;
+                    S.ing_confirmTimestamp      =  null  ;
+                    S.ing_confirmDate           =  null  ;
+                    S.ing_serial                =  null  ;
+                    S.ing_buysell               =  null  ;
+                    S.ing_triggerPrice          =  null  ;
+                    S.ing_orderType             =  null  ;
+                    S.ing_orderPrice            =  null  ;
+                    S.ing_confirmPrice          =  null  ;
+                    S.ing_boughtPrice           =  null  ;
+                    S.ing_qty                   =  null  ;
+                    S.ing_getProfit             =  null  ;
+                    S.ing_avgBuyPrice           =  null  ;
+                    S.ing_tradeFee              =  null  ;
+                    S.ing_allFund               =  null  ;
+                    S.ing_allCoin               =  null  ;
+                    S.ing_reason                =  null  ;
+                    S.ing_orderStatus           =  null  ;
+                }
+
+                if (res_broker.ing_orderStatus  === "confirm")  {
+                    // 此时res_broker中已包括 last_orderTime
+                    Object.assign(S, res_broker)  ;
+                    const newTradehistory = [ [ S.ing_orderID       || "NA"  ,
+                                                S.ing_orderDate     || "NA"  ,
+                                                S.ing_confirmDate   || "NA"  ,
+                                                S.ing_serial        || "NA"  ,
+                                                S.ing_buysell       || "NA"  ,
+                                                S.ing_triggerPrice  || "NA"  ,
+                                                S.ing_orderType     || "NA"  ,
+                                                S.ing_orderPrice    || "NA"  ,
+                                                S.ing_confirmPrice  || "NA"  ,
+                                                S.ing_boughtPrice   || "NA"  ,
+                                                S.ing_qty           || "NA"  ,
+                                                S.ing_getProfit     || "NA"  ,
+                                                S.ing_avgBuyPrice   || "NA"  ,
+                                                S.ing_tradeFee      || "NA"  ,
+                                                S.ing_allFund       || "NA"  ,
+                                                S.ing_allCoin       || "NA"  ,
+                                                S.ing_reason        || "NA"  ] ]  ;
+                    // orderID	orderDate	confirmDate	serial	buysell	triggerPrice	orderType	orderPrice	confirmPrice	boughtPrice	qty	getProfit	avgBuyPrice	tradeFee	allFund	allCoin	reason
+                    await sheets.spreadsheets.values.append({
+                        spreadsheetId,
+                        range: "tradeHistory!A1:A",
+                        valueInputOption: 'USER_ENTERED', // 允许自动识别数字/日期格式
+                        requestBody: { values: newTradehistory }
+                    });
+                }
+            }
+
 
             D.canBuy            =  true     ;
             D.cantBuyReason     =  ""       ;
@@ -334,8 +393,8 @@ export async function HandleTV(d) {
 
 
             // 测试
-            // if (D.canBuy && D.touchTargetLow) {
-            if (D.canBuy) {
+            if (D.canBuy && D.touchTargetLow) {
+            // if (D.canBuy) {
                 let nowTimestamp = Date.now()   ;
                 let S = {} ;
                 S.ing_orderID           =  'od-' + D.tvUpdateTime           ;
@@ -362,7 +421,7 @@ export async function HandleTV(d) {
                 S = await SendOrderToBroker(S, sheets, spreadsheetId) ;
 
                 S.thisAlertMessage  +=  "New buy order" + "\n"  ;
-                S.last_orderTime    =   nowTimestamp            ;
+                // S.last_orderTime    =   nowTimestamp            ;
                 Object.assign(D, S) ;
             }
 
