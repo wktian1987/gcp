@@ -5,6 +5,7 @@ import {    NumStrBool                      ,
             GetSpreadsheetID                ,                      
             FormatMatrixToString            ,            
             GetDataFromSheet                } from "./utility.js";
+import { SendOrderToBroker } from "./broker.js";    
 
 import { google } from 'googleapis';
 const auth = new google.auth.GoogleAuth({
@@ -101,33 +102,6 @@ function GetLiquidateStopPrice( allPosition         ,
 
 }
 
-async function _SendOrderToBroker(S, sheets, spreadsheetId) {
-
-    await sheets.spreadsheets.values.clear( {
-        spreadsheetId                       ,
-        range           : 'simBroker!A30:B' } ) ;
-
-
-    await sheets.spreadsheets.values.update(    { 
-        spreadsheetId       : spreadsheetId                     ,
-        range               : 'simBroker!A30:B'                 ,
-        valueInputOption    : 'USER_ENTERED'                    ,
-        requestBody         : {values: Object.entries(S)}       } )  ;
-    
-    const res_broker =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A1:B29') )  ;
-
-    S.ing_orderID		    = res_broker.orderID        ;
-    S.ing_confirmDate		= res_broker.confirmDate    ;
-    S.ing_confirmPrice		= res_broker.confirmPrice   ;
-    S.ing_getProfit		    = res_broker.getProfit      ;
-    S.ing_avgBuyPrice		= res_broker.avgBuyPrice    ;
-    S.ing_tradeFee		    = res_broker.tradeFee       ;
-    S.ing_allFund		    = res_broker.allFund        ;
-    S.ing_allCoin		    = res_broker.allCoin        ;
-    S.ing_orderStatus		= res_broker.orderStatus    ;
-
-    return S ;
-}
 
 const   accStatus_normal                    =  "normal"                                     ;
 const   accStatus_liquidated                =  "liquidated"                                 ;
@@ -181,20 +155,17 @@ const   order_pending   =  "pending"        ;
 const   order_waiting   =  "waiting"        ;
 const   order_confirm   =  "confirm"        ;
 
-export async function HandleTV(D) {
-    D.tvUpdateTime              =   GetTimeStringWithOffset(8, D.timestamp) ;
-    D.gcpGetTime                =   GetTimeStringWithOffset(8)              ;
-    CleanObjToNumStrBool(D) ;
+export async function HandleTV(d) {
+    CleanObjToNumStrBool(d) ;
+    d.tvUpdateTime              =   GetTimeStringWithOffset(8, d.timestamp) ;
+    d.gcpGetTime                =   GetTimeStringWithOffset(8)              ;
 
     try {
-        const spreadsheetId = GetSpreadsheetID(D.botNumber);
+        const spreadsheetId = GetSpreadsheetID(d.botNumber);
         //获取现存数据
-        let ranges  =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges ) ) ;
-        if (ranges.toGCP) {
-            const rawData = await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP);
-            // 先放rawData, 再放新的 D, 新数据会覆盖旧数据
-            D = Object.assign({}, CleanObjToNumStrBool(Object.fromEntries(rawData)), D);
-        }
+        const ranges    =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges ) ) ;
+        const D         =  ranges.toGCP  ?  CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP)))  :  {};
+        Object.assign(D, d);
         D.thisAlertMessage  =  String(D.thisAlertMessage || "").trim().replaceAll(huanHang, "\n")       ;
 
         if (D.timestamp > D.realTradeTime) {
@@ -352,7 +323,7 @@ export async function HandleTV(D) {
 
 
 
-            
+
             D.thisAlertMessage      +=  D.cantBuyReason + D.cantSellReason  ;
             
             if (D.inOrdersInterval || D.ing_orderStatus === order_waiting) {
@@ -387,7 +358,7 @@ export async function HandleTV(D) {
                 S.ing_reason            =  BuyReason_belowTarget            ;
                 S.ing_orderStatus       =  order_pending                    ;
 
-                S = await _SendOrderToBroker(S, sheets, spreadsheetId) ;
+                S = await SendOrderToBroker(S, sheets, spreadsheetId) ;
 
                 Object.assign(D, S) ;
                 S.thisAlertMessage  +=  "New buy order" + "\n"  ;
