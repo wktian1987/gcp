@@ -220,14 +220,14 @@ export async function HandleTV(d) {
 
             D.crt_avgBuyPrice   =  (D.TradingSymbolPrice - D.avgBuyPrice) / D.avgBuyPrice   ;
 
-            let [gridDifficulty, enDifficulty, exDifficulty] = GetGridDifficulty(   D.gridNum               ,
+            [D.gridDifficulty, D.enDifficulty, D.exDifficulty] = GetGridDifficulty( D.gridNum               ,
                                                                                     D.difficultyCoefficient , 
                                                                                     D.MaxGrid               )  ;
-            D.gridDifficulty    =  gridDifficulty   ;
-            D.enDifficulty      =  enDifficulty     ;
-            D.exDifficulty      =  exDifficulty     ;
+            // D.gridDifficulty    =  gridDifficulty   ;
+            // D.enDifficulty      =  enDifficulty     ;
+            // D.exDifficulty      =  exDifficulty     ;
 
-            let [liquidatePrice, stopPriceC, stopPriceF] = GetLiquidateStopPrice(   D.allPosition           , 
+            [D.liquidatePrice, D.stopPriceC, D.stopPriceF] = GetLiquidateStopPrice( D.allPosition           , 
                                                                                     D.avgBuyPrice           , 
                                                                                     D.inFund                , 
                                                                                     D.netProfit             , 
@@ -244,9 +244,9 @@ export async function HandleTV(d) {
                                                                                     D.notStop4F             , 
                                                                                     D.notStop4C             );
 
-            D.liquidatePrice    =   liquidatePrice  ;
-            D.stopPriceC        =   stopPriceC      ;
-            D.stopPriceF        =   stopPriceF      ;
+            // D.liquidatePrice    =   liquidatePrice  ;
+            // D.stopPriceC        =   stopPriceC      ;
+            // D.stopPriceF        =   stopPriceF      ;
 
             D.tocrt_liquidatePrice  =  (D.liquidatePrice - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
             D.tocrt_stopPriceC      =  (D.stopPriceC     - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
@@ -411,8 +411,8 @@ export async function HandleTV(d) {
 
 
             // 测试
-            if (D.canBuy && D.touchTargetLow) {
-            // if (D.canBuy) {
+            // if (D.canBuy && D.touchTargetLow) {
+            if (D.canBuy) {
                 let nowTimestamp = Date.now()   ;
                 let S = {} ;
                 S.ing_orderID           =  'od-' + D.tvUpdateTime           ;
