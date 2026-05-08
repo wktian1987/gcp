@@ -30,7 +30,7 @@ export async function SendOrderToBroker(S, sheets, spreadsheetId) {
     return S ;
 }
 
-export async function CheckOrderConfirm(ifWaitingThenCancel) { //, price, orderPrice, buysell) {
+export async function CheckOrderConfirm(ifWaitingThenCancel, sheets, spreadsheetId) { //, price, orderPrice, buysell) {
     const res_broker    = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A1:B29'));
     const res           = CleanObjToNumStrBool(res_broker) ;
     // const S = CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A30:B')))  ;

@@ -283,18 +283,11 @@ export async function HandleTV(d) {
                 D.ifOrderWaiting    =  true  ;
                 D.thisAlertMessage  +=  'cannot trade due to existing order waiting confirmed' + '\n'  ;
             } 
-
-            D.inOrdersInterval =  false  ;
-            if (D.timestamp - D.last_orderTime < D.ordersInterval * 60000) {
-                D.inOrdersInterval  =  true  ;
-                D.thisAlertMessage  += 'cannot trade due to ordersInterval' + '\n'  ;
-            }
-
             if (D.ifOrderWaiting) {
                 let ifWaitingThenCancel = true  ;
                 if (D.ing_buysell = order_BUY  && D.TradingSymbolPrice < D.ing_orderPrice*(1+D.waveUpChg)) {ifWaitingThenCancel = false ;}
                 if (D.ing_buysell = order_SELL && D.TradingSymbolPrice > D.ing_orderPrice*(1+D.waveDnChg)) {ifWaitingThenCancel = false ;}
-                const res_broker = await CheckOrderConfirm(ifWaitingThenCancel) ; //, D.TradingSymbolPrice, D.ing_orderPrice, D.ing_buysell)  ;
+                const res_broker = await CheckOrderConfirm(ifWaitingThenCancel, sheets, spreadsheetId) ; //, D.TradingSymbolPrice, D.ing_orderPrice, D.ing_buysell)  ;
                 if (res_broker.ing_orderStatus === "cancel" )  {
                     delete D.ing_orderID            ; 
                     delete D.ing_orderTimestamp     ; 
@@ -345,7 +338,32 @@ export async function HandleTV(d) {
                         valueInputOption: 'USER_ENTERED', // 允许自动识别数字/日期格式
                         requestBody: { values: newTradehistory }
                     });
+
+                    D.ifOrderWaiting    =  false  ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                    
+
                 }
+            }
+
+            D.inOrdersInterval =  false  ;
+            if (D.timestamp - D.last_orderTime < D.ordersInterval * 60000) {
+                D.inOrdersInterval  =  true  ;
+                D.thisAlertMessage  += 'cannot trade due to ordersInterval' + '\n'  ;
             }
 
 
