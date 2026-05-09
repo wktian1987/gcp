@@ -46,6 +46,7 @@ export async function CheckOrderConfirm(ifWaitingThenCancel, sheets, spreadsheet
         S.ing_allFund		    = res.allFund        ;
         S.ing_allCoin		    = res.allCoin        ;
         S.ing_orderStatus		= res.orderStatus    ;
+        S.last_orderTime        = res.timestamp      ;
         return S  ;
     } 
 

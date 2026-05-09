@@ -14,7 +14,57 @@ const auth = new google.auth.GoogleAuth({
 });
 const sheets = google.sheets({ version: 'v4', auth });
 
+const   accStatus_normal                    =  "normal"                                     ;
+const   accStatus_liquidated                =  "liquidated"                                 ;
+const   accStatus_stopC                     =  "stop due to Coinloss"                       ;
+const   accStatus_stopF                     =  "stop due to Fundloss"                       ;
+const   accStatus_stopCF                    =  "stop due to Coinloss and Fundloss"          ;
 
+const   BuyReason_belowTarget               =  "below targetLow"                            ;
+
+const   SellReason_aboveTarget              =  "above targetHigh"                           ;
+const   SellReason_enoughProfit             =  "get enough profit"                          ;
+const   SellReason_stop4C                   =  "stop loss below highestCoin too much"       ;
+const   SellReason_stop4F                   =  "stop loss below highestFund too much"       ;
+const   SellReason_liquidate                =  "liquidation sell"                           ;
+const   SellReason_cutBfLiquid              =  "cut before liquidation"                     ;
+const   SellReason_cutHighBuyOrder          =  "cut order with too high buyPrice"           ;
+
+const   NotBuySellReason_notInCanTrdTime    =  "not in can trading time"                    ;
+const   NotBuySellReason_waitLast           =  "wait for last trading end"                  ;
+const   NotBuySellReason_justTrade          =  "just a trade executed and need wait"        ;
+const   NotBuySellReason_liquidate          =  "already liquidated"                         ;
+
+const   NotBuyReason_notBuySell             =  "cant buy sell "                             ;
+const   NotBuyReason_aboveLastUnclose       =  "above lastUncloseOrder.buyPrice"            ;
+const   NotBuyReason_sellthisTime           =  "this time has sell/liquid order"            ;
+const   NotBuyReason_difctyLimit            =  "cant buy due to gridDifficulty"             ;
+const   NotBuyReason_aboveHighToBuy         =  "above highestToBuyPrice"                    ;
+const   NotBuyReason_belowLowToBuy          =  "below lowestToBuyPrice"                     ;
+const   NotBuyReason_closeToRndHigh         =  "close to roundHigh"                         ;
+const   NotBuyReason_closeToRndLow          =  "close to roundLow"                          ;
+const   NotBuyReason_noAdqtFund             =  "no adequate fund to buy"                    ;
+const   NotBuyReason_maxEnExTooSmall        =  "after calculate maxEnExPosition too small"  ;
+const   NotBuyReason_overMaxGridN           =  "account.gridNum over maxGridNumber"         ;
+const   NotBuyReason_stopTriggered          =  "stop loss triggered"                        ;
+const   NotBuyReason_closeToliquidWarn      =  "close to liquidation warning"               ;
+const   NotBuyReason_closeToStop            =  "close to stopF or stopC"                    ;
+
+const   NotSellReason_notBuySell            =  "cant buy sell "                             ;
+const   NotSellReason_noPosition            =  "no positions"                               ;
+const   NotSellReason_belowLowToSell        =  "below lowestToSellPrice"                    ;
+const   NotSellReason_cantProfit            =  "cant get enough Profit"                     ;
+
+const   toFill          =  "toFill"         ;
+const   toGCPRanges     =  "toGCP!A:B"      ;
+const   huanHang        =  "__HuangHang__"  ;
+const   order_T_LMT     =  "LMT"            ;
+const   order_T_MKT     =  "MKT"            ; 
+const   order_BUY       =  "B"              ;
+const   order_SELL      =  "S"              ;
+const   order_pending   =  "pending"        ;
+const   order_waiting   =  "waiting"        ;
+const   order_confirm   =  "confirm"        ;
 
 function GetGridDifficulty(positionN, difficultyCoefficient, maxGridNumber) { 
     let gridDifficulty   =   Math.pow(positionN, (difficultyCoefficient + 1)) / Math.pow(maxGridNumber, difficultyCoefficient) + (maxGridNumber-positionN) / maxGridNumber  ;
@@ -104,57 +154,120 @@ function GetLiquidateStopPrice( allPosition         ,
 }
 
 
-const   accStatus_normal                    =  "normal"                                     ;
-const   accStatus_liquidated                =  "liquidated"                                 ;
-const   accStatus_stopC                     =  "stop due to Coinloss"                       ;
-const   accStatus_stopF                     =  "stop due to Fundloss"                       ;
-const   accStatus_stopCF                    =  "stop due to Coinloss and Fundloss"          ;
+function ReNewAccount(D, newData) {
+        if (newData !== undefined) { Object.assign(D, newData) ; }
+        CleanObjToNumStrBool(D) ;
+        D.allPosition           =  isNaN(D.allPosition )  ?  0          :  D.allPosition                                                ;
+        D.avgBuyPrice           =  isNaN(D.avgBuyPrice )  ?  0          :  D.avgBuyPrice                                                ;
+        D.netProfit             =  isNaN(D.netProfit   )  ?  0          :  D.netProfit                                                  ;
+        D.openProfit            =  D.allPosition * (D.TradingSymbolPrice - D.avgBuyPrice)                                               ;
+        D.crtFund               =  D.inFund + D.netProfit + D.openProfit                                                                ;
+        D.crtCoin               =  D.inCoin                                                                                             ;
+        D.usedMargin            =  D.allPosition * D.TradingSymbolPrice / D.leverage                                                    ;
+        D.freeMargin            =  D.crtFund + D.crtCoin * D.BaseCoinPrice * D.BaseCoinHairCut - D.usedMargin                           ;
+        D.allFund               =  D.crtFund + D.crtCoin * D.BaseCoinPrice                                                              ;
+        D.allCoin               =  D.crtFund / D.BaseCoinPrice + D.crtCoin                                                              ;
+        D.initialFund           =  D.inFund + D.inCoin * D.inBaseCoinPrice                                                              ;
+        D.initialCoin           =  D.inFund / D.inBaseCoinPrice + D.inCoin                                                              ;
+        D.hghestFund            =  isNaN(D.hghestFund  )  ?  D.initialFund  :  ( D.allFund > D.hghestFund ? D.allFund : D.hghestFund )  ;
+        D.lowestFund            =  isNaN(D.lowestFund  )  ?  D.initialFund  :  ( D.allFund < D.lowestFund ? D.allFund : D.lowestFund )  ;
+        D.hghestCoin            =  isNaN(D.hghestCoin  )  ?  D.initialCoin  :  ( D.allCoin > D.hghestCoin ? D.allCoin : D.hghestCoin )  ;
+        D.lowestCoin            =  isNaN(D.lowestCoin  )  ?  D.initialCoin  :  ( D.allCoin < D.lowestCoin ? D.allCoin : D.lowestCoin )  ;
+        D.allTradeFee           =  isNaN(D.allTradeFee )  ?  0          :  D.allTradeFee                                                ;
+        D.allFundFee            =  isNaN(D.allFundFee  )  ?  0          :  D.allFundFee                                                 ;
+        D.gridNum               =  isNaN(D.gridNum     )  ?  0          :  D.gridNum                                                    ;
+        D.buyTimes              =  isNaN(D.buyTimes    )  ?  0          :  D.buyTimes                                                   ;
+        D.sellTimes             =  isNaN(D.sellTimes   )  ?  0          :  D.sellTimes                                                  ;
+        D.avgBuyPriceUnclose    =  isNaN(D.avgBuyPriceUnclose )  ?  0  :  D.avgBuyPriceUnclose                                          ; 
+        D.lstBuyPriceUnclose    =  isNaN(D.lstBuyPriceUnclose )  ?  0  :  D.lstBuyPriceUnclose                                          ; 
+        D.hghBuyPriceUnclose    =  isNaN(D.hghBuyPriceUnclose )  ?  0  :  D.hghBuyPriceUnclose                                          ; 
+        D.lowBuyPriceUnclose    =  isNaN(D.lowBuyPriceUnclose )  ?  0  :  D.lowBuyPriceUnclose                                          ; 
+        D.lstBuySerial          =  isNaN(D.lstBuySerial       )  ?  0  :  D.lstBuySerial                                                ;
+        D.hghBuySerial          =  isNaN(D.hghBuySerial       )  ?  0  :  D.hghBuySerial                                                ;
+        D.lowBuySerial          =  isNaN(D.lowBuySerial       )  ?  0  :  D.lowBuySerial                                                ;
+        D.last_orderTime        =  isNaN(D.last_orderTime     )  ?  D.realTradeTime  :  D.last_orderTime                                ;
 
-const   BuyReason_belowTarget               =  "below targetLow"                            ;
+        D.rcd_hghFund           =  isNaN(D.rcd_hghFund )  ?  D.hghestFund  :  D.rcd_hghFund                                             ;
+        D.rcd_lowFund           =  isNaN(D.rcd_lowFund )  ?  D.lowestFund  :  D.rcd_lowFund                                             ;
+        D.rcd_hghCoin           =  isNaN(D.rcd_hghCoin )  ?  D.hghestCoin  :  D.rcd_hghCoin                                             ;
+        D.rcd_lowCoin           =  isNaN(D.rcd_lowCoin )  ?  D.lowestCoin  :  D.rcd_lowCoin                                             ;
 
-const   SellReason_aboveTarget              =  "above targetHigh"                           ;
-const   SellReason_enoughProfit             =  "get enough profit"                          ;
-const   SellReason_stop4C                   =  "stop loss below highestCoin too much"       ;
-const   SellReason_stop4F                   =  "stop loss below highestFund too much"       ;
-const   SellReason_liquidate                =  "liquidation sell"                           ;
-const   SellReason_cutBfLiquid              =  "cut before liquidation"                     ;
-const   SellReason_cutHighBuyOrder          =  "cut order with too high buyPrice"           ;
+        D.crt_initialFund       =  (D.allFund - D.initialFund) / D.initialFund      ;
+        D.crt_hghestFund        =  (D.allFund - D.hghestFund ) / D.hghestFund       ;
+        D.crt_lowestFund        =  (D.allFund - D.lowestFund ) / D.lowestFund       ;
+        D.crt_initialCoin       =  (D.allCoin - D.initialCoin) / D.initialCoin      ;
+        D.crt_hghestCoin        =  (D.allCoin - D.hghestCoin ) / D.hghestCoin       ;
+        D.crt_lowestCoin        =  (D.allCoin - D.lowestCoin ) / D.lowestCoin       ;
 
-const   NotBuySellReason_notInCanTrdTime    =  "not in can trading time"                    ;
-const   NotBuySellReason_waitLast           =  "wait for last trading end"                  ;
-const   NotBuySellReason_justTrade          =  "just a trade executed and need wait"        ;
-const   NotBuySellReason_liquidate          =  "already liquidated"                         ;
+        D.crt_avgBuyPrice       =  (D.TradingSymbolPrice - D.avgBuyPrice) / D.avgBuyPrice   ;
 
-const   NotBuyReason_notBuySell             =  "cant buy sell "                             ;
-const   NotBuyReason_aboveLastUnclose       =  "above lastUncloseOrder.buyPrice"            ;
-const   NotBuyReason_sellthisTime           =  "this time has sell/liquid order"            ;
-const   NotBuyReason_difctyLimit            =  "cant buy due to gridDifficulty"             ;
-const   NotBuyReason_aboveHighToBuy         =  "above highestToBuyPrice"                    ;
-const   NotBuyReason_belowLowToBuy          =  "below lowestToBuyPrice"                     ;
-const   NotBuyReason_closeToRndHigh         =  "close to roundHigh"                         ;
-const   NotBuyReason_closeToRndLow          =  "close to roundLow"                          ;
-const   NotBuyReason_noAdqtFund             =  "no adequate fund to buy"                    ;
-const   NotBuyReason_maxEnExTooSmall        =  "after calculate maxEnExPosition too small"  ;
-const   NotBuyReason_overMaxGridN           =  "account.gridNum over maxGridNumber"         ;
-const   NotBuyReason_stopTriggered          =  "stop loss triggered"                        ;
-const   NotBuyReason_closeToliquidWarn      =  "close to liquidation warning"               ;
-const   NotBuyReason_closeToStop            =  "close to stopF or stopC"                    ;
+        [D.gridDifficulty, D.enDifficulty, D.exDifficulty] = GetGridDifficulty( D.gridNum               ,
+                                                                                    D.difficultyCoefficient , 
+                                                                                    D.MaxGrid               )  ;
+        // D.gridDifficulty    =  gridDifficulty   ;
+        // D.enDifficulty      =  enDifficulty     ;
+        // D.exDifficulty      =  exDifficulty     ;
 
-const   NotSellReason_notBuySell            =  "cant buy sell "                             ;
-const   NotSellReason_noPosition            =  "no positions"                               ;
-const   NotSellReason_belowLowToSell        =  "below lowestToSellPrice"                    ;
-const   NotSellReason_cantProfit            =  "cant get enough Profit"                     ;
+        [D.liquidatePrice, D.stopPriceC, D.stopPriceF] = GetLiquidateStopPrice( D.allPosition           , 
+                                                                                D.avgBuyPrice           , 
+                                                                                D.inFund                , 
+                                                                                D.netProfit             , 
+                                                                                D.crtCoin               , 
+                                                                                D.TradingSymbolPrice    , 
+                                                                                D.BaseCoinPrice         , 
+                                                                                D.BaseCoinHairCut       , 
+                                                                                D.avgAdn2B              , 
+                                                                                D.waveUpChg             , 
+                                                                                D.hghestFund            , 
+                                                                                D.hghestCoin            , 
+                                                                                D.stopRate4F            , 
+                                                                                D.stopRate4C            , 
+                                                                                D.notStop4F             , 
+                                                                                D.notStop4C             );
 
-const   toFill          =  "toFill"         ;
-const   toGCPRanges     =  "toGCP!A:B"      ;
-const   huanHang        =  "__HuangHang__"  ;
-const   order_T_LMT     =  "LMT"            ;
-const   order_T_MKT     =  "MKT"            ; 
-const   order_BUY       =  "B"              ;
-const   order_SELL      =  "S"              ;
-const   order_pending   =  "pending"        ;
-const   order_waiting   =  "waiting"        ;
-const   order_confirm   =  "confirm"        ;
+        // D.liquidatePrice    =   liquidatePrice  ;
+        // D.stopPriceC        =   stopPriceC      ;
+        // D.stopPriceF        =   stopPriceF      ;
+
+        D.tocrt_liquidatePrice  =  (D.liquidatePrice - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
+        D.tocrt_stopPriceC      =  (D.stopPriceC     - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
+        D.tocrt_stopPriceF      =  (D.stopPriceF     - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
+
+        // 账户状态判断
+        D.accStatus =  'Normal' ; 
+        if (D.TradingSymbolPrice < D.liquidatePrice) {
+            D.accStatus         = 'liquidated'                      ;
+            D.thisAlertMessage  =  accStatus_liquidated     + '\n'  ;
+        }
+        if (D.TradingSymbolPrice < D.stopPriceC    ) {
+            D.accStatus         = 'stopC'                           ;
+            D.thisAlertMessage  =  accStatus_stopC          + '\n'  ;
+        } 
+        if (D.TradingSymbolPrice < D.stopPriceF    ) {
+            D.accStatus         = 'stopF'                           ;
+            D.thisAlertMessage  =  accStatus_stopF          + '\n'  ;
+        }
+        if (D.TradingSymbolPrice < D.stopPriceC  &&  D.TradingSymbolPrice < D.stopPriceF ) {
+            D.accStatus         = 'stopCF'                          ;
+            D.thisAlertMessage  =  accStatus_stopCF         + '\n'  ;
+        }
+
+        D.therePosition     =  D.gridNum > 0  ?  true  :  false  ; 
+
+        if (D.allFund > (1+D.barChgA)*D.rcd_hghFund) { D.thisAlertMessage += 'new rcd_hghFund' + '\n' ; D.rcd_hghFund = D.allFund ;}
+        if (D.allFund < (1-D.barChgA)*D.rcd_lowFund) { D.thisAlertMessage += 'new rcd_lowFund' + '\n' ; D.rcd_lowFund = D.allFund ;}
+        if (D.allCoin > (1+D.barChgA)*D.rcd_hghCoin) { D.thisAlertMessage += 'new rcd_hghCoin' + '\n' ; D.rcd_hghCoin = D.allCoin ;}
+        if (D.allCoin < (1-D.barChgA)*D.rcd_lowCoin) { D.thisAlertMessage += 'new rcd_lowCoin' + '\n' ; D.rcd_hghCoin = D.allCoin ;}
+
+        D.closeToRndHgh     =  D.roundHgh / Math.pow((1+D.waveUpChg), D.notBuyCloseToRndHghStep)  ;
+        D.closeToRndLow     =  D.roundLow / Math.pow((1+D.waveDnChg), D.notBuyCloseToRndLowStep)  ;
+        D.hghToBuy          =  Math.min(D.basicHghToBuy, D.closeToRndHgh    )   ;
+        D.lowToBuy          =  Math.max(D.basicLowToBuy, D.closeToRndLow    )   ;
+        D.lowToSell         =  Math.max(D.basicLowToSell                    )   ;
+
+}
+
+
 
 export async function HandleTV(d) {
     CleanObjToNumStrBool(d) ;
@@ -175,108 +288,7 @@ export async function HandleTV(d) {
             // 1, 未初始化时
             // 2, 正常运行时
             // 3, 出错时, 需重新初始化
-            D.allPosition           =  (!D.runningWell) || isNaN(D.allPosition )  ?  0          :  D.allPosition                                                ;
-            D.avgBuyPrice           =  (!D.runningWell) || isNaN(D.avgBuyPrice )  ?  0          :  D.avgBuyPrice                                                ;
-            D.netProfit             =  (!D.runningWell) || isNaN(D.netProfit   )  ?  0          :  D.netProfit                                                  ;
-            D.openProfit            =  D.allPosition * (D.TradingSymbolPrice - D.avgBuyPrice)                                                                   ;
-            D.crtFund               =  D.inFund + D.netProfit + D.openProfit                                                                                    ;
-            D.crtCoin               =  D.inCoin                                                                                                                 ;
-            D.usedMargin            =  D.allPosition * D.TradingSymbolPrice / D.leverage                                                                        ;
-            D.freeMargin            =  D.crtFund + D.crtCoin * D.BaseCoinPrice * D.BaseCoinHairCut - D.usedMargin                                               ;
-            D.allFund               =  D.crtFund + D.crtCoin * D.BaseCoinPrice                                                                                  ;
-            D.allCoin               =  D.crtFund / D.BaseCoinPrice + D.crtCoin                                                                                  ;
-            D.initialFund           =  D.inFund + D.inCoin * D.inBaseCoinPrice                                                                                  ;
-            D.initialCoin           =  D.inFund / D.inBaseCoinPrice + D.inCoin                                                                                  ;
-            D.hghestFund            =  (!D.runningWell) || isNaN(D.hghestFund  )  ?  D.initialFund  :  ( D.allFund > D.hghestFund ? D.allFund : D.hghestFund )  ;
-            D.lowestFund            =  (!D.runningWell) || isNaN(D.lowestFund  )  ?  D.initialFund  :  ( D.allFund < D.lowestFund ? D.allFund : D.lowestFund )  ;
-            D.hghestCoin            =  (!D.runningWell) || isNaN(D.hghestCoin  )  ?  D.initialCoin  :  ( D.allCoin > D.hghestCoin ? D.allCoin : D.hghestCoin )  ;
-            D.lowestCoin            =  (!D.runningWell) || isNaN(D.lowestCoin  )  ?  D.initialCoin  :  ( D.allCoin < D.lowestCoin ? D.allCoin : D.lowestCoin )  ;
-            D.allTradeFee           =  (!D.runningWell) || isNaN(D.allTradeFee )  ?  0          :  D.allTradeFee                                                ;
-            D.allFundFee            =  (!D.runningWell) || isNaN(D.allFundFee  )  ?  0          :  D.allFundFee                                                 ;
-            D.gridNum               =  (!D.runningWell) || isNaN(D.gridNum     )  ?  0          :  D.gridNum                                                    ;
-            D.buyTimes              =  (!D.runningWell) || isNaN(D.buyTimes    )  ?  0          :  D.buyTimes                                                   ;
-            D.sellTimes             =  (!D.runningWell) || isNaN(D.sellTimes   )  ?  0          :  D.sellTimes                                                  ;
-            D.avgBuyPriceUnclose    =  (!D.runningWell) || isNaN(D.avgBuyPriceUnclose )  ?  0  :  D.avgBuyPriceUnclose                                          ; 
-            D.lstBuyPriceUnclose    =  (!D.runningWell) || isNaN(D.lstBuyPriceUnclose )  ?  0  :  D.lstBuyPriceUnclose                                          ; 
-            D.hghBuyPriceUnclose    =  (!D.runningWell) || isNaN(D.hghBuyPriceUnclose )  ?  0  :  D.hghBuyPriceUnclose                                          ; 
-            D.lowBuyPriceUnclose    =  (!D.runningWell) || isNaN(D.lowBuyPriceUnclose )  ?  0  :  D.lowBuyPriceUnclose                                          ; 
-            D.lstBuySerial          =  (!D.runningWell) || isNaN(D.lstBuySerial       )  ?  0  :  D.lstBuySerial                                                ;
-            D.hghBuySerial          =  (!D.runningWell) || isNaN(D.hghBuySerial       )  ?  0  :  D.hghBuySerial                                                ;
-            D.lowBuySerial          =  (!D.runningWell) || isNaN(D.lowBuySerial       )  ?  0  :  D.lowBuySerial                                                ;
-            D.last_orderTime        =  (!D.runningWell) || isNaN(D.last_orderTime     )  ?  D.realTradeTime  :  D.last_orderTime                                ;
-
-
-            D.rcd_hghFund       =  (!D.runningWell) || isNaN(D.rcd_hghFund )  ?  D.hghestFund  :  D.rcd_hghFund                                             ;
-            D.rcd_lowFund       =  (!D.runningWell) || isNaN(D.rcd_lowFund )  ?  D.lowestFund  :  D.rcd_lowFund                                             ;
-            D.rcd_hghCoin       =  (!D.runningWell) || isNaN(D.rcd_hghCoin )  ?  D.hghestCoin  :  D.rcd_hghCoin                                             ;
-            D.rcd_lowCoin       =  (!D.runningWell) || isNaN(D.rcd_lowCoin )  ?  D.lowestCoin  :  D.rcd_lowCoin                                             ;
-
-            D.crt_initialFund   =  (D.allFund - D.initialFund) / D.initialFund      ;
-            D.crt_hghestFund    =  (D.allFund - D.hghestFund ) / D.hghestFund       ;
-            D.crt_lowestFund    =  (D.allFund - D.lowestFund ) / D.lowestFund       ;
-            D.crt_initialCoin   =  (D.allCoin - D.initialCoin) / D.initialCoin      ;
-            D.crt_hghestCoin    =  (D.allCoin - D.hghestCoin ) / D.hghestCoin       ;
-            D.crt_lowestCoin    =  (D.allCoin - D.lowestCoin ) / D.lowestCoin       ;
-
-            D.crt_avgBuyPrice   =  (D.TradingSymbolPrice - D.avgBuyPrice) / D.avgBuyPrice   ;
-
-            [D.gridDifficulty, D.enDifficulty, D.exDifficulty] = GetGridDifficulty( D.gridNum               ,
-                                                                                    D.difficultyCoefficient , 
-                                                                                    D.MaxGrid               )  ;
-            // D.gridDifficulty    =  gridDifficulty   ;
-            // D.enDifficulty      =  enDifficulty     ;
-            // D.exDifficulty      =  exDifficulty     ;
-
-            [D.liquidatePrice, D.stopPriceC, D.stopPriceF] = GetLiquidateStopPrice( D.allPosition           , 
-                                                                                    D.avgBuyPrice           , 
-                                                                                    D.inFund                , 
-                                                                                    D.netProfit             , 
-                                                                                    D.crtCoin               , 
-                                                                                    D.TradingSymbolPrice    , 
-                                                                                    D.BaseCoinPrice         , 
-                                                                                    D.BaseCoinHairCut       , 
-                                                                                    D.avgAdn2B              , 
-                                                                                    D.waveUpChg             , 
-                                                                                    D.hghestFund            , 
-                                                                                    D.hghestCoin            , 
-                                                                                    D.stopRate4F            , 
-                                                                                    D.stopRate4C            , 
-                                                                                    D.notStop4F             , 
-                                                                                    D.notStop4C             );
-
-            // D.liquidatePrice    =   liquidatePrice  ;
-            // D.stopPriceC        =   stopPriceC      ;
-            // D.stopPriceF        =   stopPriceF      ;
-
-            D.tocrt_liquidatePrice  =  (D.liquidatePrice - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
-            D.tocrt_stopPriceC      =  (D.stopPriceC     - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
-            D.tocrt_stopPriceF      =  (D.stopPriceF     - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
-
-            // 账户状态判断
-            D.accStatus =  'Normal' ; 
-            if (D.TradingSymbolPrice < D.liquidatePrice) {
-                D.accStatus         = 'liquidated'                      ;
-                D.thisAlertMessage  =  accStatus_liquidated     + '\n'  ;
-            }
-            if (D.TradingSymbolPrice < D.stopPriceC    ) {
-                D.accStatus         = 'stopC'                           ;
-                D.thisAlertMessage  =  accStatus_stopC          + '\n'  ;
-            } 
-            if (D.TradingSymbolPrice < D.stopPriceF    ) {
-                D.accStatus         = 'stopF'                           ;
-                D.thisAlertMessage  =  accStatus_stopF          + '\n'  ;
-            }
-            if (D.TradingSymbolPrice < D.stopPriceC  &&  D.TradingSymbolPrice < D.stopPriceF ) {
-                D.accStatus         = 'stopCF'                          ;
-                D.thisAlertMessage  =  accStatus_stopCF         + '\n'  ;
-            }
-
-            D.therePosition     =  D.gridNum > 0  ?  true  :  false  ; 
-
-            if (D.allFund > (1+D.barChgA)*D.rcd_hghFund) { D.thisAlertMessage += 'new rcd_hghFund' + '\n' ; D.rcd_hghFund = D.allFund ;}
-            if (D.allFund < (1-D.barChgA)*D.rcd_lowFund) { D.thisAlertMessage += 'new rcd_lowFund' + '\n' ; D.rcd_lowFund = D.allFund ;}
-            if (D.allCoin > (1+D.barChgA)*D.rcd_hghCoin) { D.thisAlertMessage += 'new rcd_hghCoin' + '\n' ; D.rcd_hghCoin = D.allCoin ;}
-            if (D.allCoin < (1-D.barChgA)*D.rcd_lowCoin) { D.thisAlertMessage += 'new rcd_lowCoin' + '\n' ; D.rcd_hghCoin = D.allCoin ;}
+            ReNewAccount(D) ;
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////
             if (D.ing_orderStatus === order_waiting) {
@@ -287,7 +299,7 @@ export async function HandleTV(d) {
                 let ifWaitingThenCancel = true  ;
                 if (D.ing_buysell = order_BUY  && D.TradingSymbolPrice < D.ing_orderPrice*(1+D.waveUpChg)) {ifWaitingThenCancel = false ;}
                 if (D.ing_buysell = order_SELL && D.TradingSymbolPrice > D.ing_orderPrice*(1+D.waveDnChg)) {ifWaitingThenCancel = false ;}
-                const res_broker = await CheckOrderConfirm(ifWaitingThenCancel, sheets, spreadsheetId) ; //, D.TradingSymbolPrice, D.ing_orderPrice, D.ing_buysell)  ;
+                const res_broker = await CheckOrderConfirm(ifWaitingThenCancel, sheets, spreadsheetId) ;
                 if (res_broker.ing_orderStatus === "cancel" )  {
                     delete D.ing_orderID            ; 
                     delete D.ing_orderTimestamp     ; 
@@ -312,8 +324,7 @@ export async function HandleTV(d) {
                 }
 
                 if (res_broker.ing_orderStatus  === "confirm")  {
-                    // 此时res_broker中已包括 last_orderTime
-                    Object.assign(D, res_broker)  ;
+                    Object.assign(D, res_broker)  ;// 此时res_broker中已包括 last_orderTime
                     const newTradehistory = [ [ D.ing_orderID       || "NA"  ,
                                                 D.ing_orderDate     || "NA"  ,
                                                 D.ing_confirmDate   || "NA"  ,
@@ -331,22 +342,68 @@ export async function HandleTV(d) {
                                                 D.ing_allFund       || "NA"  ,
                                                 D.ing_allCoin       || "NA"  ,
                                                 D.ing_reason        || "NA"  ] ]  ;
-                    // orderID	orderDate	confirmDate	serial	buysell	triggerPrice	orderType	orderPrice	confirmPrice	boughtPrice	qty	getProfit	avgBuyPrice	tradeFee	allFund	allCoin	reason
                     await sheets.spreadsheets.values.append({
-                        spreadsheetId,
-                        range: "tradeHistory!A1:A",
-                        valueInputOption: 'USER_ENTERED', // 允许自动识别数字/日期格式
-                        requestBody: { values: newTradehistory }
-                    });
+                        spreadsheetId                                           ,
+                        range               : "tradeHistory!A1:A"               ,
+                        valueInputOption    : 'USER_ENTERED'                    , 
+                        requestBody         : { values: newTradehistory }       }   )   ;
+                    
+                    let uncloseOrders = await GetDataFromSheet(sheets, spreadsheetId, ranges.uncloseOrdersRange) || []; // 确保它永远是个数组
+                    if (D.ing_buysell === order_BUY) {
+                        uncloseOrders.push( [ 
+                                            D.ing_orderID                   || "NA"  ,
+                                            D.ing_orderDate                 || "NA"  ,
+                                            D.ing_serial                    || "NA"  ,
+                                            D.ing_triggerPrice              || "NA"  ,
+                                            D.ing_confirmPrice              || "NA"  ,
+                                            D.ing_qty                       || "NA"  ,
+                                            D.ing_confirmPrice * D.ing_qty  || "NA"  ,
+                                            D.ing_reason                    || "NA"  ] ) ;
+                    } 
+                    if (D.ing_buysell === order_SELL) {
+                        uncloseOrders = uncloseOrders.filter(row => String(row[2]) !== String(D.ing_serial));
+                    }
+                    await sheets.spreadsheets.values.clear( {
+                        spreadsheetId                                   ,
+                        range           : ranges.uncloseOrdersRange     } ) ;
+                    if (uncloseOrders.length > 0) {
+                        await sheets.spreadsheets.values.update({
+                            spreadsheetId                                           ,
+                            range               : ranges.uncloseOrdersRange         ,
+                            valueInputOption    : 'USER_ENTERED'                    , 
+                            requestBody         : { values: uncloseOrders }         }   )   ;
+                    }
 
-                    D.ifOrderWaiting    =  false  ;
+                    // let uncloseOrders = ( await GetDataFromSheet(sheets, spreadsheetId, ranges.uncloseOrdersRange) )
+                    //     .filter(row => row[2] !== "" && row[2] !== null) // 过滤掉第二个元素为空的行
+                    //     .sort((a, b) => Number(a[2]) - Number(b[2]));
 
 
+                    D.ifOrderWaiting        =   false                                                                                                   ;
+                    D.netProfit             +=  D.ing_getProfit                                                                                         ;
+                    D.avgBuyPrice           =   D.ing_avgBuyPrice                                                                                       ;
+                    D.allTradeFee           +=  D.ing_tradeFee                                                                                          ;
+                    D.gridNum               +=  D.ing_buysell===order_BUY ? 1  : -1                                                                     ;
+                    D.buyTimes              +=  D.ing_buysell===order_BUY ? 1  : 0                                                                      ;
+                    D.sellTimes             +=  D.ing_buysell===order_BUY ? -1 : 0                                                                      ;
+                    D.avgBuyPriceUnclose    =   D.gridNum > 0  ?
+                                                (D.avgBuyPriceUnclose * D.allPosition + D.ing_avgBuyPrice * D.ing_qty) / (D.allPosition + D.ing_qty) :
+                                                0                                                                                                       ;
+                    D.allPosition           +=  D.ing_qty                                                                                               ;
 
+                    D.lstBuyPriceUnclose    =  uncloseOrders.length > 0  ?  uncloseOrders[0][4]  :  0    ;
+                    D.hghBuyPriceUnclose    =  uncloseOrders.length > 0  ?  uncloseOrders[0][4]  :  0    ; 
+                    D.lowBuyPriceUnclose    =  uncloseOrders.length > 0  ?  uncloseOrders[0][4]  :  0    ; 
+                    D.lstBuySerial          =  uncloseOrders.length > 0  ?  0                    :  0    ;
 
-
-
-
+                    if (uncloseOrders.length > 0) {
+                        uncloseOrders.forEach((order) => {
+                            D.lstBuyPriceUnclose    = D.lstBuySerial       < order[2]   ?  order[4]  :  D.lstBuyPriceUnclose    ;
+                            D.hghBuyPriceUnclose    = D.hghBuyPriceUnclose < order[4]   ?  order[4]  :  D.hghBuyPriceUnclose    ; 
+                            D.lowBuyPriceUnclose    = D.lowBuyPriceUnclose > order[4]   ?  order[4]  :  D.lowBuyPriceUnclose    ; 
+                            D.lstBuySerial          = D.lstBuySerial       < order[2]   ?  order[2]  :  D.lstBuySerial          ;
+                        });
+                    }
 
 
 
@@ -356,14 +413,8 @@ export async function HandleTV(d) {
 
 
                     
-
+                    ReNewAccount(D) ;
                 }
-            }
-
-            D.inOrdersInterval =  false  ;
-            if (D.timestamp - D.last_orderTime < D.ordersInterval * 60000) {
-                D.inOrdersInterval  =  true  ;
-                D.thisAlertMessage  += 'cannot trade due to ordersInterval' + '\n'  ;
             }
 
 
@@ -371,12 +422,24 @@ export async function HandleTV(d) {
             D.cantBuyReason     =  ""       ;
             D.canSell           =  true     ;
             D.cantSellReason    =  ""       ;
+
+
+            D.inOrdersInterval =  false  ;
+            if (D.timestamp - D.last_orderTime < D.ordersInterval * 60000) {
+                D.inOrdersInterval  =  true  ;
+                D.thisAlertMessage  += 'cannot trade due to ordersInterval' + '\n'  ;
+            }
+            if (D.inOrdersInterval || D.ing_orderStatus === order_waiting) {
+                D.canBuy    =  false  ;
+                D.canSell   =  false  ;
+            }
+
+            if (D.gridNum >= D.MaxGrid) {
+                D.canBuy            =   false                           ;
+                D.cantBuyReason     +=  "gridNum >== MaxGrid"    + "\n" ;
+            }
             
-            D.closeToRndHgh     =  D.roundHgh / Math.pow((1+D.waveUpChg), D.notBuyCloseToRndHghStep)  ;
-            D.closeToRndLow     =  D.roundLow / Math.pow((1+D.waveDnChg), D.notBuyCloseToRndLowStep)  ;
-            D.hghToBuy          =  Math.min(D.basicHghToBuy, D.closeToRndHgh    )   ;
-            D.lowToBuy          =  Math.max(D.basicLowToBuy, D.closeToRndLow    )   ;
-            D.lowToSell         =  Math.max(D.basicLowToSell                    )   ;
+
             if (D.TradingSymbolPrice > D.basicHghToBuy) {
                 D.canBuy            =   false                           ;
                 D.cantBuyReason     +=  'price > basicHghToBuy'  + '\n' ;
@@ -404,10 +467,7 @@ export async function HandleTV(d) {
 
             D.thisAlertMessage      +=  D.cantBuyReason + D.cantSellReason  ;
             
-            if (D.inOrdersInterval || D.ing_orderStatus === order_waiting) {
-                D.canBuy    =  false  ;
-                D.canSell   =  false  ;
-            }
+
 
 
             // 测试
@@ -446,7 +506,7 @@ export async function HandleTV(d) {
             // 测试
 
 
-            D.runningWell       =   true                ;
+            D.runningWell       =   true    ;
 
         } else {
             // 未到交易时刻的逻辑
