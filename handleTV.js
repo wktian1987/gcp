@@ -157,6 +157,8 @@ function GetLiquidateStopPrice( allPosition         ,
 function ReNewAccount(D, newData) {
         if (newData !== undefined) { Object.assign(D, newData) ; }
         CleanObjToNumStrBool(D) ;
+        D.thisAlertMessage  +=  "\n"  ;
+
         D.allPosition           =  isNaN(D.allPosition )  ?  0          :  D.allPosition                                                ;
         D.avgBuyPrice           =  isNaN(D.avgBuyPrice )  ?  0          :  D.avgBuyPrice                                                ;
         D.netProfit             =  isNaN(D.netProfit   )  ?  0          :  D.netProfit                                                  ;
@@ -202,11 +204,8 @@ function ReNewAccount(D, newData) {
         D.crt_avgBuyPrice       =  (D.TradingSymbolPrice - D.avgBuyPrice) / D.avgBuyPrice   ;
 
         [D.gridDifficulty, D.enDifficulty, D.exDifficulty] = GetGridDifficulty( D.gridNum               ,
-                                                                                    D.difficultyCoefficient , 
-                                                                                    D.MaxGrid               )  ;
-        // D.gridDifficulty    =  gridDifficulty   ;
-        // D.enDifficulty      =  enDifficulty     ;
-        // D.exDifficulty      =  exDifficulty     ;
+                                                                                D.difficultyCoefficient , 
+                                                                                D.MaxGrid               )  ;
 
         [D.liquidatePrice, D.stopPriceC, D.stopPriceF] = GetLiquidateStopPrice( D.allPosition           , 
                                                                                 D.avgBuyPrice           , 
@@ -225,9 +224,6 @@ function ReNewAccount(D, newData) {
                                                                                 D.notStop4F             , 
                                                                                 D.notStop4C             );
 
-        // D.liquidatePrice    =   liquidatePrice  ;
-        // D.stopPriceC        =   stopPriceC      ;
-        // D.stopPriceF        =   stopPriceF      ;
 
         D.tocrt_liquidatePrice  =  (D.liquidatePrice - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
         D.tocrt_stopPriceC      =  (D.stopPriceC     - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
@@ -291,8 +287,6 @@ export async function HandleTV(d) {
             ReNewAccount(D) ;
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            D.thisAlertMessage  += "\n"  ;
-
             if (D.ing_orderStatus === order_waiting) {
                 D.ifOrderWaiting    =  true  ;
                 D.thisAlertMessage  +=  'cannot trade due to existing order waiting confirmed' + '\n'  ;
