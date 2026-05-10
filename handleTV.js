@@ -57,7 +57,7 @@ const   NotSellReason_cantProfit            =  "cant get enough Profit"         
 
 const   toFill          =  "toFill"         ;
 const   toGCPRanges     =  "toGCP!A:B"      ;
-const   huanHang        =  "__HuangHang__"  ;
+const   HuanHang        =  "__HuangHang__"  ;
 const   order_T_LMT     =  "LMT"            ;
 const   order_T_MKT     =  "MKT"            ; 
 const   order_BUY       =  "B"              ;
@@ -280,7 +280,7 @@ export async function HandleTV(d) {
         const ranges    =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges ) ) ;
         const D         =  ranges.toGCP  ?  CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP)))  :  {};
         Object.assign(D, d);
-        D.thisAlertMessage  =  String(D.thisAlertMessage || "").trim().replaceAll(huanHang, "\n")       ;
+        D.thisAlertMessage  =  String(D.thisAlertMessage || "").trim().replaceAll(HuanHang, "\n")       ;
 
         if (D.timestamp > D.realTradeTime) {
             // 收到新消息数据初始化
@@ -291,6 +291,7 @@ export async function HandleTV(d) {
             ReNewAccount(D) ;
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            D.thisAlertMessage  += "\n"  ;
             if (D.ing_orderStatus === order_waiting) {
                 D.ifOrderWaiting    =  true  ;
                 D.thisAlertMessage  +=  'cannot trade due to existing order waiting confirmed' + '\n'  ;
