@@ -449,7 +449,7 @@ export async function HandleTV(d) {
                 D.cantSellReason    +=  'price < basicLowToSell' + '\n' ;
             }
 
-            if (D.freeMargin < 1.1 * D.minEnExPosition * D.TradingSymbolPrice / D.leverage) {
+            if (D.freeMargin / (D.MaxGrid - D.gridNum) < 1.1 * D.minEnExPosition * D.TradingSymbolPrice / D.leverage) {
                 D.canBuy            =   false                           ;
                 D.cantBuyReason     +=   'Not enough freeMargin' + '\n' ;
             }
@@ -476,7 +476,7 @@ export async function HandleTV(d) {
                 S.ing_orderPrice        =  S.ing_triggerPrice               ;
                 S.ing_confirmPrice      =  "NA"                             ;
                 S.ing_boughtPrice       =  "NA"                             ;
-                S.ing_qty               =  D.minEnExPosition * Math.max(1, Math.floor(D.freeMargin*D.leverage/D.TradingSymbolPrice/D.minEnExPosition) ) ;
+                S.ing_qty               =  D.minEnExPosition * Math.max(1, Math.floor(D.freeMargin*D.leverage/D.TradingSymbolPrice/D.minEnExPosition/(D.MaxGrid - D.gridNum)) ) ;
                 S.ing_getProfit         =  "NA"                             ;
                 S.ing_avgBuyPrice       =  "NA"                             ;
                 S.ing_tradeFee          =  "NA"                             ;
@@ -488,7 +488,6 @@ export async function HandleTV(d) {
                 S = await SendOrderToBroker(S, sheets, spreadsheetId) ;
 
                 S.thisAlertMessage  +=  "New buy order" + "\n"  ;
-                // S.last_orderTime    =   nowTimestamp            ;
                 Object.assign(D, S) ;
             }
 
