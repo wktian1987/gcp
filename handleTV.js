@@ -292,6 +292,7 @@ export async function HandleTV(d) {
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////
             D.thisAlertMessage  += "\n"  ;
+
             if (D.ing_orderStatus === order_waiting) {
                 D.ifOrderWaiting    =  true  ;
                 D.thisAlertMessage  +=  'cannot trade due to existing order waiting confirmed' + '\n'  ;
