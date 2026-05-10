@@ -267,8 +267,10 @@ function ReNewAccount(D, newData) {
 
 export async function HandleTV(d) {
     CleanObjToNumStrBool(d) ;
+    d.thisAlertMessage          =   String(d.thisAlertMessage || "").replaceAll(HuanHang, "\n")       ;
     d.tvUpdateTime              =   GetTimeStringWithOffset(8, d.timestamp) ;
     d.gcpGetTime                =   GetTimeStringWithOffset(8)              ;
+    
 
     try {
         const spreadsheetId = GetSpreadsheetID(d.botNumber);
@@ -276,7 +278,7 @@ export async function HandleTV(d) {
         const ranges    =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges ) ) ;
         const D         =  ranges.toGCP  ?  CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP)))  :  {};
         Object.assign(D, d);
-        D.thisAlertMessage  =  String(D.thisAlertMessage || "").trim().replaceAll(HuanHang, "\n")       ;
+        
 
         if (D.timestamp > D.realTradeTime) {
             // 收到新消息数据初始化
