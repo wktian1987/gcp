@@ -401,14 +401,6 @@ export async function HandleTV(d) {
                         });
                     }
 
-
-
-
-
-
-
-
-                    
                     ReNewAccount(D) ;
                 }
             }
@@ -457,9 +449,10 @@ export async function HandleTV(d) {
                 D.cantSellReason    +=  'price < basicLowToSell' + '\n' ;
             }
 
-
-
-
+            if (D.freeMargin < 1.1 * D.minEnExPosition * D.TradingSymbolPrice / D.leverage) {
+                D.canBuy            =   false                           ;
+                D.cantBuyReason     +=   'Not enough freeMargin' + '\n' ;
+            }
 
             D.thisAlertMessage      +=  D.cantBuyReason + D.cantSellReason  ;
             
@@ -500,7 +493,6 @@ export async function HandleTV(d) {
             }
 
             // 测试
-
 
             D.runningWell       =   true    ;
 
