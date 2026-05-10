@@ -413,7 +413,6 @@ export async function HandleTV(d) {
             D.canSell           =  true     ;
             D.cantSellReason    =  ""       ;
 
-
             D.inOrdersInterval =  false  ;
             if (D.timestamp - D.last_orderTime < D.ordersInterval * 60000) {
                 D.inOrdersInterval  =  true  ;
@@ -458,8 +457,6 @@ export async function HandleTV(d) {
 
             D.thisAlertMessage      +=  D.cantBuyReason + D.cantSellReason  ;
             
-
-
 
             // 测试
             // if (D.canBuy && D.touchTargetLow) {
