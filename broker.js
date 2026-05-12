@@ -31,12 +31,9 @@ export async function SendOrderToBroker(S, sheets, spreadsheetId) {
 }
 
 export async function CheckOrderConfirm(ifWaitingThenCancel, sheets, spreadsheetId) { //, price, orderPrice, buysell) {
-    const res_broker    = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A1:B29'));
-    const res           = CleanObjToNumStrBool(res_broker) ;
-    // const S = CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A30:B')))  ;
+    const res   = CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A1:B29'))) ;
     if (res.orderStatus === "confirm")  {
-    // if ( (buysell === "B" && price < orderPrice) || (buysell === "S" && price > orderPrice) ) {
-        const S = CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A30:B')))  ;
+        const S = CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A30:B' )))  ;
         S.ing_orderID		    = res.orderID        ;
         S.ing_confirmDate		= res.confirmDate    ;
         S.ing_confirmPrice		= res.confirmPrice   ;

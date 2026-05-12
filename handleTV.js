@@ -267,16 +267,18 @@ function ReNewAccount(D, newData) {
 
 export async function HandleTV(d) {
     CleanObjToNumStrBool(d) ;
-    d.thisAlertMessage          =   String(d.thisAlertMessage || "").replaceAll(HuanHang, "\n")       ;
-    d.tvUpdateTime              =   GetTimeStringWithOffset(8, d.timestamp) ;
-    d.gcpGetTime                =   GetTimeStringWithOffset(8)              ;
+    d.thisAlertMessage          =   String(d.thisAlertMessage || "").replaceAll(HuanHang, "\n")         ;
+    d.tvUpdateTime              =   GetTimeStringWithOffset(8, d.timestamp)                             ;
+    d.gcpGetTime                =   GetTimeStringWithOffset(8)                                          ;
     
 
     try {
         const spreadsheetId = GetSpreadsheetID(d.botNumber);
         //获取现存数据
-        const ranges    =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges ) ) ;
-        const D         =  ranges.toGCP  ?  CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP)))  :  {};
+        const ranges    =   Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges ) )                                ;
+        const D         =   ranges.toGCP                                                                                            ?
+                            CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP)))   :  
+                            {}                                                                                                              ;
         Object.assign(D, d);
         
 
@@ -290,10 +292,9 @@ export async function HandleTV(d) {
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////
             if (D.ing_orderStatus === order_waiting) {
-                D.ifOrderWaiting    =  true  ;
-                D.thisAlertMessage  +=  'cannot trade due to existing order waiting confirmed' + '\n'  ;
-            } 
-            if (D.ifOrderWaiting) {
+                D.ifOrderWaiting    =  true                                                             ;
+                D.thisAlertMessage  +=  'cannot trade due to existing order waiting confirmed' + '\n'   ;
+
                 let ifWaitingThenCancel = true  ;
                 if (D.ing_buysell = order_BUY  && D.TradingSymbolPrice < D.ing_orderPrice*(1+D.waveUpChg)) {ifWaitingThenCancel = false ;}
                 if (D.ing_buysell = order_SELL && D.TradingSymbolPrice > D.ing_orderPrice*(1+D.waveDnChg)) {ifWaitingThenCancel = false ;}
@@ -339,7 +340,9 @@ export async function HandleTV(d) {
                                                 D.ing_tradeFee      || "NA"  ,
                                                 D.ing_allFund       || "NA"  ,
                                                 D.ing_allCoin       || "NA"  ,
-                                                D.ing_reason        || "NA"  ] ]  ;
+                                                D.ing_reason        || "NA"  ,
+                                                D.last_orderTime    || "na"  ,   // 这两个参数要删去，无意义
+                                                D.avgBuyPrice       || "na"  ] ]  ;
                     await sheets.spreadsheets.values.append({
                         spreadsheetId                                           ,
                         range               : "tradeHistory!A1:A"               ,
@@ -373,12 +376,12 @@ export async function HandleTV(d) {
                     }
 
                     D.ifOrderWaiting        =   false                                                                                                   ;
-                    D.netProfit             +=  D.ing_getProfit                                                                                         ;
+                    D.netProfit             +=  D.ing_getProfit + D.ing_tradeFee                                                                        ;
                     D.avgBuyPrice           =   D.ing_avgBuyPrice                                                                                       ;
                     D.allTradeFee           +=  D.ing_tradeFee                                                                                          ;
-                    D.gridNum               +=  D.ing_buysell===order_BUY ? 1  : -1                                                                     ;
-                    D.buyTimes              +=  D.ing_buysell===order_BUY ? 1  : 0                                                                      ;
-                    D.sellTimes             +=  D.ing_buysell===order_BUY ? -1 : 0                                                                      ;
+                    D.gridNum               +=  D.ing_buysell===order_BUY  ?  1  : -1                                                                   ;
+                    D.buyTimes              +=  D.ing_buysell===order_BUY  ?  1  : 0                                                                    ;
+                    D.sellTimes             +=  D.ing_buysell===order_BUY  ?  1  : 0                                                                    ;
                     D.avgBuyPriceUnclose    =   D.gridNum > 0  ?
                                                 (D.avgBuyPriceUnclose * D.allPosition + D.ing_avgBuyPrice * D.ing_qty) / (D.allPosition + D.ing_qty) :
                                                 0                                                                                                       ;
