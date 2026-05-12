@@ -372,11 +372,6 @@ export async function HandleTV(d) {
                             requestBody         : { values: uncloseOrders }         }   )   ;
                     }
 
-                    // let uncloseOrders = ( await GetDataFromSheet(sheets, spreadsheetId, ranges.uncloseOrdersRange) )
-                    //     .filter(row => row[2] !== "" && row[2] !== null) // 过滤掉第二个元素为空的行
-                    //     .sort((a, b) => Number(a[2]) - Number(b[2]));
-
-
                     D.ifOrderWaiting        =   false                                                                                                   ;
                     D.netProfit             +=  D.ing_getProfit                                                                                         ;
                     D.avgBuyPrice           =   D.ing_avgBuyPrice                                                                                       ;
@@ -455,6 +450,11 @@ export async function HandleTV(d) {
                 D.cantBuyReason     +=   'Not enough freeMargin' + '\n' ;
             }
 
+            if (D.gridNum < 1) {
+                D.canSell           =   false                           ;
+                D.cantSellReason    +=  'No position to sell'    + '\n' ;
+            }
+
             D.thisAlertMessage      +=  D.cantBuyReason + D.cantSellReason  ;
             
 
@@ -463,7 +463,7 @@ export async function HandleTV(d) {
             if (D.canBuy) {
                 let nowTimestamp = Date.now()   ;
                 let S = {} ;
-                S.ing_orderID           =  'od-' + D.tvUpdateTime           ;
+                S.ing_orderID           =  'B-' + D.tvUpdateTime           ;
                 S.ing_orderTimestamp    =  nowTimestamp                     ;
                 S.ing_orderDate         =  GetTimeStringWithOffset(8)       ;
                 S.ing_confirmTimestamp  =  "NA"                             ;
@@ -487,6 +487,47 @@ export async function HandleTV(d) {
                 S = await SendOrderToBroker(S, sheets, spreadsheetId) ;
 
                 S.thisAlertMessage  +=  "New buy order" + "\n"  ;
+                Object.assign(D, S) ;
+            }
+
+            D.toSell        =  false    ;
+            let toSellOrder =  []       ;
+            // orderID	orderDate	serial	triggerPrice	confirmPrice	qty	P×Q	reason
+            if ( D.canSell && (D.TradingSymbolPrice > (1+waveUpChg) * D.lstBuyPriceUnclose)  &&  D.touchTargetHgh  ) {
+                let uncloseOrders = await GetDataFromSheet(sheets, spreadsheetId, ranges.uncloseOrdersRange) || []; // 确保它永远是个数组
+                D.toSell    =  true  ;
+                toSellOrder = uncloseOrders.find( v => String(v[2]) === String(D.lstBuySerial)   ) ;
+                toSellOrder[7] = 'touchTargetHgh'   ;
+            }
+
+
+            if (D.canSell &&  D.toSell ) {
+                let nowTimestamp = Date.now()   ;
+                let S = {} ;
+                S.ing_orderID           =  toSellOrder[0].trim().replace('B', 'S')          ;
+                S.ing_orderTimestamp    =  nowTimestamp                                     ;
+                S.ing_orderDate         =  GetTimeStringWithOffset(8)                       ;
+                S.ing_confirmTimestamp  =  "NA"                                             ;
+                S.ing_confirmDate       =  "NA"                                             ;
+                S.ing_serial            =  -1 * Number(toSellOrder[2])                      ;
+                S.ing_buysell           =  order_SELL                                       ;
+                S.ing_triggerPrice      =  D.TradingSymbolPrice                             ;
+                S.ing_orderType         =  order_T_LMT                                      ;
+                S.ing_orderPrice        =  S.ing_triggerPrice                               ;
+                S.ing_confirmPrice      =  "NA"                                             ;
+                S.ing_boughtPrice       =  NumStrBool(toSellOrder[4])                       ;
+                S.ing_qty               =  -1 * Number(toSellOrder[5])                      ;
+                S.ing_getProfit         =  "NA"                                             ;
+                S.ing_avgBuyPrice       =  "NA"                                             ;
+                S.ing_tradeFee          =  "NA"                                             ;
+                S.ing_allFund           =  "NA"                                             ;
+                S.ing_allCoin           =  "NA"                                             ;
+                S.ing_reason            =  toSellOrder[7]                                   ;
+                S.ing_orderStatus       =  order_pending                                    ;
+
+                S = await SendOrderToBroker(S, sheets, spreadsheetId) ;
+
+                S.thisAlertMessage  +=  "New sell order" + "\n"  ;
                 Object.assign(D, S) ;
             }
 
