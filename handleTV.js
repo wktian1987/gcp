@@ -461,7 +461,6 @@ export async function HandleTV(d) {
             D.thisAlertMessage      +=  D.cantBuyReason + D.cantSellReason  ;
             
 
-            // 测试
             // if (D.canBuy && D.touchTargetLow) {
             if (D.canBuy) {
                 let nowTimestamp = Date.now()   ;
@@ -533,8 +532,6 @@ export async function HandleTV(d) {
                 S.thisAlertMessage  +=  "New sell order" + "\n"  ;
                 Object.assign(D, S) ;
             }
-
-            // 测试
 
             D.runningWell       =   true    ;
 
