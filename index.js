@@ -38,7 +38,7 @@ app.post('/tradingview', json(), async (req, res) => {
         console.log("✔ 收到TradingView webhook Message");
         res.status(200).json({ status: 'success' });
     } else {
-        console.log("？ 收到未校验的TradingView Webhook Message:" + JSON.stringify(body)); 
+        console.log("？ 收到未校验的TradingView Webhook Message:" + body); 
         // 虽然未验证的消息，但是仍然给发送者发送“我已经收到了”
         return res.status(200).json({ status: 'success' });
     }

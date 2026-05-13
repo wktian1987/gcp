@@ -342,7 +342,7 @@ export async function HandleTV(d) {
                                                 D.ing_allCoin       || "NA"  ,
                                                 D.ing_reason        || "NA"  ,
                                                 D.last_orderTime    || "na"  ,   // 这两个参数要删去，无意义
-                                                D.avgBuyPrice       || "na"  ] ]  ;
+                                                D.ing_avgBuyPrice       || "na"  ] ]  ;
                     await sheets.spreadsheets.values.append({
                         spreadsheetId                                           ,
                         range               : "tradeHistory!A1:A"               ,
