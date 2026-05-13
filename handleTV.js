@@ -418,45 +418,45 @@ export async function HandleTV(d) {
             if (D.inOrdersInterval || D.ing_orderStatus === order_waiting) {
                 D.canBuy            =  false  ;
                 D.canSell           =  false  ;
-                D.cantBuyReason     +=  'there order waiting' + '\n' ;
-                D.cantSellReason    +=  'there order waiting' + '\n' ;
+                D.cantBuyReason     +=  'cant buy: '  + 'there order waiting' + '\n' ;
+                D.cantSellReason    +=  'cant sell: ' + 'there order waiting' + '\n' ;
             }
 
             if (D.gridNum >= D.MaxGrid) {
                 D.canBuy            =   false                           ;
-                D.cantBuyReason     +=  "gridNum >== MaxGrid"    + "\n" ;
+                D.cantBuyReason     +=  'cant buy: '  + "gridNum >== MaxGrid"    + "\n" ;
             }
             
 
             if (D.TradingSymbolPrice > D.basicHghToBuy) {
                 D.canBuy            =   false                           ;
-                D.cantBuyReason     +=  'price > basicHghToBuy'  + '\n' ;
+                D.cantBuyReason     +=  'cant buy: '  + 'price > basicHghToBuy'  + '\n' ;
             }
             if (D.TradingSymbolPrice > D.closeToRndHgh) {
                 D.canBuy            =   false                           ;
-                D.cantBuyReason     +=  'price closeToRndHgh'    + '\n' ;
+                D.cantBuyReason     +=  'cant buy: '  + 'price closeToRndHgh'    + '\n' ;
             }
             if (D.TradingSymbolPrice < D.basicLowToBuy) {
                 D.canBuy            =   false                           ;
-                D.cantBuyReason     +=  'price < basicLowToBuy'  + '\n' ;
+                D.cantBuyReason     +=  'cant buy: '  + 'price < basicLowToBuy'  + '\n' ;
             } 
             if (D.TradingSymbolPrice < D.closeToRndLow) {
                 D.canBuy            =   false                           ;
-                D.cantBuyReason     +=  'price closeToRndLow'    + '\n' ;
+                D.cantBuyReason     +=  'cant buy: '  + 'price closeToRndLow'    + '\n' ;
             }
             if (D.TradingSymbolPrice < D.basicLowToSell) {
                 D.canSell           =   false                           ;
-                D.cantSellReason    +=  'price < basicLowToSell' + '\n' ;
+                D.cantSellReason    +=  'cant sell: ' + 'price < basicLowToSell' + '\n' ;
             }
 
             if (D.freeMargin / (D.MaxGrid - D.gridNum) < 1.1 * D.minEnExPosition * D.TradingSymbolPrice / D.leverage) {
                 D.canBuy            =   false                           ;
-                D.cantBuyReason     +=   'Not enough freeMargin' + '\n' ;
+                D.cantBuyReason     +=   'cant buy: '  + 'Not enough freeMargin' + '\n' ;
             }
 
             if (D.gridNum < 1) {
                 D.canSell           =   false                           ;
-                D.cantSellReason    +=  'No position to sell'    + '\n' ;
+                D.cantSellReason    +=  'cant sell: ' + 'No position to sell'    + '\n' ;
             }
 
             D.thisAlertMessage      +=  D.cantBuyReason + D.cantSellReason  ;
