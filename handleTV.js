@@ -158,7 +158,7 @@ function ReNewAccount(D, newData) {
         if (newData !== undefined) { Object.assign(D, newData) ; }
         CleanObjToNumStrBool(D) ;
         D.thisAlertMessage  +=  "\n"  ;
-        D.testAvai  += "\n" + "Now allPosition: "  + String(D.allPosition); // 删除本行
+        // D.testAvai  += "\n" + "Now allPosition: "  + String(D.allPosition); // 删除本行
 
         D.allPosition           =  isNaN(D.allPosition )  ?  0          :  D.allPosition                                                ;
         D.avgBuyPrice           =  isNaN(D.avgBuyPrice )  ?  0          :  D.avgBuyPrice                                                ;
