@@ -461,8 +461,8 @@ export async function HandleTV(d) {
             D.thisAlertMessage      +=  D.cantBuyReason + D.cantSellReason  ;
             
 
-            // if (D.canBuy && D.touchTargetLow) {
-            if (D.canBuy) {
+            if (D.canBuy && D.touchTargetLow) {
+            // if (D.canBuy) {
                 let nowTimestamp = Date.now()   ;
                 let S = {} ;
                 S.ing_orderID           =  'B-' + D.tvUpdateTime           ;
