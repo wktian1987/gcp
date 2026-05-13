@@ -188,7 +188,7 @@ function ReNewAccount(D, newData) {
         D.lstBuySerial          =  isNaN(D.lstBuySerial       )  ?  0  :  D.lstBuySerial                                                ;
         D.hghBuySerial          =  isNaN(D.hghBuySerial       )  ?  0  :  D.hghBuySerial                                                ;
         D.lowBuySerial          =  isNaN(D.lowBuySerial       )  ?  0  :  D.lowBuySerial                                                ;
-        D.last_orderTime        =  isNaN(D.last_orderTime     )  ?  D.realTradeTime  :  D.last_orderTime                                ;
+        D.last_orderTime        =  isNaN(D.last_orderTime     )  ?  0  :  D.last_orderTime                                ;
 
         D.rcd_hghFund           =  isNaN(D.rcd_hghFund )  ?  D.hghestFund  :  D.rcd_hghFund                                             ;
         D.rcd_lowFund           =  isNaN(D.rcd_lowFund )  ?  D.lowestFund  :  D.rcd_lowFund                                             ;
@@ -496,7 +496,7 @@ export async function HandleTV(d) {
             D.toSell        =  false    ;
             let toSellOrder =  []       ;
             // orderID	orderDate	serial	triggerPrice	confirmPrice	qty	P×Q	reason
-            if ( D.canSell && (D.TradingSymbolPrice > (1+waveUpChg) * D.lstBuyPriceUnclose)  &&  D.touchTargetHgh  ) {
+            if ( D.canSell && (D.TradingSymbolPrice > (1+D.waveUpChg) * D.lstBuyPriceUnclose)  &&  D.touchTargetHgh  ) {
                 let uncloseOrders = await GetDataFromSheet(sheets, spreadsheetId, ranges.uncloseOrdersRange) || []; // 确保它永远是个数组
                 D.toSell    =  true  ;
                 toSellOrder = uncloseOrders.find( v => String(v[2]) === String(D.lstBuySerial)   ) ;
