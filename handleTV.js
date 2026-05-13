@@ -158,6 +158,7 @@ function ReNewAccount(D, newData) {
         if (newData !== undefined) { Object.assign(D, newData) ; }
         CleanObjToNumStrBool(D) ;
         D.thisAlertMessage  +=  "\n"  ;
+        D.testAvai  = "isOK"  ; // 删除本行
 
         D.allPosition           =  isNaN(D.allPosition )  ?  0          :  D.allPosition                                                ;
         D.avgBuyPrice           =  isNaN(D.avgBuyPrice )  ?  0          :  D.avgBuyPrice                                                ;
@@ -340,9 +341,7 @@ export async function HandleTV(d) {
                                                 D.ing_tradeFee      || "NA"  ,
                                                 D.ing_allFund       || "NA"  ,
                                                 D.ing_allCoin       || "NA"  ,
-                                                D.ing_reason        || "NA"  ,
-                                                D.last_orderTime    || "na"  ,   // 这两个参数要删去，无意义
-                                                D.ing_avgBuyPrice       || "na"  ] ]  ;
+                                                D.ing_reason        || "NA"  ] ]  ;
                     await sheets.spreadsheets.values.append({
                         spreadsheetId                                           ,
                         range               : "tradeHistory!A1:A"               ,
@@ -417,8 +416,10 @@ export async function HandleTV(d) {
                 D.thisAlertMessage  += 'cannot trade due to ordersInterval' + '\n'  ;
             }
             if (D.inOrdersInterval || D.ing_orderStatus === order_waiting) {
-                D.canBuy    =  false  ;
-                D.canSell   =  false  ;
+                D.canBuy            =  false  ;
+                D.canSell           =  false  ;
+                D.cantBuyReason     +=  'there order waiting' + '\n' ;
+                D.cantSellReason    +=  'there order waiting' + '\n' ;
             }
 
             if (D.gridNum >= D.MaxGrid) {
