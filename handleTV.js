@@ -291,8 +291,8 @@ export async function HandleTV(d) {
             // 3, 出错时, 需重新初始化
             ReNewAccount(D) ;
 
-            const uncloseOrders     = []  ;
-            const uncloseOrdersSort = []  ;
+            let uncloseOrders     = []  ;
+            let uncloseOrdersSort = []  ;
             // orderID	orderDate	serial	triggerPrice	confirmPrice	qty	P×Q	reason
             // 0        1           2       3               4               5   6   7
             if (D.gridNum > 0) {
