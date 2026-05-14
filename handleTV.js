@@ -401,15 +401,15 @@ export async function HandleTV(d) {
                     D.sellTimes             +=  D.ing_buysell===order_BUY  ?  1  : 0                                                                    ;
                     D.avgBuyPriceUnclose    =   D.gridNum > 0  ?
                                                 (D.avgBuyPriceUnclose * D.allPosition + D.ing_avgBuyPrice * D.ing_qty) / (D.allPosition + D.ing_qty) :
-                                                0                                                                                                       ;
+                                                D.avgBuyPriceUnclose                                                                                    ;
                     D.allPosition           +=  D.ing_qty                                                                                               ;
 
-                    D.lstBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrders    [D.gridNum-1][4]  :  0    ;
-                    D.hghBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrdersSort[D.gridNum-1][4]  :  0    ; 
-                    D.lowBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrdersSort[0]          [4]  :  0    ; 
-                    D.lstBuySerial          =  D.gridNum > 0  ?  uncloseOrders    [D.gridNum-1][2]  :  0    ;
-                    D.hghBuySerial          =  D.gridNum > 0  ?  uncloseOrdersSort[D.gridNum-1][2]  :  0    ;
-                    D.lowBuySerial          =  D.gridNum > 0  ?  uncloseOrdersSort[0]          [2]  :  0    ;
+                    D.lstBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrders    [D.gridNum-1][4]  :  D.lstBuyPriceUnclose     ;
+                    D.hghBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrdersSort[D.gridNum-1][4]  :  D.hghBuyPriceUnclose     ; 
+                    D.lowBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrdersSort[0]          [4]  :  D.lowBuyPriceUnclose     ; 
+                    D.lstBuySerial          =  D.gridNum > 0  ?  uncloseOrders    [D.gridNum-1][2]  :  D.lstBuySerial           ;
+                    D.hghBuySerial          =  D.gridNum > 0  ?  uncloseOrdersSort[D.gridNum-1][2]  :  D.hghBuySerial           ;
+                    D.lowBuySerial          =  D.gridNum > 0  ?  uncloseOrdersSort[0]          [2]  :  D.lowBuySerial           ;
 
 
                     ReNewAccount(D) ;
