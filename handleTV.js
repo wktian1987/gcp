@@ -378,7 +378,7 @@ export async function HandleTV(d) {
                         uncloseOrdersSort   =  uncloseOrders.toSorted( (order1, order2) => Number(order1[4]) - Number(order2[4]) )  ;
                     } 
                     if (D.ing_buysell === order_SELL) {
-                        uncloseOrders       =  uncloseOrders.filter(row => String(row[2]) !== String(D.ing_serial) )                ;
+                        uncloseOrders       =  uncloseOrders.filter(row => String(row[2]) !== String(Math.abs(D.ing_serial)) )                ;
                         uncloseOrdersSort   =  uncloseOrders.toSorted( (order1, order2) => Number(order1[4]) - Number(order2[4]) )  ;
                     }
                     await sheets.spreadsheets.values.clear( {
