@@ -188,12 +188,14 @@ function ReNewAccount(D, newData) {
         D.lstBuySerial          =  isNaN(D.lstBuySerial       )  ?  0  :  D.lstBuySerial                                                ;
         D.hghBuySerial          =  isNaN(D.hghBuySerial       )  ?  0  :  D.hghBuySerial                                                ;
         D.lowBuySerial          =  isNaN(D.lowBuySerial       )  ?  0  :  D.lowBuySerial                                                ;
-        D.last_orderTime        =  isNaN(D.last_orderTime     )  ?  0  :  D.last_orderTime                                ;
+        D.last_orderTime        =  isNaN(D.last_orderTime     )  ?  0  :  D.last_orderTime                                              ;
 
         D.rcd_hghFund           =  isNaN(D.rcd_hghFund )  ?  D.hghestFund  :  D.rcd_hghFund                                             ;
         D.rcd_lowFund           =  isNaN(D.rcd_lowFund )  ?  D.lowestFund  :  D.rcd_lowFund                                             ;
         D.rcd_hghCoin           =  isNaN(D.rcd_hghCoin )  ?  D.hghestCoin  :  D.rcd_hghCoin                                             ;
         D.rcd_lowCoin           =  isNaN(D.rcd_lowCoin )  ?  D.lowestCoin  :  D.rcd_lowCoin                                             ;
+
+        D.ifOrderWaiting        =  (typeof D.ifOrderWaiting === "boolean") ? D.ifOrderWaiting  :  false  ; 
 
         D.crt_initialFund       =  (D.allFund - D.initialFund) / D.initialFund      ;
         D.crt_hghestFund        =  (D.allFund - D.hghestFund ) / D.hghestFund       ;
