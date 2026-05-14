@@ -398,7 +398,7 @@ export async function HandleTV(d) {
                     D.allTradeFee           +=  D.ing_tradeFee                                                                                          ;
                     D.gridNum               +=  D.ing_buysell===order_BUY  ?  1  : -1                                                                   ;
                     D.buyTimes              +=  D.ing_buysell===order_BUY  ?  1  : 0                                                                    ;
-                    D.sellTimes             +=  D.ing_buysell===order_BUY  ?  1  : 0                                                                    ;
+                    D.sellTimes             +=  D.ing_buysell===order_BUY  ?  0  : 1                                                                    ;
                     D.avgBuyPriceUnclose    =   D.gridNum > 0  ?
                                                 (D.avgBuyPriceUnclose * D.allPosition + D.ing_avgBuyPrice * D.ing_qty) / (D.allPosition + D.ing_qty) :
                                                 D.avgBuyPriceUnclose                                                                                    ;
