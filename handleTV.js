@@ -368,7 +368,7 @@ export async function HandleTV(d) {
                     if (D.ing_buysell === order_BUY) {
                         uncloseOrders.push( [ 
                                             D.ing_orderID                   || "NA"  ,
-                                            D.ing_orderDate                 || "NA"  ,
+                                            D.ing_confirmeDate              || "NA"  ,
                                             D.ing_serial                    || "NA"  ,
                                             D.ing_triggerPrice              || "NA"  ,
                                             D.ing_confirmPrice              || "NA"  ,
@@ -491,13 +491,13 @@ export async function HandleTV(d) {
                 S.ing_confirmPrice      =  "NA"                                                                                                                                 ;
                 S.ing_boughtPrice       =  "NA"                                                                                                                                 ;
                 S.ing_qty               =  D.minEnExPosition * Math.max(1, Math.floor(D.freeMargin*D.leverage/D.TradingSymbolPrice/D.minEnExPosition/(D.MaxGrid - D.gridNum)) ) ;
-                S.ing_getProfit         =  "NA"                             ;
-                S.ing_avgBuyPrice       =  "NA"                             ;
-                S.ing_tradeFee          =  "NA"                             ;
-                S.ing_allFund           =  "NA"                             ;
-                S.ing_allCoin           =  "NA"                             ;
-                S.ing_reason            =  BuyReason_belowTarget            ;
-                S.ing_orderStatus       =  order_pending                    ;
+                S.ing_getProfit         =  "NA"                                                                                                                                 ;
+                S.ing_avgBuyPrice       =  "NA"                                                                                                                                 ;
+                S.ing_tradeFee          =  "NA"                                                                                                                                 ;
+                S.ing_allFund           =  "NA"                                                                                                                                 ;
+                S.ing_allCoin           =  "NA"                                                                                                                                 ;
+                S.ing_reason            =  BuyReason_belowTarget                                                                                                                ;
+                S.ing_orderStatus       =  order_pending                                                                                                                        ;
 
                 S = await SendOrderToBroker(S, sheets, spreadsheetId) ;
 
