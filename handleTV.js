@@ -402,8 +402,12 @@ export async function HandleTV(d) {
                 const lstRound  = D.lstFundTime % 28800000  ; // 8 * 60 * 60 * 1000
                 const thisRound = D.timestamp   % 28800000  ;
                 toCheckFundFee  = lstRound === thisRound  ?  false  :  true  ;
-            }
 
+                // test // test // test
+                D.lstRound          =  lstRound         ;
+                D.thisRound         =  thisRound        ;
+                D.toCheckFundFee    =  toCheckFundFee   ;
+            }
             if (toCheckFundFee) {
                 const fundFee   =  await CheckFundFee(sheets, spreadsheetId)          ;
                 D.allFundFee    =  NA0(D.allFundFee) + fundFee  ;
