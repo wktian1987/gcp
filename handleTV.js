@@ -474,7 +474,9 @@ export async function HandleTV(d) {
                     D.lowBuySerialUnclose   =  D.gridNum > 0  ?  uncloseOrdersSort[0]          [2]          :  NA  ;
 
                     ReNewAccount(D) ;
-
+                    D.ing_avgBuyPrice   =  D.avgBuyPrice    ;
+                    D.ing_allFund       =  D.allFund        ;
+                    D.ing_allCoin       =  D.allCoin        ;
                     const newTradehistory = [ [ D.ing_orderID       || NA  ,
                                                 D.ing_orderDate     || NA  ,
                                                 D.ing_confirmDate   || NA  ,
