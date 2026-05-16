@@ -302,7 +302,9 @@ function ReNewAccount(D, newData) {
 
         D.closeToRndHgh     =  D.roundHgh / Math.pow((1+D.waveUpChg), D.notBuyCloseToRndHghStep)  ;
         D.closeToRndLow     =  D.roundLow / Math.pow((1+D.waveDnChg), D.notBuyCloseToRndLowStep)  ;
-        D.hghToBuy          =  Math.min(D.basicHghToBuy, D.closeToRndHgh    )   ;
+        D.hghToBuy          =  Math.min(D.basicHghToBuy         , 
+                                        D.closeToRndHgh         ,
+                                        D.lowBuyPriceUnclose    )   ;
         D.lowToBuy          =  Math.max(D.basicLowToBuy, D.closeToRndLow    )   ;
         D.lowToSell         =  Math.max(D.basicLowToSell                    )   ;
 
@@ -494,6 +496,8 @@ export async function HandleTV(d) {
                 D.cantSellReason    +=  'cant sell: ' + 'price < basicLowToSell' + '\n' ;
             }
 
+
+
             if (D.freeMargin / (D.MaxGrid - D.gridNum) < 1.1 * D.minEnExPosition * D.TradingSymbolPrice / D.leverage) {
                 D.canBuy            =   false                           ;
                 D.cantBuyReason     +=   'cant buy: '  + 'Not enough freeMargin' + '\n' ;
@@ -508,7 +512,6 @@ export async function HandleTV(d) {
             
 
             if (D.canBuy && D.touchTargetLow) {
-            // if (D.canBuy) {
                 let nowTimestamp = Date.now()   ;
                 let S = {} ;
                 S.ing_orderID           =  'B-' + D.tvUpdateTime                                                                                                                ;
