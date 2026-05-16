@@ -498,7 +498,7 @@ export async function HandleTV(d) {
                     D.sellTimes             +=  D.ing_buysell===order_SELL ?  1  : 0                                                                            ;
                     D.allPosition           =   D.gridNum > 0  ?  NA0(D.allPosition) + D.ing_qty  :  NA                                                         ;
 
-                    D.avgBuyPriceUnclose    =  D.gridNum > 0  ?  CalUncloseordersAvgprice(D.uncloseOrders)  :  NA  ;
+                    D.avgBuyPriceUnclose    =  D.gridNum > 0  ?  CalUncloseordersAvgprice(uncloseOrders)    :  NA  ;
                     D.lstBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrders    [D.gridNum-1][4]          :  NA  ;
                     D.hghBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrdersSort[D.gridNum-1][4]          :  NA  ; 
                     D.lowBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrdersSort[0]          [4]          :  NA  ; 
