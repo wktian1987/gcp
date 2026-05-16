@@ -267,10 +267,12 @@ function ReNewAccount(D, newData) {
                                                                                 D.notStop4F             , 
                                                                                 D.notStop4C             );
 
-
-        D.frCRT_liquidatePrice  =  (D.liquidatePrice - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
-        D.frCRT_stopPriceC      =  (D.stopPriceC     - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
-        D.frCRT_stopPriceF      =  (D.stopPriceF     - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
+        D.liquidatePrice    =  D.therePosition  ?  D.liquidatePrice  :  NA  ;
+        D.stopPriceC        =  D.therePosition  ?  D.stopPriceC      :  NA  ;
+        D.stopPriceF        =  D.therePosition  ?  D.stopPriceF      :  NA  ;
+        D.frCRT_liquidatePrice  =  D.therePosition  ?  (D.liquidatePrice - D.TradingSymbolPrice) / D.TradingSymbolPrice  :  NA  ;
+        D.frCRT_stopPriceC      =  D.therePosition  ?  (D.stopPriceC     - D.TradingSymbolPrice) / D.TradingSymbolPrice  :  NA  ;
+        D.frCRT_stopPriceF      =  D.therePosition  ?  (D.stopPriceF     - D.TradingSymbolPrice) / D.TradingSymbolPrice  :  NA  ;
 
         // 账户状态判断
         D.accStatus =  'Normal' ; 
@@ -514,7 +516,7 @@ export async function HandleTV(d) {
                 S.ing_orderDate         =  GetTimeStringWithOffset(8)                                                                                                           ;
                 S.ing_confirmTimestamp  =  NA                                                                                                                                   ;
                 S.ing_confirmDate       =  NA                                                                                                                                   ;
-                S.ing_serial            =  D.lstBuySerial + 1                                                                                                                   ;
+                S.ing_serial            =  NA0(D.lstBuySerial) + 1                                                                                                              ;
                 S.ing_buysell           =  order_BUY                                                                                                                            ;
                 S.ing_triggerPrice      =  D.TradingSymbolPrice                                                                                                                 ;
                 S.ing_orderType         =  order_T_LMT                                                                                                                          ;
