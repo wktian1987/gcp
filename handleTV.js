@@ -431,6 +431,50 @@ export async function HandleTV(d) {
 
                 if (res_broker.ing_orderStatus  === "confirm")  {
                     Object.assign(D, res_broker)  ;// 此时res_broker中已包括 last_orderTime
+
+                    let uncloseOrders       =  D.therePosition  ?  await GetDataFromSheet(sheets, spreadsheetId, ranges.uncloseOrdersRange)  :  []  ;
+                    let uncloseOrdersSort   =  []  ;
+                    
+                    if (D.ing_buysell === order_BUY) {
+                        uncloseOrders.push( [ 
+                                            D.ing_orderID                   || NA  ,
+                                            D.ing_confirmDate               || NA  ,
+                                            D.ing_serial                    || NA  ,
+                                            D.ing_triggerPrice              || NA  ,
+                                            D.ing_confirmPrice              || NA  ,
+                                            D.ing_qty                       || NA  ,
+                                            D.ing_confirmPrice * D.ing_qty  || NA  ,
+                                            D.ing_reason                    || NA  ] ) ;
+                        uncloseOrdersSort   =  uncloseOrders.toSorted( (order1, order2) => Number(order1[4]) - Number(order2[4]) )  ;
+                        D.lstBuyPrice   =  D.ing_confirmPrice   ;
+                        D.lstBuySerial  =  D.ing_serial         ;
+                    } 
+                    if (D.ing_buysell === order_SELL) {
+                        uncloseOrders       =  uncloseOrders.filter(row => String(row[2]) !== String(Math.abs(D.ing_serial)) )      ;
+                        uncloseOrdersSort   =  uncloseOrders.toSorted( (order1, order2) => Number(order1[4]) - Number(order2[4]) )  ;
+                    }
+
+                    D.netProfit             =   NA0(D.netProfit) + D.ing_getProfit + D.ing_tradeFee                                                             ;
+                    D.avgBuyPrice           =   D.ing_buysell===order_BUY                                                                                   ? 
+                                                (NA0(D.allPosition)*NA0(D.avgBuyPrice) + D.ing_qty*D.ing_confirmPrice) / (NA0(D.allPosition)+D.ing_qty)     :  
+                                                D.gridNum > 0 ? D.avgBuyPrice : NA                                                                              ;
+
+                    D.allTradeFee           =   NA0(D.allTradeFee) + D.ing_tradeFee                                                                             ;
+                    D.gridNum               +=  D.ing_buysell===order_BUY  ?  1  : -1                                                                           ;
+                    D.buyTimes              +=  D.ing_buysell===order_BUY  ?  1  : 0                                                                            ;
+                    D.sellTimes             +=  D.ing_buysell===order_SELL ?  1  : 0                                                                            ;
+                    D.allPosition           =   D.gridNum > 0  ?  NA0(D.allPosition) + D.ing_qty  :  NA                                                         ;
+
+                    D.avgBuyPriceUnclose    =  D.gridNum > 0  ?  CalUncloseordersAvgprice(uncloseOrders)    :  NA  ;
+                    D.lstBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrders    [D.gridNum-1][4]          :  NA  ;
+                    D.hghBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrdersSort[D.gridNum-1][4]          :  NA  ; 
+                    D.lowBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrdersSort[0]          [4]          :  NA  ; 
+                    D.lstBuySerialUnclose   =  D.gridNum > 0  ?  uncloseOrders    [D.gridNum-1][2]          :  NA  ;
+                    D.hghBuySerialUnclose   =  D.gridNum > 0  ?  uncloseOrdersSort[D.gridNum-1][2]          :  NA  ;
+                    D.lowBuySerialUnclose   =  D.gridNum > 0  ?  uncloseOrdersSort[0]          [2]          :  NA  ;
+
+                    ReNewAccount(D) ;
+
                     const newTradehistory = [ [ D.ing_orderID       || NA  ,
                                                 D.ing_orderDate     || NA  ,
                                                 D.ing_confirmDate   || NA  ,
@@ -454,27 +498,6 @@ export async function HandleTV(d) {
                         valueInputOption    : 'USER_ENTERED'                    , 
                         requestBody         : { values: newTradehistory }       }   )   ;
 
-                    let uncloseOrders       =  D.therePosition  ?  await GetDataFromSheet(sheets, spreadsheetId, ranges.uncloseOrdersRange)  :  []  ;
-                    let uncloseOrdersSort   =  []  ;
-                    
-                    if (D.ing_buysell === order_BUY) {
-                        uncloseOrders.push( [ 
-                                            D.ing_orderID                   || NA  ,
-                                            D.ing_confirmDate               || NA  ,
-                                            D.ing_serial                    || NA  ,
-                                            D.ing_triggerPrice              || NA  ,
-                                            D.ing_confirmPrice              || NA  ,
-                                            D.ing_qty                       || NA  ,
-                                            D.ing_confirmPrice * D.ing_qty  || NA  ,
-                                            D.ing_reason                    || NA  ] ) ;
-                        uncloseOrdersSort   =  uncloseOrders.toSorted( (order1, order2) => Number(order1[4]) - Number(order2[4]) )  ;
-                        D.lstBuyPrice   =  D.ing_confirmPrice   ;
-                        D.lstBuySerial  =  D.ing_serial         ;
-                    } 
-                    if (D.ing_buysell === order_SELL) {
-                        uncloseOrders       =  uncloseOrders.filter(row => String(row[2]) !== String(Math.abs(D.ing_serial)) )      ;
-                        uncloseOrdersSort   =  uncloseOrders.toSorted( (order1, order2) => Number(order1[4]) - Number(order2[4]) )  ;
-                    }
                     await sheets.spreadsheets.values.clear( {
                         spreadsheetId                                   ,
                         range           : ranges.uncloseOrdersRange     } ) ;
@@ -486,28 +509,7 @@ export async function HandleTV(d) {
                             requestBody         : { values: uncloseOrders }         }   )   ;
                     }
 
-                    D.ifOrderWaiting        =   false                                                                                                           ;
-                    D.netProfit             =   NA0(D.netProfit) + D.ing_getProfit + D.ing_tradeFee                                                             ;
-                    D.avgBuyPrice           =   D.ing_buysell===order_BUY                                                                                   ? 
-                                                (NA0(D.allPosition)*NA0(D.avgBuyPrice) + D.ing_qty*D.ing_confirmPrice) / (NA0(D.allPosition)+D.ing_qty)     :  
-                                                D.gridNum > 0 ? D.avgBuyPrice : NA                                                                              ;
 
-                    D.allTradeFee           +=  D.ing_tradeFee                                                                                                  ;
-                    D.gridNum               +=  D.ing_buysell===order_BUY  ?  1  : -1                                                                           ;
-                    D.buyTimes              +=  D.ing_buysell===order_BUY  ?  1  : 0                                                                            ;
-                    D.sellTimes             +=  D.ing_buysell===order_SELL ?  1  : 0                                                                            ;
-                    D.allPosition           =   D.gridNum > 0  ?  NA0(D.allPosition) + D.ing_qty  :  NA                                                         ;
-
-                    D.avgBuyPriceUnclose    =  D.gridNum > 0  ?  CalUncloseordersAvgprice(uncloseOrders)    :  NA  ;
-                    D.lstBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrders    [D.gridNum-1][4]          :  NA  ;
-                    D.hghBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrdersSort[D.gridNum-1][4]          :  NA  ; 
-                    D.lowBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrdersSort[0]          [4]          :  NA  ; 
-                    D.lstBuySerialUnclose   =  D.gridNum > 0  ?  uncloseOrders    [D.gridNum-1][2]          :  NA  ;
-                    D.hghBuySerialUnclose   =  D.gridNum > 0  ?  uncloseOrdersSort[D.gridNum-1][2]          :  NA  ;
-                    D.lowBuySerialUnclose   =  D.gridNum > 0  ?  uncloseOrdersSort[0]          [2]          :  NA  ;
-
-
-                    ReNewAccount(D) ;
                 }
             }
 
@@ -547,7 +549,8 @@ export async function HandleTV(d) {
 
             D.toSell        =  false    ;
             let toSellOrder =  []       ;
-            // orderID	orderDate	serial	triggerPrice	confirmPrice	qty	P×Q	reason
+            // orderID	confirmDate	serial	triggerPrice	confirmPrice	qty	P×Q	reason
+            // 0        1           2       3               4               5   6   7
             if ( D.canSell && (D.TradingSymbolPrice > (1+D.waveUpChg) * D.lowBuyPriceUnclose)  &&  D.touchTargetHgh  ) {
                 D.toSell    =  true  ;
                 toSellOrder = uncloseOrders.find( v => String(v[2]) === String(D.lowBuySerialUnclose)   ) ;

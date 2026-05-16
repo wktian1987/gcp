@@ -43,7 +43,12 @@ export async function CheckOrderConfirm(ifWaitingThenCancel, sheets, spreadsheet
         S.ing_allFund		    = res.allFund        ;
         S.ing_allCoin		    = res.allCoin        ;
         S.ing_orderStatus		= res.orderStatus    ;
-        S.last_orderTime        = res.last_orderTime ;
+        S.lstBuyTime            = res.lstBuyTime     ;
+
+        await sheets.spreadsheets.values.clear( {
+            spreadsheetId                       ,
+            range           : 'simBroker!A30:B' } ) ;
+
         return S  ;
     } 
 
