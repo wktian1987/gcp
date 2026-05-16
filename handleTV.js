@@ -8,7 +8,7 @@ import {    NumStrBool                      ,
 import {    SendOrderToBroker               ,
             CheckOrderConfirm               } from "./broker.js";    
 
-import { google } from 'googleapis';
+import { dlp_v2, google } from 'googleapis';
 const auth = new google.auth.GoogleAuth({
     scopes: ['https://www.googleapis.com/auth/spreadsheets']
 });
@@ -55,6 +55,7 @@ const   NotSellReason_noPosition            =  "no positions"                   
 const   NotSellReason_belowLowToSell        =  "below lowestToSellPrice"                    ;
 const   NotSellReason_cantProfit            =  "cant get enough Profit"                     ;
 
+const   NA              =  "NA"             ;
 const   toFill          =  "toFill"         ;
 const   toGCPRanges     =  "toGCP!A:B"      ;
 const   HuanHang        =  "__HuangHang__"  ;
@@ -153,58 +154,97 @@ function GetLiquidateStopPrice( allPosition         ,
 
 }
 
+function CalUncloseordersAvgprice(uncloseOrders) {
+    let all_P   = 0  ;
+    let all_PXQ = 0  ;
+    uncloseOrders.forEach(element => {
+        all_P   += Number(element[5]) ;
+        all_PXQ += Number(element[6]) ;
+    });
+    return all_PXQ / all_P  ;
+}
+
+function isValue(v) {
+    if (v === NA)                           return true ;
+    if (typeof v === "boolean")             return true ;
+    if (typeof v === "number" && !isNaN(v)) return true ; // 纯数字类型            return true;
+    return false ;
+}
+function isNotV(v) {
+    return !isValue(v) ;
+}
+function NA0(v) {
+    if (v === NA) return 0;
+    return v;
+}
 
 function ReNewAccount(D, newData) {
         if (newData !== undefined) { Object.assign(D, newData) ; }
         CleanObjToNumStrBool(D) ;
         D.thisAlertMessage  +=  "\n"  ;
-        // D.testAvai  += "\n" + "Now allPosition: "  + String(D.allPosition); // 删除本行
 
-        D.allPosition           =  isNaN(D.allPosition )  ?  0          :  D.allPosition                                                ;
-        D.avgBuyPrice           =  isNaN(D.avgBuyPrice )  ?  0          :  D.avgBuyPrice                                                ;
-        D.netProfit             =  isNaN(D.netProfit   )  ?  0          :  D.netProfit                                                  ;
-        D.openProfit            =  D.allPosition * (D.TradingSymbolPrice - D.avgBuyPrice)                                               ;
-        D.crtFund               =  D.inFund + D.netProfit + D.openProfit                                                                ;
-        D.crtCoin               =  D.inCoin                                                                                             ;
-        D.usedMargin            =  D.allPosition * D.TradingSymbolPrice / D.leverage                                                    ;
-        D.freeMargin            =  D.crtFund + D.crtCoin * D.BaseCoinPrice * D.BaseCoinHairCut - D.usedMargin                           ;
-        D.allFund               =  D.crtFund + D.crtCoin * D.BaseCoinPrice                                                              ;
-        D.allCoin               =  D.crtFund / D.BaseCoinPrice + D.crtCoin                                                              ;
-        D.initialFund           =  D.inFund + D.inCoin * D.inBaseCoinPrice                                                              ;
-        D.initialCoin           =  D.inFund / D.inBaseCoinPrice + D.inCoin                                                              ;
-        D.hghestFund            =  isNaN(D.hghestFund  )  ?  D.initialFund  :  ( D.allFund > D.hghestFund ? D.allFund : D.hghestFund )  ;
-        D.lowestFund            =  isNaN(D.lowestFund  )  ?  D.initialFund  :  ( D.allFund < D.lowestFund ? D.allFund : D.lowestFund )  ;
-        D.hghestCoin            =  isNaN(D.hghestCoin  )  ?  D.initialCoin  :  ( D.allCoin > D.hghestCoin ? D.allCoin : D.hghestCoin )  ;
-        D.lowestCoin            =  isNaN(D.lowestCoin  )  ?  D.initialCoin  :  ( D.allCoin < D.lowestCoin ? D.allCoin : D.lowestCoin )  ;
-        D.allTradeFee           =  isNaN(D.allTradeFee )  ?  0          :  D.allTradeFee                                                ;
-        D.allFundFee            =  isNaN(D.allFundFee  )  ?  0          :  D.allFundFee                                                 ;
-        D.gridNum               =  isNaN(D.gridNum     )  ?  0          :  D.gridNum                                                    ;
-        D.buyTimes              =  isNaN(D.buyTimes    )  ?  0          :  D.buyTimes                                                   ;
-        D.sellTimes             =  isNaN(D.sellTimes   )  ?  0          :  D.sellTimes                                                  ;
-        D.avgBuyPriceUnclose    =  isNaN(D.avgBuyPriceUnclose )  ?  0  :  D.avgBuyPriceUnclose                                          ; 
-        D.lstBuyPriceUnclose    =  isNaN(D.lstBuyPriceUnclose )  ?  0  :  D.lstBuyPriceUnclose                                          ; 
-        D.hghBuyPriceUnclose    =  isNaN(D.hghBuyPriceUnclose )  ?  0  :  D.hghBuyPriceUnclose                                          ; 
-        D.lowBuyPriceUnclose    =  isNaN(D.lowBuyPriceUnclose )  ?  0  :  D.lowBuyPriceUnclose                                          ; 
-        D.lstBuySerial          =  isNaN(D.lstBuySerial       )  ?  0  :  D.lstBuySerial                                                ;
-        D.hghBuySerial          =  isNaN(D.hghBuySerial       )  ?  0  :  D.hghBuySerial                                                ;
-        D.lowBuySerial          =  isNaN(D.lowBuySerial       )  ?  0  :  D.lowBuySerial                                                ;
-        D.last_orderTime        =  isNaN(D.last_orderTime     )  ?  0  :  D.last_orderTime                                              ;
+        D.gridNum               =  isNaN(D.gridNum)  ?  0               :  D.gridNum    ;
+        D.therePosition         =  D.gridNum > 0     ?  true            :  false        ;
+        D.allPosition           =  D.therePosition   ?  D.allPosition   :  NA           ;
+        D.avgBuyPrice           =  D.therePosition   ?  D.avgBuyPrice   :  NA           ;
+        D.openProfit            =  D.therePosition   ?  D.allPosition * (D.TradingSymbolPrice - D.avgBuyPrice)  :  NA     ;
+        D.usedMargin            =  D.therePosition   ?  D.allPosition * D.TradingSymbolPrice / D.leverage       :  NA     ;
 
-        D.rcd_hghFund           =  isNaN(D.rcd_hghFund )  ?  D.hghestFund  :  D.rcd_hghFund                                             ;
-        D.rcd_lowFund           =  isNaN(D.rcd_lowFund )  ?  D.lowestFund  :  D.rcd_lowFund                                             ;
-        D.rcd_hghCoin           =  isNaN(D.rcd_hghCoin )  ?  D.hghestCoin  :  D.rcd_hghCoin                                             ;
-        D.rcd_lowCoin           =  isNaN(D.rcd_lowCoin )  ?  D.lowestCoin  :  D.rcd_lowCoin                                             ;
+        D.netProfit             =  isNotV(D.netProfit)  ?  NA  :  D.netProfit  ;
 
-        D.ifOrderWaiting        =  (typeof D.ifOrderWaiting === "boolean") ? D.ifOrderWaiting  :  false  ; 
+        D.crtFund               =  D.inFund + NA0(D.netProfit) + NA0(D.openProfit)                                  ;
+        D.crtCoin               =  D.inCoin                                                                         ;
+        D.freeMargin            =  D.crtFund + D.crtCoin * D.BaseCoinPrice * D.BaseCoinHairCut - NA0(D.usedMargin)  ;
+        D.allFund               =  D.crtFund + D.crtCoin * D.BaseCoinPrice                                          ;
+        D.allCoin               =  D.crtFund / D.BaseCoinPrice + D.crtCoin                                          ;
+        D.initialFund           =  D.inFund + D.inCoin * D.inBaseCoinPrice                                          ;
+        D.initialCoin           =  D.inFund / D.inBaseCoinPrice + D.inCoin                                          ;
 
-        D.crt_initialFund       =  (D.allFund - D.initialFund) / D.initialFund      ;
-        D.crt_hghestFund        =  (D.allFund - D.hghestFund ) / D.hghestFund       ;
-        D.crt_lowestFund        =  (D.allFund - D.lowestFund ) / D.lowestFund       ;
-        D.crt_initialCoin       =  (D.allCoin - D.initialCoin) / D.initialCoin      ;
-        D.crt_hghestCoin        =  (D.allCoin - D.hghestCoin ) / D.hghestCoin       ;
-        D.crt_lowestCoin        =  (D.allCoin - D.lowestCoin ) / D.lowestCoin       ;
+        D.hghestFund            =  isNan(D.hghestFund)  ?  D.initialFund  :  ( D.allFund > D.hghestFund ? D.allFund : D.hghestFund )   ;
+        D.lowestFund            =  isNan(D.lowestFund)  ?  D.initialFund  :  ( D.allFund < D.lowestFund ? D.allFund : D.lowestFund )   ;
+        D.hghestCoin            =  isNan(D.hghestCoin)  ?  D.initialCoin  :  ( D.allCoin > D.hghestCoin ? D.allCoin : D.hghestCoin )   ;
+        D.lowestCoin            =  isNan(D.lowestCoin)  ?  D.initialCoin  :  ( D.allCoin < D.lowestCoin ? D.allCoin : D.lowestCoin )   ;
 
-        D.crt_avgBuyPrice       =  (D.TradingSymbolPrice - D.avgBuyPrice) / D.avgBuyPrice   ;
+        D.allTradeFee           =  isNotV(D.allTradeFee )  ?  NA  :  D.allTradeFee   ;
+        D.allFundFee            =  isNotV(D.allFundFee  )  ?  NA  :  D.allFundFee    ;
+
+        D.buyTimes              =  isNaN(D.buyTimes )  ?  0  :  D.buyTimes   ;
+        D.sellTimes             =  isNaN(D.sellTimes)  ?  0  :  D.sellTimes  ;
+
+        D.avgBuyPriceUnclose    =  !D.therePosition  ?  NA  :  D.avgBuyPriceUnclose   ;
+        D.lstBuyPriceUnclose    =  !D.therePosition  ?  NA  :  D.lstBuyPriceUnclose   ;
+        D.hghBuyPriceUnclose    =  !D.therePosition  ?  NA  :  D.hghBuyPriceUnclose   ;
+        D.lowBuyPriceUnclose    =  !D.therePosition  ?  NA  :  D.lowBuyPriceUnclose   ;
+        D.lstBuySerialUnclose   =  !D.therePosition  ?  NA  :  D.lstBuySerialUnclose  ;
+        D.hghBuySerialUnclose   =  !D.therePosition  ?  NA  :  D.hghBuySerialUnclose  ;
+        D.lowBuySerialUnclose   =  !D.therePosition  ?  NA  :  D.lowBuySerialUnclose  ;
+
+        D.lstBuyPrice           =  isNotV(D.lstBuyPrice        )  ?  NA  :  D.lstBuyPrice          ;
+        D.lstBuySerial          =  isNotV(D.lstBuySerial       )  ?  NA  :  D.lstBuySerial         ;
+        D.lasBuyTime            =  isNotV(D.lasBuyTime         )  ?  NA  :  D.lasBuyTime           ;
+
+        D.rcd_hghFund           =  isNaN(D.rcd_hghFund )  ?  D.hghestFund  :  D.rcd_hghFund  ;
+        D.rcd_lowFund           =  isNaN(D.rcd_lowFund )  ?  D.lowestFund  :  D.rcd_lowFund  ;
+        D.rcd_hghCoin           =  isNaN(D.rcd_hghCoin )  ?  D.hghestCoin  :  D.rcd_hghCoin  ;
+        D.rcd_lowCoin           =  isNaN(D.rcd_lowCoin )  ?  D.lowestCoin  :  D.rcd_lowCoin  ;
+
+        D.frCRT_avgBuyPrice         =  D.therePosition  ?  (D.avgBuyPrice           - D.TradingSymbolPrice) / D.TradingSymbolPrice  :  NA  ;
+        D.frCRT_avgBuyPriceUnclose  =  D.therePosition  ?  (D.avgBuyPriceUnclose    - D.TradingSymbolPrice) / D.TradingSymbolPrice  :  NA  ;
+        D.frCRT_lstBuyPriceUnclose  =  D.therePosition  ?  (D.lstBuyPriceUnclose    - D.TradingSymbolPrice) / D.TradingSymbolPrice  :  NA  ;
+        D.frCRT_hghBuyPriceUnclose  =  D.therePosition  ?  (D.hghBuyPriceUnclose    - D.TradingSymbolPrice) / D.TradingSymbolPrice  :  NA  ;
+        D.frCRT_lowBuyPriceUnclose  =  D.therePosition  ?  (D.lowBuyPriceUnclose    - D.TradingSymbolPrice) / D.TradingSymbolPrice  :  NA  ;
+        D.frCRT_lstBuyPrice         =  typeof D.lstBuyPrice === "number"  ?  (D.lstBuyPrice - D.TradingSymbolPrice) / D.TradingSymbolPrice  :  NA  ;
+
+        D.ifOrderWaiting        =  (typeof D.ifOrderWaiting === "boolean") ? D.ifOrderWaiting  :  D.ing_orderStatus === order_waiting  ;
+        
+        D.toCRT_initialFund     =  (D.allFund - D.initialFund) / D.initialFund      ;
+        D.toCRT_hghestFund      =  (D.allFund - D.hghestFund ) / D.hghestFund       ;
+        D.toCRT_lowestFund      =  (D.allFund - D.lowestFund ) / D.lowestFund       ;
+        D.toCRT_initialCoin     =  (D.allCoin - D.initialCoin) / D.initialCoin      ;
+        D.toCRT_hghestCoin      =  (D.allCoin - D.hghestCoin ) / D.hghestCoin       ;
+        D.toCRT_lowestCoin      =  (D.allCoin - D.lowestCoin ) / D.lowestCoin       ;
+
+        
 
         [D.gridDifficulty, D.enDifficulty, D.exDifficulty] = GetGridDifficulty( D.gridNum               ,
                                                                                 D.difficultyCoefficient , 
@@ -228,9 +268,9 @@ function ReNewAccount(D, newData) {
                                                                                 D.notStop4C             );
 
 
-        D.tocrt_liquidatePrice  =  (D.liquidatePrice - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
-        D.tocrt_stopPriceC      =  (D.stopPriceC     - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
-        D.tocrt_stopPriceF      =  (D.stopPriceF     - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
+        D.frCRT_liquidatePrice  =  (D.liquidatePrice - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
+        D.frCRT_stopPriceC      =  (D.stopPriceC     - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
+        D.frCRT_stopPriceF      =  (D.stopPriceF     - D.TradingSymbolPrice) / D.TradingSymbolPrice   ;
 
         // 账户状态判断
         D.accStatus =  'Normal' ; 
@@ -251,7 +291,7 @@ function ReNewAccount(D, newData) {
             D.thisAlertMessage  =  accStatus_stopCF         + '\n'  ;
         }
 
-        D.therePosition     =  D.gridNum > 0  ?  true  :  false  ; 
+        
 
         if (D.allFund > (1+D.barChgA)*D.rcd_hghFund) { D.thisAlertMessage += 'new rcd_hghFund' + '\n' ; D.rcd_hghFund = D.allFund ;}
         if (D.allFund < (1-D.barChgA)*D.rcd_lowFund) { D.thisAlertMessage += 'new rcd_lowFund' + '\n' ; D.rcd_lowFund = D.allFund ;}
@@ -293,21 +333,6 @@ export async function HandleTV(d) {
             // 3, 出错时, 需重新初始化
             ReNewAccount(D) ;
 
-            let uncloseOrders     = []  ;
-            let uncloseOrdersSort = []  ;
-            // orderID	orderDate	serial	triggerPrice	confirmPrice	qty	P×Q	reason
-            // 0        1           2       3               4               5   6   7
-            if (D.gridNum > 0) {
-                uncloseOrders       =  await GetDataFromSheet(sheets, spreadsheetId, ranges.uncloseOrdersRange)             ; // || []; // 确保它永远是个数组
-                uncloseOrdersSort   =  uncloseOrders.toSorted( (order1, order2) => Number(order1[4]) - Number(order2[4]) )  ;
-                D.lstBuyPriceUnclose    = Number(uncloseOrders     [D.gridNum-1][4])  ;
-                D.hghBuyPriceUnclose    = Number(uncloseOrdersSort [D.gridNum-1][4])  ; 
-                D.lowBuyPriceUnclose    = Number(uncloseOrdersSort [0]          [4])  ; 
-                D.lstBuySerial          = Number(uncloseOrders     [D.gridNum-1][2])  ;
-                D.hghBuySerial          = Number(uncloseOrdersSort [D.gridNum-1][2])  ;
-                D.lowBuySerial          = Number(uncloseOrdersSort [0]          [2])  ;
-            }
-
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////
             if (D.ing_orderStatus === order_waiting) {
                 D.ifOrderWaiting    =  true                                                             ;
@@ -342,43 +367,48 @@ export async function HandleTV(d) {
 
                 if (res_broker.ing_orderStatus  === "confirm")  {
                     Object.assign(D, res_broker)  ;// 此时res_broker中已包括 last_orderTime
-                    const newTradehistory = [ [ D.ing_orderID       || "NA"  ,
-                                                D.ing_orderDate     || "NA"  ,
-                                                D.ing_confirmDate   || "NA"  ,
-                                                D.ing_serial        || "NA"  ,
-                                                D.ing_buysell       || "NA"  ,
-                                                D.ing_triggerPrice  || "NA"  ,
-                                                D.ing_orderType     || "NA"  ,
-                                                D.ing_orderPrice    || "NA"  ,
-                                                D.ing_confirmPrice  || "NA"  ,
-                                                D.ing_boughtPrice   || "NA"  ,
-                                                D.ing_qty           || "NA"  ,
-                                                D.ing_getProfit     || "NA"  ,
-                                                D.ing_avgBuyPrice   || "NA"  ,
-                                                D.ing_tradeFee      || "NA"  ,
-                                                D.ing_allFund       || "NA"  ,
-                                                D.ing_allCoin       || "NA"  ,
-                                                D.ing_reason        || "NA"  ] ]  ;
+                    const newTradehistory = [ [ D.ing_orderID       || NA  ,
+                                                D.ing_orderDate     || NA  ,
+                                                D.ing_confirmDate   || NA  ,
+                                                D.ing_serial        || NA  ,
+                                                D.ing_buysell       || NA  ,
+                                                D.ing_triggerPrice  || NA  ,
+                                                D.ing_orderType     || NA  ,
+                                                D.ing_orderPrice    || NA  ,
+                                                D.ing_confirmPrice  || NA  ,
+                                                D.ing_boughtPrice   || NA  ,
+                                                D.ing_qty           || NA  ,
+                                                D.ing_getProfit     || NA  ,
+                                                D.ing_avgBuyPrice   || NA  ,
+                                                D.ing_tradeFee      || NA  ,
+                                                D.ing_allFund       || NA  ,
+                                                D.ing_allCoin       || NA  ,
+                                                D.ing_reason        || NA  ] ]  ;
                     await sheets.spreadsheets.values.append({
                         spreadsheetId                                           ,
                         range               : "tradeHistory!A1:A"               ,
                         valueInputOption    : 'USER_ENTERED'                    , 
                         requestBody         : { values: newTradehistory }       }   )   ;
+
+                    let uncloseOrders       =  D.therePosition  ?  await GetDataFromSheet(sheets, spreadsheetId, ranges.uncloseOrdersRange)  :  []  ;
+                    let uncloseOrdersSort   =  []  ;
                     
                     if (D.ing_buysell === order_BUY) {
                         uncloseOrders.push( [ 
-                                            D.ing_orderID                   || "NA"  ,
-                                            D.ing_confirmeDate              || "NA"  ,
-                                            D.ing_serial                    || "NA"  ,
-                                            D.ing_triggerPrice              || "NA"  ,
-                                            D.ing_confirmPrice              || "NA"  ,
-                                            D.ing_qty                       || "NA"  ,
-                                            D.ing_confirmPrice * D.ing_qty  || "NA"  ,
-                                            D.ing_reason                    || "NA"  ] ) ;
+                                            D.ing_orderID                   || NA  ,
+                                            D.ing_confirmDate               || NA  ,
+                                            D.ing_serial                    || NA  ,
+                                            D.ing_triggerPrice              || NA  ,
+                                            D.ing_confirmPrice              || NA  ,
+                                            D.ing_qty                       || NA  ,
+                                            D.ing_confirmPrice * D.ing_qty  || NA  ,
+                                            D.ing_reason                    || NA  ] ) ;
                         uncloseOrdersSort   =  uncloseOrders.toSorted( (order1, order2) => Number(order1[4]) - Number(order2[4]) )  ;
+                        D.lstBuyPrice   =  D.ing_confirmPrice   ;
+                        D.lstBuySerial  =  D.ing_serial         ;
                     } 
                     if (D.ing_buysell === order_SELL) {
-                        uncloseOrders       =  uncloseOrders.filter(row => String(row[2]) !== String(Math.abs(D.ing_serial)) )                ;
+                        uncloseOrders       =  uncloseOrders.filter(row => String(row[2]) !== String(Math.abs(D.ing_serial)) )      ;
                         uncloseOrdersSort   =  uncloseOrders.toSorted( (order1, order2) => Number(order1[4]) - Number(order2[4]) )  ;
                     }
                     await sheets.spreadsheets.values.clear( {
@@ -392,24 +422,25 @@ export async function HandleTV(d) {
                             requestBody         : { values: uncloseOrders }         }   )   ;
                     }
 
-                    D.ifOrderWaiting        =   false                                                                                                   ;
-                    D.netProfit             +=  D.ing_getProfit + D.ing_tradeFee                                                                        ;
-                    D.avgBuyPrice           =   D.ing_avgBuyPrice                                                                                       ;
-                    D.allTradeFee           +=  D.ing_tradeFee                                                                                          ;
-                    D.gridNum               +=  D.ing_buysell===order_BUY  ?  1  : -1                                                                   ;
-                    D.buyTimes              +=  D.ing_buysell===order_BUY  ?  1  : 0                                                                    ;
-                    D.sellTimes             +=  D.ing_buysell===order_BUY  ?  0  : 1                                                                    ;
-                    D.avgBuyPriceUnclose    =   D.gridNum > 0  ?
-                                                (D.avgBuyPriceUnclose * D.allPosition + D.ing_avgBuyPrice * D.ing_qty) / (D.allPosition + D.ing_qty) :
-                                                D.avgBuyPriceUnclose                                                                                    ;
-                    D.allPosition           +=  D.ing_qty                                                                                               ;
+                    D.ifOrderWaiting        =   false                                                                                                           ;
+                    D.netProfit             =   NA0(D.netProfit) + D.ing_getProfit + D.ing_tradeFee                                                             ;
+                    D.avgBuyPrice           =   D.ing_buysell===order_BUY                                                                                   ? 
+                                                (NA0(D.allPosition)*NA0(D.avgBuyPrice) + D.ing_qty*D.ing_confirmPrice) / (NA0(D.allPosition)+D.ing_qty)     :  
+                                                D.gridNum > 0 ? D.avgBuyPrice : NA                                                                              ;
 
-                    D.lstBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrders    [D.gridNum-1][4]  :  D.lstBuyPriceUnclose     ;
-                    D.hghBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrdersSort[D.gridNum-1][4]  :  D.hghBuyPriceUnclose     ; 
-                    D.lowBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrdersSort[0]          [4]  :  D.lowBuyPriceUnclose     ; 
-                    D.lstBuySerial          =  D.gridNum > 0  ?  uncloseOrders    [D.gridNum-1][2]  :  D.lstBuySerial           ;
-                    D.hghBuySerial          =  D.gridNum > 0  ?  uncloseOrdersSort[D.gridNum-1][2]  :  D.hghBuySerial           ;
-                    D.lowBuySerial          =  D.gridNum > 0  ?  uncloseOrdersSort[0]          [2]  :  D.lowBuySerial           ;
+                    D.allTradeFee           +=  D.ing_tradeFee                                                                                                  ;
+                    D.gridNum               +=  D.ing_buysell===order_BUY  ?  1  : -1                                                                           ;
+                    D.buyTimes              +=  D.ing_buysell===order_BUY  ?  1  : 0                                                                            ;
+                    D.sellTimes             +=  D.ing_buysell===order_SELL ?  1  : 0                                                                            ;
+                    D.allPosition           =   D.gridNum > 0  ?  NA0(D.allPosition) + D.ing_qty  :  NA                                                         ;
+
+                    D.avgBuyPriceUnclose    =  D.gridNum > 0  ?  CalUncloseordersAvgprice(D.uncloseOrders)  :  NA  ;
+                    D.lstBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrders    [D.gridNum-1][4]          :  NA  ;
+                    D.hghBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrdersSort[D.gridNum-1][4]          :  NA  ; 
+                    D.lowBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrdersSort[0]          [4]          :  NA  ; 
+                    D.lstBuySerialUnclose   =  D.gridNum > 0  ?  uncloseOrders    [D.gridNum-1][2]          :  NA  ;
+                    D.hghBuySerialUnclose   =  D.gridNum > 0  ?  uncloseOrdersSort[D.gridNum-1][2]          :  NA  ;
+                    D.lowBuySerialUnclose   =  D.gridNum > 0  ?  uncloseOrdersSort[0]          [2]          :  NA  ;
 
 
                     ReNewAccount(D) ;
@@ -481,21 +512,21 @@ export async function HandleTV(d) {
                 S.ing_orderID           =  'B-' + D.tvUpdateTime                                                                                                                ;
                 S.ing_orderTimestamp    =  nowTimestamp                                                                                                                         ;
                 S.ing_orderDate         =  GetTimeStringWithOffset(8)                                                                                                           ;
-                S.ing_confirmTimestamp  =  "NA"                                                                                                                                 ;
-                S.ing_confirmDate       =  "NA"                                                                                                                                 ;
+                S.ing_confirmTimestamp  =  NA                                                                                                                                   ;
+                S.ing_confirmDate       =  NA                                                                                                                                   ;
                 S.ing_serial            =  D.lstBuySerial + 1                                                                                                                   ;
                 S.ing_buysell           =  order_BUY                                                                                                                            ;
                 S.ing_triggerPrice      =  D.TradingSymbolPrice                                                                                                                 ;
                 S.ing_orderType         =  order_T_LMT                                                                                                                          ;
                 S.ing_orderPrice        =  S.ing_triggerPrice                                                                                                                   ;
-                S.ing_confirmPrice      =  "NA"                                                                                                                                 ;
-                S.ing_boughtPrice       =  "NA"                                                                                                                                 ;
+                S.ing_confirmPrice      =  NA                                                                                                                                   ;
+                S.ing_boughtPrice       =  NA                                                                                                                                   ;
                 S.ing_qty               =  D.minEnExPosition * Math.max(1, Math.floor(D.freeMargin*D.leverage/D.TradingSymbolPrice/D.minEnExPosition/(D.MaxGrid - D.gridNum)) ) ;
-                S.ing_getProfit         =  "NA"                                                                                                                                 ;
-                S.ing_avgBuyPrice       =  "NA"                                                                                                                                 ;
-                S.ing_tradeFee          =  "NA"                                                                                                                                 ;
-                S.ing_allFund           =  "NA"                                                                                                                                 ;
-                S.ing_allCoin           =  "NA"                                                                                                                                 ;
+                S.ing_getProfit         =  NA                                                                                                                                   ;
+                S.ing_avgBuyPrice       =  NA                                                                                                                                   ;
+                S.ing_tradeFee          =  NA                                                                                                                                   ;
+                S.ing_allFund           =  NA                                                                                                                                   ;
+                S.ing_allCoin           =  NA                                                                                                                                   ;
                 S.ing_reason            =  BuyReason_belowTarget                                                                                                                ;
                 S.ing_orderStatus       =  order_pending                                                                                                                        ;
 
@@ -510,7 +541,7 @@ export async function HandleTV(d) {
             // orderID	orderDate	serial	triggerPrice	confirmPrice	qty	P×Q	reason
             if ( D.canSell && (D.TradingSymbolPrice > (1+D.waveUpChg) * D.lowBuyPriceUnclose)  &&  D.touchTargetHgh  ) {
                 D.toSell    =  true  ;
-                toSellOrder = uncloseOrders.find( v => String(v[2]) === String(D.lowBuySerial)   ) ;
+                toSellOrder = uncloseOrders.find( v => String(v[2]) === String(D.lowBuySerialUnclose)   ) ;
                 toSellOrder[7] = 'touchTargetHgh'   ;
             }
 
@@ -521,21 +552,21 @@ export async function HandleTV(d) {
                 S.ing_orderID           =  toSellOrder[0].trim().replace('B', 'S')          ;
                 S.ing_orderTimestamp    =  nowTimestamp                                     ;
                 S.ing_orderDate         =  GetTimeStringWithOffset(8)                       ;
-                S.ing_confirmTimestamp  =  "NA"                                             ;
-                S.ing_confirmDate       =  "NA"                                             ;
+                S.ing_confirmTimestamp  =  NA                                               ;
+                S.ing_confirmDate       =  NA                                               ;
                 S.ing_serial            =  -1 * Number(toSellOrder[2])                      ;
                 S.ing_buysell           =  order_SELL                                       ;
                 S.ing_triggerPrice      =  D.TradingSymbolPrice                             ;
                 S.ing_orderType         =  order_T_LMT                                      ;
                 S.ing_orderPrice        =  S.ing_triggerPrice                               ;
-                S.ing_confirmPrice      =  "NA"                                             ;
+                S.ing_confirmPrice      =  NA                                               ;
                 S.ing_boughtPrice       =  NumStrBool(toSellOrder[4])                       ;
                 S.ing_qty               =  -1 * Number(toSellOrder[5])                      ;
-                S.ing_getProfit         =  "NA"                                             ;
-                S.ing_avgBuyPrice       =  "NA"                                             ;
-                S.ing_tradeFee          =  "NA"                                             ;
-                S.ing_allFund           =  "NA"                                             ;
-                S.ing_allCoin           =  "NA"                                             ;
+                S.ing_getProfit         =  NA                                               ;
+                S.ing_avgBuyPrice       =  NA                                               ;
+                S.ing_tradeFee          =  NA                                               ;
+                S.ing_allFund           =  NA                                               ;
+                S.ing_allCoin           =  NA                                               ;
                 S.ing_reason            =  toSellOrder[7]                                   ;
                 S.ing_orderStatus       =  order_pending                                    ;
 
