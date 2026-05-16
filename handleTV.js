@@ -173,8 +173,8 @@ function isValue(v) {
 function isNotV(v) {
     return !isValue(v) ;
 }
-function NA0(v) {
-    if (v === NA) return 0;
+function NA0(v, z) {
+    if (v === NA) return (z===undefined ? 0 : z);
     return v;
 }
 
@@ -302,9 +302,9 @@ function ReNewAccount(D, newData) {
 
         D.closeToRndHgh     =  D.roundHgh / Math.pow((1+D.waveUpChg), D.notBuyCloseToRndHghStep)  ;
         D.closeToRndLow     =  D.roundLow / Math.pow((1+D.waveDnChg), D.notBuyCloseToRndLowStep)  ;
-        D.hghToBuy          =  Math.min(D.basicHghToBuy         , 
-                                        D.closeToRndHgh         ,
-                                        D.lowBuyPriceUnclose    )   ;
+        D.hghToBuy          =  Math.min(D.basicHghToBuy                             ,
+                                        D.closeToRndHgh                             ,
+                                        NA0(D.lowBuyPriceUnclose, D.basicHghToBuy)  )   ;
         D.lowToBuy          =  Math.max(D.basicLowToBuy, D.closeToRndLow    )   ;
         D.lowToSell         =  Math.max(D.basicLowToSell                    )   ;
 
