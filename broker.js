@@ -58,3 +58,8 @@ export async function CheckOrderConfirm(ifWaitingThenCancel, sheets, spreadsheet
 
     return {}  ;
 }
+
+export async function CheckFundFee() {
+    const res   = CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A1:B29'))) ;
+    return (typeof res.fundFee === "number") ? res.fundFee : 0 ;
+}

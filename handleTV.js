@@ -6,7 +6,8 @@ import {    NumStrBool                      ,
             FormatMatrixToString            ,            
             GetDataFromSheet                } from "./utility.js";
 import {    SendOrderToBroker               ,
-            CheckOrderConfirm               } from "./broker.js";    
+            CheckOrderConfirm               ,               
+            CheckFundFee                    } from "./broker.js";    
 
 import { dlp_v2, google } from 'googleapis';
 const auth = new google.auth.GoogleAuth({
@@ -223,6 +224,8 @@ function ReNewAccount(D, newData) {
         D.lstBuySerial          =  isNotV(D.lstBuySerial       )  ?  NA  :  D.lstBuySerial         ;
         D.lstBuyTime            =  isNotV(D.lstBuyTime         )  ?  NA  :  D.lstBuyTime           ;
 
+        D.lstFundTime           =  isNotV(D.lstFundTime        )  ?  NA  :  D.lstFundTime          ;
+
         D.rcd_hghFund           =  isNaN(D.rcd_hghFund )  ?  D.hghestFund  :  D.rcd_hghFund  ;
         D.rcd_lowFund           =  isNaN(D.rcd_lowFund )  ?  D.lowestFund  :  D.rcd_lowFund  ;
         D.rcd_hghCoin           =  isNaN(D.rcd_hghCoin )  ?  D.hghestCoin  :  D.rcd_hghCoin  ;
@@ -392,14 +395,24 @@ export async function HandleTV(d) {
         
 
         if (D.timestamp > D.realTradeTime) {
-            // 收到新消息数据初始化
-            // 主要考虑3种情况：
-            // 1, 未初始化时
-            // 2, 正常运行时
-            // 3, 出错时, 需重新初始化
+
+            let toCheckFundFee  =  false  ;
+            toCheckFundFee      =  D.lstFundTime===NA ? true : toCheckFundFee ;
+            if (D.lstFundTime != NA) {
+                const lstRound  = D.lstFundTime % 28800000  ; // 8 * 60 * 60 * 1000
+                const thisRound = D.timestamp   % 28800000  ;
+                toCheckFundFee  = lstRound === thisRound  ?  false  :  true  ;
+            }
+
+            if (toCheckFundFee) {
+                const fundFee   = await CheckFundFee()          ;
+                D.allFundFee    =  NA0(D.allFundFee) + fundFee  ;
+                D.netProfit     =  NA0(D.netProfit)  + fundFee  ;
+                toCheckFundFee  =  false                        ;
+            }
+
             ReNewAccount(D) ;
 
-            /////////////////////////////////////////////////////////////////////////////////////////////////////////////
             if (D.ifOrderWaiting) {
 
                 let ifWaitingThenCancel = true  ;
