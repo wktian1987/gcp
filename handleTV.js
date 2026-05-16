@@ -405,7 +405,7 @@ export async function HandleTV(d) {
             }
 
             if (toCheckFundFee) {
-                const fundFee   = await CheckFundFee()          ;
+                const fundFee   = await CheckFundFee(sheets, spreadsheetId)          ;
                 D.allFundFee    =  NA0(D.allFundFee) + fundFee  ;
                 D.netProfit     =  NA0(D.netProfit)  + fundFee  ;
                 toCheckFundFee  =  false                        ;
