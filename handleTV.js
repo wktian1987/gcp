@@ -200,10 +200,10 @@ function ReNewAccount(D, newData) {
         D.initialFund           =  D.inFund + D.inCoin * D.inBaseCoinPrice                                          ;
         D.initialCoin           =  D.inFund / D.inBaseCoinPrice + D.inCoin                                          ;
 
-        D.hghestFund            =  isNan(D.hghestFund)  ?  D.initialFund  :  ( D.allFund > D.hghestFund ? D.allFund : D.hghestFund )   ;
-        D.lowestFund            =  isNan(D.lowestFund)  ?  D.initialFund  :  ( D.allFund < D.lowestFund ? D.allFund : D.lowestFund )   ;
-        D.hghestCoin            =  isNan(D.hghestCoin)  ?  D.initialCoin  :  ( D.allCoin > D.hghestCoin ? D.allCoin : D.hghestCoin )   ;
-        D.lowestCoin            =  isNan(D.lowestCoin)  ?  D.initialCoin  :  ( D.allCoin < D.lowestCoin ? D.allCoin : D.lowestCoin )   ;
+        D.hghestFund            =  isNaN(D.hghestFund)  ?  D.initialFund  :  ( D.allFund > D.hghestFund ? D.allFund : D.hghestFund )   ;
+        D.lowestFund            =  isNaN(D.lowestFund)  ?  D.initialFund  :  ( D.allFund < D.lowestFund ? D.allFund : D.lowestFund )   ;
+        D.hghestCoin            =  isNaN(D.hghestCoin)  ?  D.initialCoin  :  ( D.allCoin > D.hghestCoin ? D.allCoin : D.hghestCoin )   ;
+        D.lowestCoin            =  isNaN(D.lowestCoin)  ?  D.initialCoin  :  ( D.allCoin < D.lowestCoin ? D.allCoin : D.lowestCoin )   ;
 
         D.allTradeFee           =  isNotV(D.allTradeFee )  ?  NA  :  D.allTradeFee   ;
         D.allFundFee            =  isNotV(D.allFundFee  )  ?  NA  :  D.allFundFee    ;
