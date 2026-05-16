@@ -312,7 +312,10 @@ function ReNewAccount(D, newData) {
         D.cantSellReason    =  ""       ;
 
         if (D.timestamp - D.lstBuyTime < D.ordersInterval * 60000) {
-            D.thisAlertMessage  += 'cannot trade due to ordersInterval' + '\n'  ;
+            D.canBuy            =  false  ;
+            D.canSell           =  false  ;
+            D.cantBuyReason     +=  'cant buy: '  + 'there order just done, wait some time' + '\n' ;
+            D.cantSellReason    +=  'cant sell: ' + 'there order just done, wait some time' + '\n' ;
         }
 
         D.ifOrderWaiting  =  D.ing_orderStatus === order_waiting  ;
@@ -348,29 +351,24 @@ function ReNewAccount(D, newData) {
             D.canBuy            =   false                           ;
             D.cantBuyReason     +=  'cant buy: '  + 'price closeToRndLow'    + '\n' ;
         }
+        if (D.freeMargin / (D.MaxGrid - D.gridNum) < 1.1 * D.minEnExPosition * D.TradingSymbolPrice / D.leverage) {
+            D.canBuy            =   false                           ;
+            D.cantBuyReason     +=   'cant buy: '  + 'Not enough freeMargin' + '\n' ;
+        }
+
+
+
         if (D.TradingSymbolPrice < D.basicLowToSell) {
             D.canSell           =   false                           ;
             D.cantSellReason    +=  'cant sell: ' + 'price < basicLowToSell' + '\n' ;
         }
 
+        if (D.gridNum < 1) {
+            D.canSell           =   false                           ;
+            D.cantSellReason    +=  'cant sell: ' + 'No position to sell'    + '\n' ;
+        }
 
-
-            if (D.freeMargin / (D.MaxGrid - D.gridNum) < 1.1 * D.minEnExPosition * D.TradingSymbolPrice / D.leverage) {
-                D.canBuy            =   false                           ;
-                D.cantBuyReason     +=   'cant buy: '  + 'Not enough freeMargin' + '\n' ;
-            }
-
-            if (D.gridNum < 1) {
-                D.canSell           =   false                           ;
-                D.cantSellReason    +=  'cant sell: ' + 'No position to sell'    + '\n' ;
-            }
-
-            D.thisAlertMessage      +=  D.cantBuyReason + D.cantSellReason  ;
-
-
-
-
-
+        D.thisAlertMessage      +=  D.cantBuyReason + D.cantSellReason  ;
 
 }
 
@@ -402,9 +400,7 @@ export async function HandleTV(d) {
             ReNewAccount(D) ;
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            if (D.ing_orderStatus === order_waiting) {
-                D.ifOrderWaiting    =  true                                                             ;
-                D.thisAlertMessage  +=  'cannot trade due to existing order waiting confirmed' + '\n'   ;
+            if (D.ifOrderWaiting) {
 
                 let ifWaitingThenCancel = true  ;
                 if (D.ing_buysell = order_BUY  && D.TradingSymbolPrice < D.ing_orderPrice*(1+D.waveUpChg)) {ifWaitingThenCancel = false ;}
