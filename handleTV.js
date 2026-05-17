@@ -476,8 +476,8 @@ export async function HandleTV(d) {
             if (D.ifOrderWaiting) {
 
                 let ifWaitingThenCancel = true  ;
-                if (D.ing_buysell = order_BUY  && D.TradingSymbolPrice < D.ing_orderPrice*(1+D.waveUpChg)) {ifWaitingThenCancel = false ;}
-                if (D.ing_buysell = order_SELL && D.TradingSymbolPrice > D.ing_orderPrice*(1+D.waveDnChg)) {ifWaitingThenCancel = false ;}
+                if (D.ing_buysell === order_BUY  && D.TradingSymbolPrice < D.ing_orderPrice*(1+D.waveUpChg)) {ifWaitingThenCancel = false ;}
+                if (D.ing_buysell === order_SELL && D.TradingSymbolPrice > D.ing_orderPrice*(1+D.waveDnChg)) {ifWaitingThenCancel = false ;}
                 const res_broker = await CheckOrderConfirm(D.ing_orderID, ifWaitingThenCancel, D.isReal, D.TradingSymbol, sheets, spreadsheetId) ;
 
 
