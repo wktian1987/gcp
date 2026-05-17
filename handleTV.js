@@ -399,8 +399,8 @@ export async function HandleTV(d) {
             let toCheckFundFee  =  false  ;
             toCheckFundFee      =  D.lstFundTime===NA ? true : toCheckFundFee ;
             if (D.lstFundTime != NA) {
-                const lstRound  = D.lstFundTime % 28800000  ; // 8 * 60 * 60 * 1000
-                const thisRound = D.timestamp   % 28800000  ;
+                const lstRound  = Math.floor( D.lstFundTime / 28800000 ) ; // 8 * 60 * 60 * 1000
+                const thisRound = Math.floor( D.timestamp   / 28800000 ) ;
                 toCheckFundFee  = lstRound === thisRound  ?  false  :  true  ;
 
                 // test // test // test
