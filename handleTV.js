@@ -402,11 +402,6 @@ export async function HandleTV(d) {
                 const lstRound  = Math.floor( D.lstFundTime / 28800000 ) ; // 8 * 60 * 60 * 1000
                 const thisRound = Math.floor( D.timestamp   / 28800000 ) ;
                 toCheckFundFee  = lstRound === thisRound  ?  false  :  true  ;
-
-                // test // test // test
-                D.lstRound          =  lstRound         ;
-                D.thisRound         =  thisRound        ;
-                D.toCheckFundFee    =  toCheckFundFee   ;
             }
             if (toCheckFundFee) {
                 const fundFee   =  await CheckFundFee(sheets, spreadsheetId)          ;
@@ -509,6 +504,7 @@ export async function HandleTV(d) {
                                                 D.ing_getProfit     || NA  ,
                                                 D.ing_avgBuyPrice   || NA  ,
                                                 D.ing_tradeFee      || NA  ,
+                                                D.ing_fundFee       || NA  ,
                                                 D.ing_allFund       || NA  ,
                                                 D.ing_allCoin       || NA  ,
                                                 D.ing_reason        || NA  ] ]  ;
@@ -597,6 +593,7 @@ export async function HandleTV(d) {
                 S.ing_getProfit         =  NA                                               ;
                 S.ing_avgBuyPrice       =  NA                                               ;
                 S.ing_tradeFee          =  NA                                               ;
+                S.ing_fundFee           =  NA                                               ;
                 S.ing_allFund           =  NA                                               ;
                 S.ing_allCoin           =  NA                                               ;
                 S.ing_reason            =  toSellOrder[7]                                   ;
