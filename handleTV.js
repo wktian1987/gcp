@@ -2,7 +2,6 @@ import {    NumStrBool                      ,
             CleanObjToNumStrBool            ,
             GetTimeStringWithOffset         , 
             SendSplitTGMessages             ,
-            GetSpreadsheetID                ,                      
             FormatMatrixToString            ,            
             GetDataFromSheet                } from "./utility.js";
 import {    SendOrderToBroker               ,
@@ -385,7 +384,7 @@ export async function HandleTV(d) {
     
 
     try {
-        const spreadsheetId = GetSpreadsheetID(d.botNumber);
+        const spreadsheetId = d.spreadsheetId  ;
         //获取现存数据
         const ranges    =   Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges ) )                                ;
         const D         =   ranges.toGCP                                                                                            ?

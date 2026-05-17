@@ -128,33 +128,6 @@ export function ConvertRowsToHtmlTable(rows) {
     return html;
 }
 
-export function GetSpreadsheetID(botNumber) {
-    const sheet_00 = "1796Tns5Z5T8DODV9UkBhVMbPjXdP2WpUJrTPLX0V8dQ";
-    const sheet_01 = "13G-kKQi9AzjzGJUQYmUMGQfUKupkvNaB9irQ8XaCWKs";
-    const sheet_02 = "13G-kKQi9AzjzGJUQYmUMGQfUKupkvNaB9irQ8XaCWKs";
-    const sheet_03 = "13G-kKQi9AzjzGJUQYmUMGQfUKupkvNaB9irQ8XaCWKs";
-    const sheet_04 = "13G-kKQi9AzjzGJUQYmUMGQfUKupkvNaB9irQ8XaCWKs";
-    const sheet_05 = "13G-kKQi9AzjzGJUQYmUMGQfUKupkvNaB9irQ8XaCWKs";
-    const sheet_06 = "13G-kKQi9AzjzGJUQYmUMGQfUKupkvNaB9irQ8XaCWKs";
-    const sheet_07 = "13G-kKQi9AzjzGJUQYmUMGQfUKupkvNaB9irQ8XaCWKs";
-    const sheet_08 = "13G-kKQi9AzjzGJUQYmUMGQfUKupkvNaB9irQ8XaCWKs";
-    const sheet_09 = "13G-kKQi9AzjzGJUQYmUMGQfUKupkvNaB9irQ8XaCWKs";
-    switch (botNumber) {
-        case "TradingBot_00": return sheet_00;
-        case "TradingBot_01": return sheet_01;
-        case "TradingBot_02": return sheet_02;
-        case "TradingBot_03": return sheet_03;
-        case "TradingBot_04": return sheet_04;
-        case "TradingBot_05": return sheet_05;
-        case "TradingBot_06": return sheet_06;
-        case "TradingBot_07": return sheet_07;
-        case "TradingBot_08": return sheet_08;
-        case "TradingBot_09": return sheet_09;
-        default: return null;
-
-    }
-}
-
 /**
  * 判断指定名称的工作表是否存在
  * @param {object} sheets - 已授权的 Google Sheets 实例
