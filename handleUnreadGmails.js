@@ -5,7 +5,6 @@ import { google } from 'googleapis';
 
 import {
     GetTimeStringWithOffset,
-    GetSpreadsheetID,
     CheckIfSheetExists,
     SendSplitTGMessages
 } from './utility.js';
