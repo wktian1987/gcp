@@ -34,16 +34,17 @@ export async function CheckOrderConfirm(ifWaitingThenCancel, sheets, spreadsheet
     const res   = CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A1:B29'))) ;
     if (res.orderStatus === "confirm")  {
         const S = CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A30:B' )))  ;
-        S.ing_orderID		    = res.orderID        ;
-        S.ing_confirmDate		= res.confirmDate    ;
-        S.ing_confirmPrice		= res.confirmPrice   ;
-        S.ing_getProfit		    = res.getProfit      ;
-        S.ing_avgBuyPrice		= res.avgBuyPrice    ;
-        S.ing_tradeFee		    = res.tradeFee       ;
-        S.ing_allFund		    = res.allFund        ;
-        S.ing_allCoin		    = res.allCoin        ;
-        S.ing_orderStatus		= res.orderStatus    ;
-        S.lstBuyTime            = res.lstBuyTime     ;
+        S.ing_orderID		    = res.orderID           ;
+        S.ing_confirmTimestamp  = res.confirmTimestamp  ;
+        S.ing_confirmDate		= res.confirmDate       ;
+        S.ing_confirmPrice		= res.confirmPrice      ;
+        S.ing_getProfit		    = res.getProfit         ;
+        S.ing_avgBuyPrice		= res.avgBuyPrice       ;
+        S.ing_tradeFee		    = res.tradeFee          ;
+        S.ing_allFund		    = res.allFund           ;
+        S.ing_allCoin		    = res.allCoin           ;
+        S.ing_orderStatus		= res.orderStatus       ;
+        S.lstBuyTime            = res.lstBuyTime        ;
 
         await sheets.spreadsheets.values.clear( {
             spreadsheetId                       ,
@@ -59,7 +60,11 @@ export async function CheckOrderConfirm(ifWaitingThenCancel, sheets, spreadsheet
     return {}  ;
 }
 
-export async function CheckFundFee(sheets, spreadsheetId) {
-    const res   = CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A1:B29'))) ;
+export async function CheckFundFee(S, sheets, spreadsheetId) {
+    const res               =  CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A1:B29'))) ;
+    S.ing_fundFee           =  res.fundFee              ;
+    S.ing_confirmDate       =  res.confirmDate          ;
+    S.ing_confirmTimestamp  =  res.confirmTimestamp     ;
+
     return (typeof res.fundFee === "number") ? res.fundFee : 0 ;
 }

@@ -64,6 +64,7 @@ const   order_T_LMT     =  "LMT"            ;
 const   order_T_MKT     =  "MKT"            ; 
 const   order_BUY       =  "B"              ;
 const   order_SELL      =  "S"              ;
+const   order_FUND      =  "F"              ;
 const   order_pending   =  "pending"        ;
 const   order_waiting   =  "waiting"        ;
 const   order_confirm   =  "confirm"        ;
@@ -222,8 +223,8 @@ function ReNewAccount(D, newData) {
 
         D.lstBuyPrice           =  isNotV(D.lstBuyPrice        )  ?  NA  :  D.lstBuyPrice          ;
         D.lstBuySerial          =  isNotV(D.lstBuySerial       )  ?  NA  :  D.lstBuySerial         ;
-        D.lstBuyTime            =  isNotV(D.lstBuyTime         )  ?  NA  :  D.lstBuyTime           ;
 
+        D.lstTradeTime          =  isNotV(D.lstTradeTime       )  ?  NA  :  D.lstTradeTime         ;
         D.lstFundTime           =  isNotV(D.lstFundTime        )  ?  NA  :  D.lstFundTime          ;
 
         D.rcd_hghFund           =  isNaN(D.rcd_hghFund )  ?  D.hghestFund  :  D.rcd_hghFund  ;
@@ -314,8 +315,7 @@ function ReNewAccount(D, newData) {
         D.canSell           =  true     ;
         D.cantSellReason    =  ""       ;
 
-        if (D.timestamp - D.lstBuyTime < D.ordersInterval * 60000) {
-            D.canBuy            =  false  ;
+        if (D.timestamp - D.lstTradeTime < D.ordersInterval * 60000) {
             D.canSell           =  false  ;
             D.cantBuyReason     +=  'cant buy: '  + 'there order just done, wait some time' + '\n' ;
             D.cantSellReason    +=  'cant sell: ' + 'there order just done, wait some time' + '\n' ;
@@ -404,11 +404,62 @@ export async function HandleTV(d) {
                 toCheckFundFee  = lstRound === thisRound  ?  false  :  true  ;
             }
             if (toCheckFundFee) {
-                const fundFee   =  await CheckFundFee(sheets, spreadsheetId)          ;
-                D.allFundFee    =  NA0(D.allFundFee) + fundFee  ;
-                D.netProfit     =  NA0(D.netProfit)  + fundFee  ;
-                D.lstFundTime   =  D.timestamp                  ;
-                toCheckFundFee  =  false                        ;
+                let S = {} ;
+                S.ing_orderID           =  'F-' + GetTimeStringWithOffset(8, 28800000*Math.floor(D.timestamp/28800000) )    ;
+                S.ing_orderTimestamp    =  NA                                                                               ;
+                S.ing_orderDate         =  NA                                                                               ;
+                S.ing_confirmTimestamp  =  NA                                                                               ;
+                S.ing_confirmDate       =  NA                                                                               ;
+                S.ing_serial            =  NA                                                                               ;
+                S.ing_buysell           =  order_FUND                                                                       ;
+                S.ing_triggerPrice      =  NA                                                                               ;
+                S.ing_orderType         =  NA                                                                               ;
+                S.ing_orderPrice        =  NA                                                                               ;
+                S.ing_confirmPrice      =  NA                                                                               ;
+                S.ing_boughtPrice       =  NA                                                                               ;
+                S.ing_qty               =  NA                                                                               ;
+                S.ing_getProfit         =  NA                                                                               ;
+                S.ing_avgBuyPrice       =  NA                                                                               ;
+                S.ing_tradeFee          =  NA                                                                               ;
+                S.ing_fundFee           =  NA                                                                               ;
+                S.ing_allFund           =  NA                                                                               ;
+                S.ing_allCoin           =  NA                                                                               ;
+                S.ing_reason            =  "FundFee"                                                                        ;
+                S.ing_orderStatus       =  order_pending                                                                    ;
+
+                S  =  await CheckFundFee(S, sheets, spreadsheetId)  ;
+                Object.assign(D, S)  ;
+
+                D.allFundFee    =  NA0(D.allFundFee) + D.ing_fundFee  ;
+                D.netProfit     =  NA0(D.netProfit)  + D.ing_fundFee  ;
+                D.lstFundTime   =  D.ing_confirmTimestamp             ;
+
+                const newTradehistory = [ [ D.ing_orderID       || NA  ,
+                                            D.ing_orderDate     || NA  ,
+                                            D.ing_confirmDate   || NA  ,
+                                            D.ing_serial        || NA  ,
+                                            D.ing_buysell       || NA  ,
+                                            D.ing_triggerPrice  || NA  ,
+                                            D.ing_orderType     || NA  ,
+                                            D.ing_orderPrice    || NA  ,
+                                            D.ing_confirmPrice  || NA  ,
+                                            D.ing_boughtPrice   || NA  ,
+                                            D.ing_qty           || NA  ,
+                                            D.ing_getProfit     || NA  ,
+                                            D.ing_avgBuyPrice   || NA  ,
+                                            D.ing_tradeFee      || NA  ,
+                                            D.ing_fundFee       || NA  ,
+                                            D.ing_allFund       || NA  ,
+                                            D.ing_allCoin       || NA  ,
+                                            D.ing_reason        || NA  ] ]  ;
+                await sheets.spreadsheets.values.append({
+                    spreadsheetId                                           ,
+                    range               : "tradeHistory!A1:A"               ,
+                    valueInputOption    : 'USER_ENTERED'                    , 
+                    requestBody         : { values: newTradehistory }       }   )   ;
+
+
+                D.thisAlertMessage  +=  "New fund fee" + "\n"   ;
             }
 
             ReNewAccount(D) ;
@@ -419,28 +470,7 @@ export async function HandleTV(d) {
                 if (D.ing_buysell = order_BUY  && D.TradingSymbolPrice < D.ing_orderPrice*(1+D.waveUpChg)) {ifWaitingThenCancel = false ;}
                 if (D.ing_buysell = order_SELL && D.TradingSymbolPrice > D.ing_orderPrice*(1+D.waveDnChg)) {ifWaitingThenCancel = false ;}
                 const res_broker = await CheckOrderConfirm(ifWaitingThenCancel, sheets, spreadsheetId) ;
-                if (res_broker.ing_orderStatus === "cancel" )  {
-                    delete D.ing_orderID            ; 
-                    delete D.ing_orderTimestamp     ; 
-                    delete D.ing_orderDate          ; 
-                    delete D.ing_confirmTimestamp   ; 
-                    delete D.ing_confirmDate        ; 
-                    delete D.ing_serial             ; 
-                    delete D.ing_buysell            ; 
-                    delete D.ing_triggerPrice       ; 
-                    delete D.ing_orderType          ; 
-                    delete D.ing_orderPrice         ; 
-                    delete D.ing_confirmPrice       ; 
-                    delete D.ing_boughtPrice        ; 
-                    delete D.ing_qty                ; 
-                    delete D.ing_getProfit          ; 
-                    delete D.ing_avgBuyPrice        ; 
-                    delete D.ing_tradeFee           ; 
-                    delete D.ing_allFund            ; 
-                    delete D.ing_allCoin            ; 
-                    delete D.ing_reason             ; 
-                    delete D.ing_orderStatus        ; 
-                }
+
 
                 if (res_broker.ing_orderStatus  === "confirm")  {
                     Object.assign(D, res_broker)  ;// 此时res_broker中已包括 last_orderTime
@@ -486,6 +516,8 @@ export async function HandleTV(d) {
                     D.hghBuySerialUnclose   =  D.gridNum > 0  ?  uncloseOrdersSort[D.gridNum-1][2]          :  NA  ;
                     D.lowBuySerialUnclose   =  D.gridNum > 0  ?  uncloseOrdersSort[0]          [2]          :  NA  ;
 
+                    D.lstTradeTime          =  D.ing_confirmTimestamp   ;
+
                     ReNewAccount(D) ;
                     D.ing_avgBuyPrice   =  D.avgBuyPrice    ;
                     D.ing_allFund       =  D.allFund        ;
@@ -525,8 +557,37 @@ export async function HandleTV(d) {
                             requestBody         : { values: uncloseOrders }         }   )   ;
                     }
 
+                    D.thisAlertMessage  +=  D.ing_buysell===order_BUY           ?
+                                            "Buy  Order confirmed" + "\n"       :
+                                            "Sell Order confirmed" + "\n"                   ;
+                    
 
                 }
+
+                if (res_broker.ing_orderStatus === "cancel" || res_broker.ing_orderStatus === "confirm")  {
+                    delete D.ing_orderID            ; 
+                    delete D.ing_orderTimestamp     ; 
+                    delete D.ing_orderDate          ; 
+                    delete D.ing_confirmTimestamp   ; 
+                    delete D.ing_confirmDate        ; 
+                    delete D.ing_serial             ; 
+                    delete D.ing_buysell            ; 
+                    delete D.ing_triggerPrice       ; 
+                    delete D.ing_orderType          ; 
+                    delete D.ing_orderPrice         ; 
+                    delete D.ing_confirmPrice       ; 
+                    delete D.ing_boughtPrice        ; 
+                    delete D.ing_qty                ; 
+                    delete D.ing_getProfit          ; 
+                    delete D.ing_avgBuyPrice        ; 
+                    delete D.ing_tradeFee           ; 
+                    delete D.ing_fundFee            ;
+                    delete D.ing_allFund            ; 
+                    delete D.ing_allCoin            ; 
+                    delete D.ing_reason             ; 
+                    delete D.ing_orderStatus        ; 
+                }
+
             }
 
 
@@ -538,7 +599,7 @@ export async function HandleTV(d) {
                 let S = {} ;
                 S.ing_orderID           =  'B-' + D.tvUpdateTime                                                                                                                ;
                 S.ing_orderTimestamp    =  nowTimestamp                                                                                                                         ;
-                S.ing_orderDate         =  GetTimeStringWithOffset(8)                                                                                                           ;
+                S.ing_orderDate         =  GetTimeStringWithOffset(8, nowTimestamp)                                                                                             ;
                 S.ing_confirmTimestamp  =  NA                                                                                                                                   ;
                 S.ing_confirmDate       =  NA                                                                                                                                   ;
                 S.ing_serial            =  NA0(D.lstBuySerial) + 1                                                                                                              ;
@@ -552,6 +613,7 @@ export async function HandleTV(d) {
                 S.ing_getProfit         =  NA                                                                                                                                   ;
                 S.ing_avgBuyPrice       =  NA                                                                                                                                   ;
                 S.ing_tradeFee          =  NA                                                                                                                                   ;
+                S.ing_fundFee           =  NA                                                                                                                                   ;
                 S.ing_allFund           =  NA                                                                                                                                   ;
                 S.ing_allCoin           =  NA                                                                                                                                   ;
                 S.ing_reason            =  BuyReason_belowTarget                                                                                                                ;
@@ -559,7 +621,7 @@ export async function HandleTV(d) {
 
                 S = await SendOrderToBroker(S, sheets, spreadsheetId) ;
 
-                S.thisAlertMessage  +=  "New buy order" + "\n"  ;
+                S.thisAlertMessage  +=  "New buy order, waiting confirmed" + "\n"  ;
                 Object.assign(D, S) ;
             }
 
@@ -601,7 +663,7 @@ export async function HandleTV(d) {
 
                 S = await SendOrderToBroker(S, sheets, spreadsheetId) ;
 
-                S.thisAlertMessage  +=  "New sell order" + "\n"  ;
+                S.thisAlertMessage  +=  "New sell order, waiting confirmed" + "\n"  ;
                 Object.assign(D, S) ;
             }
 
