@@ -384,7 +384,7 @@ export async function HandleTV(d) {
     
 
     try {
-        const spreadsheetId = d.spreadsheetId  ;
+        const spreadsheetId = d.spreadsheetID  ;
         //获取现存数据
         const ranges    =   Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges ) )                                ;
         const D         =   ranges.toGCP                                                                                            ?
