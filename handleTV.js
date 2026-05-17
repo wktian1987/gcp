@@ -464,6 +464,15 @@ export async function HandleTV(d) {
 
             ReNewAccount(D) ;
 
+            let uncloseOrders       =  []  ;
+            let uncloseOrdersSort   =  []  ;
+            // orderID	confirmDate	serial	triggerPrice	confirmPrice	qty	P×Q	reason
+            // 0        1           2       3               4               5   6   7
+            if (D.therePosition) {
+                uncloseOrders       =  await GetDataFromSheet(sheets, spreadsheetId, ranges.uncloseOrdersRange)             ;
+                uncloseOrdersSort   =  uncloseOrders.toSorted( (order1, order2) => Number(order1[4]) - Number(order2[4]) )  ;
+            }
+
             if (D.ifOrderWaiting) {
 
                 let ifWaitingThenCancel = true  ;
@@ -475,8 +484,7 @@ export async function HandleTV(d) {
                 if (res_broker.ing_orderStatus  === "confirm")  {
                     Object.assign(D, res_broker)  ;// 此时res_broker中已包括 last_orderTime
 
-                    let uncloseOrders       =  D.therePosition  ?  await GetDataFromSheet(sheets, spreadsheetId, ranges.uncloseOrdersRange)  :  []  ;
-                    let uncloseOrdersSort   =  []  ;
+
                     
                     if (D.ing_buysell === order_BUY) {
                         uncloseOrders.push( [ 
@@ -489,6 +497,7 @@ export async function HandleTV(d) {
                                             D.ing_confirmPrice * D.ing_qty  || NA  ,
                                             D.ing_reason                    || NA  ] ) ;
                         uncloseOrdersSort   =  uncloseOrders.toSorted( (order1, order2) => Number(order1[4]) - Number(order2[4]) )  ;
+                        
                         D.lstBuyPrice   =  D.ing_confirmPrice   ;
                         D.lstBuySerial  =  D.ing_serial         ;
                     } 
@@ -591,9 +600,6 @@ export async function HandleTV(d) {
             }
 
 
-
-            
-
             if (D.canBuy && D.touchTargetLow) {
                 let nowTimestamp = Date.now()   ;
                 let S = {} ;
@@ -633,6 +639,14 @@ export async function HandleTV(d) {
                 D.toSell    =  true  ;
                 toSellOrder = uncloseOrders.find( v => String(v[2]) === String(D.lowBuySerialUnclose)   ) ;
                 toSellOrder[7] = 'touchTargetHgh'   ;
+            }
+
+            // mustSellProfitStep
+            if ( D.canSell && (D.TradingSymbolPrice > Math.pow((1+D.waveUpChg), D.mustSellProfitStep) * Math.max( D.lowBuyPriceUnclose , D.avgBuyPriceUnclose) ) ) {
+                D.toSell    =  true  ;
+                toSellOrder = uncloseOrders.find( v => String(v[2]) === String(D.lowBuySerialUnclose)   ) ;
+                toSellOrder[7] = 'must sell Profit'  ;
+
             }
 
 
