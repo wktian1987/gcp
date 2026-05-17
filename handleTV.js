@@ -8,7 +8,7 @@ import {    SendOrderToBroker               ,
             CheckOrderConfirm               ,               
             CheckFundFee                    } from "./broker.js";    
 
-import { dlp_v2, google } from 'googleapis';
+import { google } from 'googleapis';
 const auth = new google.auth.GoogleAuth({
     scopes: ['https://www.googleapis.com/auth/spreadsheets']
 });
@@ -67,6 +67,7 @@ const   order_FUND      =  "F"              ;
 const   order_pending   =  "pending"        ;
 const   order_waiting   =  "waiting"        ;
 const   order_confirm   =  "confirm"        ;
+const   order_cancel    =  "cancel"         ;
 
 function GetGridDifficulty(positionN, difficultyCoefficient, maxGridNumber) { 
     let gridDifficulty   =   Math.pow(positionN, (difficultyCoefficient + 1)) / Math.pow(maxGridNumber, difficultyCoefficient) + (maxGridNumber-positionN) / maxGridNumber  ;
@@ -426,7 +427,7 @@ export async function HandleTV(d) {
                 S.ing_reason            =  "FundFee"                                                                        ;
                 S.ing_orderStatus       =  order_pending                                                                    ;
 
-                S  =  await CheckFundFee(S, sheets, spreadsheetId)  ;
+                S  =  await CheckFundFee(S, D.isReal, D.TradingSymbol, sheets, spreadsheetId)  ;
                 Object.assign(D, S)  ;
 
                 D.allFundFee    =  NA0(D.allFundFee) + D.ing_fundFee  ;
@@ -477,13 +478,11 @@ export async function HandleTV(d) {
                 let ifWaitingThenCancel = true  ;
                 if (D.ing_buysell = order_BUY  && D.TradingSymbolPrice < D.ing_orderPrice*(1+D.waveUpChg)) {ifWaitingThenCancel = false ;}
                 if (D.ing_buysell = order_SELL && D.TradingSymbolPrice > D.ing_orderPrice*(1+D.waveDnChg)) {ifWaitingThenCancel = false ;}
-                const res_broker = await CheckOrderConfirm(ifWaitingThenCancel, sheets, spreadsheetId) ;
+                const res_broker = await CheckOrderConfirm(D.ing_orderID, ifWaitingThenCancel, D.isReal, D.TradingSymbol, sheets, spreadsheetId) ;
 
 
-                if (res_broker.ing_orderStatus  === "confirm")  {
-                    Object.assign(D, res_broker)  ;// 此时res_broker中已包括 last_orderTime
-
-
+                if (res_broker.ing_orderStatus  === order_confirm)  {
+                    Object.assign(D, res_broker)  ;
                     
                     if (D.ing_buysell === order_BUY) {
                         uncloseOrders.push( [ 
@@ -572,7 +571,7 @@ export async function HandleTV(d) {
 
                 }
 
-                if (res_broker.ing_orderStatus === "cancel" || res_broker.ing_orderStatus === "confirm")  {
+                if (res_broker.ing_orderStatus === order_cancel || res_broker.ing_orderStatus === order_confirm)  {
                     delete D.ing_orderID            ; 
                     delete D.ing_orderTimestamp     ; 
                     delete D.ing_orderDate          ; 
@@ -624,7 +623,7 @@ export async function HandleTV(d) {
                 S.ing_reason            =  BuyReason_belowTarget                                                                                                                ;
                 S.ing_orderStatus       =  order_pending                                                                                                                        ;
 
-                S = await SendOrderToBroker(S, sheets, spreadsheetId) ;
+                S = await SendOrderToBroker(S, D.isReal, D.TradingSymbol, sheets, spreadsheetId) ;
 
                 S.thisAlertMessage  +=  "New buy order, waiting confirmed" + "\n"  ;
                 Object.assign(D, S) ;
@@ -674,7 +673,7 @@ export async function HandleTV(d) {
                 S.ing_reason            =  toSellOrder[7]                                   ;
                 S.ing_orderStatus       =  order_pending                                    ;
 
-                S = await SendOrderToBroker(S, sheets, spreadsheetId) ;
+                S = await SendOrderToBroker(S, D.isReal, D.TradingSymbol, sheets, spreadsheetId) ;
 
                 S.thisAlertMessage  +=  "New sell order, waiting confirmed" + "\n"  ;
                 Object.assign(D, S) ;

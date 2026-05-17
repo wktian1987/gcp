@@ -1,7 +1,8 @@
 import {    CleanObjToNumStrBool    ,
             GetDataFromSheet        } from "./utility.js";
 
-export async function SendOrderToBroker(S, sheets, spreadsheetId) {
+export async function SendOrderToBroker(S, isReal, TradingSymbol, sheets, spreadsheetId) {
+    if (isReal && TradingSymbol.startsWith("BINANCE:")) {return await BINANCE_SendOrderToBroker(S, TradingSymbol) ;}
 
     await sheets.spreadsheets.values.clear( {
         spreadsheetId                       ,
@@ -15,7 +16,7 @@ export async function SendOrderToBroker(S, sheets, spreadsheetId) {
         requestBody         : {values: Object.entries(S)}       } )  ;
     
     const res_broker    =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A1:B29') )  ;
-    const res           = CleanObjToNumStrBool(res_broker) ;
+    const res           =  CleanObjToNumStrBool(res_broker)  ;
 
     S.ing_orderID		    = res.orderID        ;
     S.ing_confirmDate		= res.confirmDate    ;
@@ -29,8 +30,12 @@ export async function SendOrderToBroker(S, sheets, spreadsheetId) {
 
     return S ;
 }
+async function BINANCE_SendOrderToBroker(S, TradingSymbol) {
+    return {} ;
+}
 
-export async function CheckOrderConfirm(ifWaitingThenCancel, sheets, spreadsheetId) { //, price, orderPrice, buysell) {
+export async function CheckOrderConfirm(ing_orderID, ifWaitingThenCancel, isReal, TradingSymbol, sheets, spreadsheetId) { 
+    if (isReal && TradingSymbol.startsWith("BINANCE:")) {return await BINANCE_CheckOrderConfirm(ing_orderID, ifWaitingThenCancel) ;}
     const res   = CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A1:B29'))) ;
     if (res.orderStatus === "confirm")  {
         const S = CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A30:B' )))  ;
@@ -59,11 +64,18 @@ export async function CheckOrderConfirm(ifWaitingThenCancel, sheets, spreadsheet
 
     return {}  ;
 }
+async function BINANCE_CheckOrderConfirm(ing_orderID, ifWaitingThenCancel) {
+    return {}  ;
+}
 
-export async function CheckFundFee(S, sheets, spreadsheetId) {
+export async function CheckFundFee(S, isReal, TradingSymbol, sheets, spreadsheetId) {
+    if (isReal && TradingSymbol.startsWith("BINANCE:")) {return await BINANCE_CheckFundFee(TradingSymbol) ;}
     const res               =  CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A1:B29'))) ;
     S.ing_fundFee           =  res.fundFee              ;
     S.ing_confirmDate       =  res.confirmDate          ;
     S.ing_confirmTimestamp  =  res.confirmTimestamp     ;
     return S  ;
+}
+async function BINANCE_CheckFundFee(TradingSymbol) {
+    return {}  ;
 }
