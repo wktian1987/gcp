@@ -65,6 +65,5 @@ export async function CheckFundFee(S, sheets, spreadsheetId) {
     S.ing_fundFee           =  res.fundFee              ;
     S.ing_confirmDate       =  res.confirmDate          ;
     S.ing_confirmTimestamp  =  res.confirmTimestamp     ;
-
-    return (typeof res.fundFee === "number") ? res.fundFee : 0 ;
+    return S  ;
 }
