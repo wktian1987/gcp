@@ -417,7 +417,7 @@ export async function HandleTV(d) {
     d.thisAlertMessage          =   String(d.thisAlertMessage || "").replaceAll(HuanHang, "\n")  ;
     d.gcpGetTime                =   Date.now()                                                   ;
 
-    const thisLockName = d.TradingSymbol + '-' + String(d.timestamp)  ;
+    const thisLockName = 'T' + String(d.timestamp) + 'P' + String(d.TradingSymbolPrice)  ;
 
     try {
         const spreadsheetId = d.spreadsheetID  ;
@@ -688,8 +688,9 @@ export async function HandleTV(d) {
 
                 S = await SendOrderToBroker(S, D.isReal, D.TradingSymbol, sheets, spreadsheetId) ;
 
-                S.thisAlertMessage  +=  "New buy order, waiting confirmed" + "\n"  ;
                 Object.assign(D, S) ;
+                D.ifOrderWaiting    =   S.ing_orderStatus === order_waiting  ;
+                D.thisAlertMessage  +=  "New buy order, waiting confirmed" + "\n"  ;
             }
 
             D.toSell        =  false    ;
@@ -738,8 +739,9 @@ export async function HandleTV(d) {
 
                 S = await SendOrderToBroker(S, D.isReal, D.TradingSymbol, sheets, spreadsheetId) ;
 
-                S.thisAlertMessage  +=  "New sell order, waiting confirmed" + "\n"  ;
                 Object.assign(D, S) ;
+                D.ifOrderWaiting    =   S.ing_orderStatus === order_waiting ;
+                D.thisAlertMessage  +=  "New sell order, waiting confirmed" + "\n"  ;
             }
 
             D.runningWell       =   true    ;
@@ -796,7 +798,7 @@ export async function HandleTV(d) {
         }
 
         const releaseLock  =  await ReleaseLock(thisLockName, sheets, spreadsheetId)  ;
-        console.log( releaseLock ?  '✔ releaseLock lock success'  :  '✘ releaseLock lock fail')  ;
+        console.log( releaseLock ?  '✔ release lock success'  :  '✘ release lock fail')  ;
         if (!releaseLock) { throw new Error('release lock fail') }
 
     } catch (err) {
