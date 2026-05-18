@@ -379,9 +379,8 @@ function ReNewAccount(D, newData) {
 
 export async function HandleTV(d) {
     CleanObjToNumStrBool(d) ;
-    d.thisAlertMessage          =   String(d.thisAlertMessage || "").replaceAll(HuanHang, "\n")         ;
-    d.tvUpdateTime              =   GetTimeStringWithOffset(8, d.timestamp)                             ;
-    d.gcpGetTime                =   GetTimeStringWithOffset(8)                                          ;
+    d.thisAlertMessage          =   String(d.thisAlertMessage || "").replaceAll(HuanHang, "\n")  ;
+    d.gcpGetTime                =   Date.now()                                                   ;
     
 
     try {

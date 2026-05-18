@@ -71,9 +71,9 @@ async function BINANCE_CheckOrderConfirm(ing_orderID, ifWaitingThenCancel) {
 export async function CheckFundFee(S, isReal, TradingSymbol, sheets, spreadsheetId) {
     if (isReal && TradingSymbol.startsWith("BINANCE:")) {return await BINANCE_CheckFundFee(TradingSymbol) ;}
     const res               =  CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A1:B29'))) ;
-    S.ing_fundFee           =  res.fundFee              ;
-    S.ing_confirmDate       =  res.confirmDate          ;
-    S.ing_confirmTimestamp  =  res.confirmTimestamp     ;
+    S.ing_fundFee           =  res.fundFee         ;
+    S.ing_confirmDate       =  res.confirmDate     ;
+    S.ing_confirmTimestamp  =  res.lstFundTime     ;
     return S  ;
 }
 async function BINANCE_CheckFundFee(TradingSymbol) {
