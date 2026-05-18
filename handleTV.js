@@ -708,8 +708,33 @@ export async function HandleTV(d) {
                 D.toSell    =  true  ;
                 toSellOrder = uncloseOrders.find( v => String(v[2]) === String(D.lowBuySerialUnclose)   ) ;
                 toSellOrder[7] = 'must sell Profit'  ;
-
             }
+
+            //cut too high buy order
+            if ( D.canSell && (D.hghBuyPriceUnclose/D.TradingSymbolPrice > D.roundHgh/D.roundLow)  ) {
+                D.toSell    =  true  ;
+                toSellOrder = uncloseOrders.find( v => String(v[2]) === String(D.hghBuySerialUnclose) ) ;
+                toSellOrder[7] = 'cut too hgh buy order'  ;
+            }
+            //cut due to stopC
+            if ( D.canSell && (D.TradingSymbolPrice < D.stopPriceC)  ) {
+                D.toSell    =  true  ;
+                toSellOrder = uncloseOrders.find( v => String(v[2]) === String(D.hghBuySerialUnclose) ) ;
+                toSellOrder[7] = 'cut due to stopC'  ;
+            }
+            //cut due to stopF
+            if ( D.canSell && (D.TradingSymbolPrice < D.stopPriceF)  ) {
+                D.toSell    =  true  ;
+                toSellOrder = uncloseOrders.find( v => String(v[2]) === String(D.hghBuySerialUnclose) ) ;
+                toSellOrder[7] = 'cut due to stopF'  ;
+            }
+            //cut due to liquidate
+            if ( D.canSell && (D.TradingSymbolPrice < D.liquidatePrice)  ) {
+                D.toSell    =  true  ;
+                toSellOrder = uncloseOrders.find( v => String(v[2]) === String(D.hghBuySerialUnclose) ) ;
+                toSellOrder[7] = 'cut due to liquidate'  ;
+            }
+
 
 
             if (D.canSell &&  D.toSell ) {
