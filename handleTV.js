@@ -59,6 +59,7 @@ const   noLOCK          =  "noLOCK"         ;
 const   NA              =  "NA"             ;
 const   toFill          =  "toFill"         ;
 const   toGCPRanges     =  "toGCP!A:B"      ;
+const   lockRange       =  "toGCP!B1"       ;
 const   HuanHang        =  "__HuangHang__"  ;
 const   order_T_LMT     =  "LMT"            ;
 const   order_T_MKT     =  "MKT"            ; 
@@ -376,12 +377,35 @@ function ReNewAccount(D, newData) {
 
 }
 
-async function SetLock(lockName, currentLOCK, sheets, spreadsheetId) {
-    if (currentLOCK === noLOCK) {
-        return true ;
-    } else {
-        return false ;
+async function CheckLock(lockName, sheets, spreadsheetId) {
+    const _currentLOCK = await GetDataFromSheet(sheets, spreadsheetId, lockRange) ;
+    const currentLOCK  = _currentLOCK[0][0]  ;
+    return currentLOCK === lockName  ?  true  :  false  ;
+}
+async function SetLock(lockName, sheets, spreadsheetId) {
+    let currentNoLock = await CheckLock(noLOCK, sheets, spreadsheetId)  ;
+    while (!currentNoLock) {
+        await new Promise(res => setTimeout(res, 1000));
+        currentNoLock = await CheckLock(noLOCK, sheets, spreadsheetId)  ;
     }
+    await sheets.spreadsheets.values.update({
+                        spreadsheetId                                           ,
+                        range               : lockRange                         ,
+                        valueInputOption    : 'USER_ENTERED'                    , 
+                        requestBody         : { values: [[lockName]] }          }   )   ;
+    return await CheckLock(lockName, sheets, spreadsheetId) ;
+}
+async function ReleaseLock(lockName, sheets, spreadsheetId) {
+    let currentLockRight = await CheckLock(lockName, sheets, spreadsheetId)  ;
+    if (!currentLockRight) {return false ;}
+    await sheets.spreadsheets.values.update({
+                    spreadsheetId                                           ,
+                    range               : lockRange                         ,
+                    valueInputOption    : 'USER_ENTERED'                    , 
+                    requestBody         : { values: [[noLOCK]] }            }   )   ;
+    currentLockRight = await CheckLock(noLOCK, sheets, spreadsheetId)  ;
+    if (!currentLockRight) {return false ;}
+    return true ;
 }
 
 export async function HandleTV(d) {
@@ -400,10 +424,9 @@ export async function HandleTV(d) {
                             {}                                                                                                              ;
         Object.assign(D, d);
 
-        let currentLOCK = ranges.LOCK  ;
-
-        const lock = await SetLock(thisLockName, currentLOCK, sheets, spreadsheetId)  ;
-        
+        const setLock = await SetLock(thisLockName, sheets, spreadsheetId)  ;
+        console.log( setLock ?  '✔ get lock success'  :  '✘ get lock fail')  ;
+        if (!setLock) {throw new Error('get lock fail')}
 
         if (D.timestamp > D.realTradeTime) {
 
@@ -766,6 +789,12 @@ export async function HandleTV(d) {
                                         "Get TV webhook Message"                                    ,
                                         "But FAIL write to Google Sheets"                           ); 
             throw new Error("TV数据写入表格失败");
+        }
+
+        const releaseLock  =  ReleaseLock(thisLockName, sheets, spreadsheetId)  ;
+        if (!releaseLock) {
+            console.log('✘ release lock fail');
+            throw new Error('release lock fail') ;
         }
 
     } catch (err) {

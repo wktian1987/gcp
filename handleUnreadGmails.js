@@ -365,14 +365,7 @@ export async function HandleUnreadGmails(req, res) {
         }
 
         if (handledEmailsData.length > 99) {
-            handledEmailsData.length = 99
-
-
-
-
-
-
-            ;
+            handledEmailsData.length = 99;
         }
         // 邮件状态更改，防止反复操作
         try {
