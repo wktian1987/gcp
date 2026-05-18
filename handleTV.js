@@ -385,13 +385,13 @@ async function CheckLock(lockName, sheets, spreadsheetId) {
 async function SetLock(lockName, sheets, spreadsheetId) {
     let currentNoLock = await CheckLock(noLOCK, sheets, spreadsheetId)  ;
     let attempts = 1 ;
-    while (!currentNoLock && attempts < 60) {
+    while (!currentNoLock && attempts < 30) {
         attempts    +=  1  ;
         await new Promise(res => setTimeout(res, 1000));
         currentNoLock = await CheckLock(noLOCK, sheets, spreadsheetId)  ;
         console.log(`第${attempts}次尝试获取lock`) ;
     }
-    if (attempts > 55) {return false}
+    if (attempts > 25) {return false}
     await sheets.spreadsheets.values.update({
                         spreadsheetId                                           ,
                         range               : lockRange                         ,
