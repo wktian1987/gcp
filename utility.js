@@ -200,7 +200,8 @@ export async function GetDataFromSheet(sheets, spreadsheetId, fullRange) {
             return null;
         }
 
-        return rows.filter(row => row.length >= 2 && row[0] !== ""); // 返回二维数组
+        // return rows.filter(row => row.length >= 2 && row[0] !== ""); // 返回二维数组
+        return rows ;;
     } catch (err) {
         console.error('GetDataFromSheet 报错: ', err.message);
         throw err;
