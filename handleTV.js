@@ -792,10 +792,8 @@ export async function HandleTV(d) {
         }
 
         const releaseLock  =  ReleaseLock(thisLockName, sheets, spreadsheetId)  ;
-        if (!releaseLock) {
-            console.log('✘ release lock fail');
-            throw new Error('release lock fail') ;
-        }
+        console.log( releaseLock ?  '✔ releaseLock lock success'  :  '✘ releaseLock lock fail')  ;
+        if (!releaseLock) { throw new Error('release lock fail') }
 
     } catch (err) {
         throw new Error(`TV消息处理失败: ${err.message}`);
