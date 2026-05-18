@@ -794,7 +794,7 @@ export async function HandleTV(d) {
             throw new Error("TV数据写入表格失败");
         }
 
-        const releaseLock  =  ReleaseLock(thisLockName, sheets, spreadsheetId)  ;
+        const releaseLock  =  await ReleaseLock(thisLockName, sheets, spreadsheetId)  ;
         console.log( releaseLock ?  '✔ releaseLock lock success'  :  '✘ releaseLock lock fail')  ;
         if (!releaseLock) { throw new Error('release lock fail') }
 
