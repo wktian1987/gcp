@@ -391,6 +391,7 @@ async function SetLock(lockName, sheets, spreadsheetId) {
         currentNoLock = await CheckLock(noLOCK, sheets, spreadsheetId)  ;
         console.log(`第${attempts}次尝试获取lock`) ;
     }
+    if (attempts > 55) {return false}
     await sheets.spreadsheets.values.update({
                         spreadsheetId                                           ,
                         range               : lockRange                         ,
