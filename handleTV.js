@@ -786,6 +786,7 @@ export async function HandleTV(d) {
         });
 
         // 2. 写入新数据
+        D.gcpWriteTime = Date.now()  ;
         await sheets.spreadsheets.values.update({
             spreadsheetId                                       ,
             range               : writeToRange                  ,
