@@ -44,7 +44,7 @@ export async function HandleTgBot(msg) {
             return match ? `TradingBot_${match[1]}` : null;
         })(text);
 
-        const thisSpreadsheetId = GetSpreadsheetID(botNumber, sheets);
+        const thisSpreadsheetId = await GetSpreadsheetID(botNumber, sheets);
 
 
         // 只处理我或者群内发来的消息

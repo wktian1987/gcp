@@ -208,7 +208,7 @@ function convertToTextTable(rawContent) {
 export async function HandleUnreadGmails(req, res) {
     if (!res.writableEnded) res.status(200).send('ACK'); // 立即返回响应防止超时
 
-    const SPREADSHEET_ID =  GetSpreadsheetID("TradingBot_00", sheets);
+    const SPREADSHEET_ID =  await GetSpreadsheetID("TradingBot_00", sheets);
     const handledEmailsSheetTitle = "handledEmails";
     // await CheckIfSheetExists(sheets, SPREADSHEET_ID, handledEmailsSheetTitle, true);
     let lock = null;

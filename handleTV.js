@@ -421,7 +421,7 @@ export async function HandleTV(d) {
     const thisLockName = 'T' + String(d.timestamp) ;
 
     try {
-        const spreadsheetId = GetSpreadsheetID(d.botNumber, sheets)  ;
+        const spreadsheetId = await GetSpreadsheetID(d.botNumber, sheets)  ;
         //获取现存数据
         const ranges    =   CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges )))           ;
         const D         =   ranges.toGCP                                                                                            ?
