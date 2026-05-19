@@ -23,6 +23,7 @@ const myTgID            = process.env.myTgID        ;
 
 
 export async function HandleTgBot(msg) {
+    return res.status(200).send("测试用 马上返回，不进行下面的操作");
     // 基础拦截：如果不是普通私聊或群聊消息，直接回复 200 并退出
     if (!msg) {
         return res.status(200).send("Ignore: Not a standard message");
