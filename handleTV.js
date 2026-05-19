@@ -3,6 +3,7 @@ import {    NumStrBool                      ,
             GetTimeStringWithOffset         , 
             SendSplitTGMessages             ,
             FormatMatrixToString            ,            
+            GetSpreadsheetID                ,
             GetDataFromSheet                } from "./utility.js";
 import {    SendOrderToBroker               ,
             CheckOrderConfirm               ,               
@@ -417,10 +418,10 @@ export async function HandleTV(d) {
     d.thisAlertMessage          =   String(d.thisAlertMessage || "").replaceAll(HuanHang, "\n")  ;
     d.gcpGetTime                =   Date.now()                                                   ;
 
-    const thisLockName = 'T' + String(d.timestamp) + 'P' + String(d.TradingSymbolPrice)  ;
+    const thisLockName = 'T' + String(d.timestamp) ;
 
     try {
-        const spreadsheetId = d.spreadsheetID  ;
+        const spreadsheetId = GetSpreadsheetID(d.botNumber, sheets)  ;
         //获取现存数据
         const ranges    =   CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges )))           ;
         const D         =   ranges.toGCP                                                                                            ?

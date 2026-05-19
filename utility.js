@@ -1,3 +1,5 @@
+
+
 export function NumStrBool(ns) {
     // Number("") 和 Number(null) 会变成 0
     // 如果不希望空值变0，可以加判断：
@@ -48,7 +50,6 @@ export function CleanObjToNumStrBool(obj) {
 
     return obj; 
 }
-
 
 /**
  * 将时间戳转换为特定格式: 260423:140155.126
@@ -128,6 +129,29 @@ export function ConvertRowsToHtmlTable(rows) {
     return html;
 }
 
+export async function GetSpreadsheetID(botNumber, sheets) {
+    const TradingBot_00_ID  =   process.env.SHEET_ID  ;
+    try {
+        const botList =  CleanObjToNumStrBool ( Object.fromEntries( await GetDataFromSheet(sheets, TradingBot_00_ID, "0!A:B") ) )  ;
+        if (botList[botNumber]) {
+            return botList[botNumber]  ;
+        } else {
+            throw new Error(`not find spreadsheetId for ${botNumber}`)  ;
+        }
+    } catch (err) {
+        console.log(`✘ GetSpreadsheetID error: `, err.message) ;
+        throw new Error(err.message)  ;
+    }
+
+}
+
+
+
+
+
+
+
+
 /**
  * 判断指定名称的工作表是否存在
  * @param {object} sheets - 已授权的 Google Sheets 实例
@@ -196,14 +220,14 @@ export async function GetDataFromSheet(sheets, spreadsheetId, fullRange) {
         const rows = response.data.values;
 
         if (!rows || rows.length === 0) {
-            console.log('未找到相关数据。');
+            console.log('→ 未找到相关数据。');
             return null;
         }
 
         // return rows.filter(row => row.length >= 2 && row[0] !== ""); // 返回二维数组
         return rows ;;
     } catch (err) {
-        console.error('GetDataFromSheet 报错: ', err.message);
+        console.log('✘ GetDataFromSheet 报错: ', err.message);
         throw err;
     }
 }

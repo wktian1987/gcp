@@ -3,6 +3,7 @@ import {
     SendEmail                   ,
     FormatMatrixToString        ,
     ConvertRowsToHtmlTable      ,
+    GetSpreadsheetID            ,
     GetDataFromSheet            } from "./utility.js";
 
 import { google } from 'googleapis';
@@ -43,7 +44,7 @@ export async function HandleTgBot(msg) {
             return match ? `TradingBot_${match[1]}` : null;
         })(text);
 
-        const thisSpreadsheetId = "13G-kKQi9AzjzGJUQYmUMGQfUKupkvNaB9irQ8XaCWKs/edit?gid=1965985396#gid=1965985396" ; //GetSpreadsheetID(botNumber);
+        const thisSpreadsheetId = GetSpreadsheetID(botNumber, sheets);
 
 
         // 只处理我或者群内发来的消息
