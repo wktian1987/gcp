@@ -60,7 +60,7 @@ export async function HandleTgBot(msg) {
         const toGCPdata = await GetDataFromSheet(sheets, thisSpreadsheetId, "toGCP!A:B")    ;
         const toGCP     = Object.fromEntries(toGCPdata)                                     ;
 
-        const toTGData          = await GetDataFromSheet(sheets, thisSpreadsheetId, toGCP.toTgBotRange)     ;
+        const toTGData          = await GetDataFromSheet(sheets, thisSpreadsheetId, toGCP.toReadRange)     ;
         const toTGDataString    = FormatMatrixToString(toTGData)                                            ;
         const chatId            = chat_id === myTgID ? myTgID : myGroupAlertTgID                            ;
         const sendTGTask        = SendSplitTGMessages(botToken, chatId, botNumber, toTGDataString)          ;
