@@ -777,12 +777,7 @@ export async function HandleTV(d) {
         }
 
 
-        // if (!datas.ifNoError || datas.ifNoError === "FALSE") { //|| datas.TradingSymbol !== newDatasFromTV.TradingSymbol) {
-        //     throw new Error(`!datas.ifNoError || datas.ifNoError === "FALSE" || datas.TradingSymbol !== newDatasFromTV.TradingSymbol`) ;
-        // }
-
-
-        const writeToRange = D.sheetTitle + '!A:B'; // 指定操作 A 到 B 列
+        const writeToRange = D.sheetTitle + '!A:B';
         // 1. 先清空该区域的所有数据
         await sheets.spreadsheets.values.clear({
             spreadsheetId                   ,
@@ -797,22 +792,22 @@ export async function HandleTV(d) {
             requestBody         : {values: Object.entries(D)    ,   }   ,
         });
 
-        let newDatasFromSheet   =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toTgBotRange));
-        let attempts            =  0;
-        let waitTime            =  1000;
+        let newDatasToRead      =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toReadRange));
+        let attempts            =  0    ;
+        let waitTime            =  1000 ;
 
-        while (attempts < 60 && Number(newDatasFromSheet.timestamp) < D.timestamp) {
+        while (attempts < 60 && Number(newDatasToRead.timestamp) < D.timestamp) {
             await new Promise(res => setTimeout(res, waitTime));
-            newDatasFromSheet = Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toTgBotRange));
-            attempts    += 1;
-            waitTime    =  attempts * 1000;
+            newDatasToRead      =   Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toReadRange));
+            attempts            +=  1               ;
+            waitTime            =   attempts * 1000 ;
         }
-        if (Number(newDatasFromSheet.timestamp) >= D.timestamp) {
+        if (Number(newDatasToRead.timestamp) >= D.timestamp) {
             console.log('✔ TV数据写入表格成功');
             await SendSplitTGMessages(  process.env.TG_TOKEN                                        , 
                                         process.env.TG_CHAT_ID                                      , 
                                         "Get TV webhook Message"                                    , 
-                                        FormatMatrixToString(Object.entries(newDatasFromSheet))     );
+                                        FormatMatrixToString(Object.entries(newDatasToRead))     );
         } else {
             console.log('✘ TV数据写入表格失败');
             await SendSplitTGMessages(  process.env.TG_TOKEN                                        , 
