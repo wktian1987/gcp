@@ -786,10 +786,10 @@ export async function HandleTV(d) {
 
         // 2. 写入新数据
         await sheets.spreadsheets.values.update({
-            spreadsheetId                                               ,
-            range               : writeToRange                          ,
-            requestBody         : {values: Object.entries(D)    ,   }   ,
-        });
+            spreadsheetId                                       ,
+            range               : writeToRange                  ,
+            valueInputOption    : 'USER_ENTERED'                ,
+            requestBody         : {values: Object.entries(D) }  }   )  ;
 
         let newDatasToRead      =  await GetDataFromSheet(sheets, spreadsheetId, ranges.toReadRange)  ;
         let timestampToRead     =  Number(newDatasToRead.at(-1)[0])     ;
