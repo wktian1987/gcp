@@ -788,32 +788,33 @@ export async function HandleTV(d) {
         await sheets.spreadsheets.values.update({
             spreadsheetId                                               ,
             range               : writeToRange                          ,
-            valueInputOption    : 'USER_ENTERED'                        , // 允许自动识别数字/日期格式
             requestBody         : {values: Object.entries(D)    ,   }   ,
         });
 
-        let newDatasToRead      =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toReadRange));
-        let attempts            =  0    ;
-        let waitTime            =  1000 ;
+        let newDatasToRead      =  await GetDataFromSheet(sheets, spreadsheetId, ranges.toReadRange)  ;
+        let timestampToRead     =  Number(newDatasToRead.at(-1)[0])     ;
+        let attempts            =  0                                    ;
+        let waitTime            =  1000                                 ;
 
-        while (attempts < 60 && Number(newDatasToRead.timestamp) < D.timestamp) {
+        while (attempts < 60 && timestampToRead < D.timestamp) {
             await new Promise(res => setTimeout(res, waitTime));
-            newDatasToRead      =   Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toReadRange));
-            attempts            +=  1               ;
-            waitTime            =   attempts * 1000 ;
+            newDatasToRead      =   await GetDataFromSheet(sheets, spreadsheetId, ranges.toReadRange);
+            timestampToRead     =   Number(newDatasToRead.at(-1)[0])    ;
+            attempts            +=  1                                   ;
+            waitTime            =   attempts * 1000                     ;
         }
-        if (Number(newDatasToRead.timestamp) >= D.timestamp) {
+        if (timestampToRead >= D.timestamp) {
             console.log('✔ TV数据写入表格成功');
-            await SendSplitTGMessages(  process.env.TG_TOKEN                                        , 
-                                        process.env.TG_CHAT_ID                                      , 
-                                        "Get TV webhook Message"                                    , 
-                                        FormatMatrixToString(Object.entries(newDatasToRead))     );
+            await SendSplitTGMessages(  process.env.TG_TOKEN                    , 
+                                        process.env.TG_CHAT_ID                  , 
+                                        "Get TV webhook Message"                , 
+                                        FormatMatrixToString(newDatasToRead)    )  ;
         } else {
             console.log('✘ TV数据写入表格失败');
-            await SendSplitTGMessages(  process.env.TG_TOKEN                                        , 
-                                        process.env.TG_CHAT_ID                                      , 
-                                        "Get TV webhook Message"                                    ,
-                                        "But FAIL write to Google Sheets"                           ); 
+            await SendSplitTGMessages(  process.env.TG_TOKEN                    , 
+                                        process.env.TG_CHAT_ID                  , 
+                                        "Get TV webhook Message"                ,
+                                        "But FAIL write to Google Sheets"       )  ;
             throw new Error("TV数据写入表格失败");
         }
 
