@@ -585,9 +585,6 @@ export async function BatchClearUpdateGS(sheets, spreadsheetID, toUpdateRangeLis
 export async function SendSplitTGMessages(botToken, chatId, subject, text) {
     const CHUNK_SIZE = 3800;
 
-    const botToken  = '' ;
-    const chatId    = '' ;
-
     if (!botToken || !chatId) {
         console.error("✘ 发送tg消息错误: TG_TOKEN 或 TG_CHAT_ID 为空！");
         return;
