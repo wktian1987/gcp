@@ -133,7 +133,7 @@ export function toStrictNumBoolStr(val, notAvailableValueTo) {
 
 /**
  * 将一个二维数组转换为标准的obj
- * @param {Array} a2d 需要转换的二维数组: [['key1', 'val1'], ['key2', 'val2']] 形式
+ * @param {Array<Array>} a2d 需要转换的二维数组: [['key1', 'val1'], ['key2', 'val2']] 形式
  * @param {String} notAvailableValueTo , 将不合法的数据全部转换为此
  * @returns obj
  */
@@ -585,6 +585,9 @@ export async function BatchClearUpdateGS(sheets, spreadsheetID, toUpdateRangeLis
 export async function SendSplitTGMessages(botToken, chatId, subject, text) {
     const CHUNK_SIZE = 3800;
 
+    const botToken  = '' ;
+    const chatId    = '' ;
+
     if (!botToken || !chatId) {
         console.error("✘ 发送tg消息错误: TG_TOKEN 或 TG_CHAT_ID 为空！");
         return;
@@ -642,7 +645,18 @@ export async function SendSplitTGMessages(botToken, chatId, subject, text) {
     }
 }
 
-export async function SendEmail(mailUser, mailPass, receiver, mail_subject, mail_content) {
+
+/**
+ * 发送邮件 ;
+ * 发件人为默认google email, 收件人为默认收件人
+ * @param {String} mail_subject 
+ * @param {String} mail_content 
+ */
+export async function SendEmail(mail_subject, mail_content) {
+    const mailUser = process.env.GMAIL_USER         ;
+    const mailPass = process.env.GMAIL_APP_PASS     ;
+    const receiver = process.env.RECEIVER_EMAIL     ;
+
     const { createTransport } = await import('nodemailer');
     const transporter = createTransport({
         service: 'gmail',
@@ -657,15 +671,5 @@ export async function SendEmail(mailUser, mailPass, receiver, mail_subject, mail
         html: mail_content // 传入你生成的 HTML Table 字符串
     };
 
-    try {
-        // 必须使用 await 确保发送完成，否则 GCP 容器可能会提前关闭
-        const info = await transporter.sendMail(mailOptions);
-        // console.log('✔ 邮件发送成功: %s', info.messageId);
-        return info;
-    } catch (error) {
-        // 捕获认证失败或网络超时
-        // console.error('✘ 邮件发送异常:', error.message);
-        throw error; // 抛出错误供上层逻辑处理（比如重试）
-    }
-
+    await transporter.sendMail(mailOptions);
 }

@@ -22,8 +22,10 @@ import {    isStrictNumber                  ,
             UpdateGS                        ,
             BatchClearGS                    ,
             BatchClearUpdateGS              ,
-            BatchGetGS,                      
-            ClearGS} from "./utility.js";
+            BatchGetGS                      ,
+            ClearGS                         ,
+            ConvertRowsToHtmlTable          ,
+            SendEmail                       } from "./utility.js";
 
 import {    SendOrderToBroker               ,
             CheckOrderConfirm               ,               
@@ -906,9 +908,31 @@ const D = {
         return false;
     } ,
 
-    async SendToTG() {} ,
+    /**
+     * 
+     * @param {String} toReadRange 
+     */
+    async SendToTG(toReadRange) {
+        const rawMessagesA2d = (await GetGS(this.sheets, this.spreadsheetID, toReadRange)).map(v => CleanArrayToNumStrBool(v)) ;
+        const messageString  = FormatMatrixToString(rawMessagesA2d) ;
 
-    async SendToEmail() {} ,
+        const TG_TOKEN = process.env.TG_TOKEN;
+        const TG_CHAT_ID = process.env.TG_CHAT_ID;
+
+        const subject = this.botNumber + '_' + this.TradingSymbol ;
+
+        await SendSplitTGMessages(TG_TOKEN, TG_CHAT_ID, subject, messageString) ;
+    } ,
+
+    /**
+     * @param {String} toEmailRange 
+     */
+    async SendToEmail(toEmailRange) {
+        const rawMessagesA2d = (await GetGS(this.sheets, this.spreadsheetID, toEmailRange)).map(v => CleanArrayToNumStrBool(v)) ;
+        const messageHTML    =  ConvertRowsToHtmlTable(rawMessagesA2d) ;
+        const mail_subject   = this.botNumber + '_' + this.TradingSymbol ;
+        await SendEmail(mail_subject, messageHTML) ;
+    } ,
 
     async Start(raw_tvData) {
         this.gcpGetTime = Date.now() ;
@@ -1003,12 +1027,12 @@ const D = {
 
         await this.WriteToGS(toGCPData.toWriteMainRange, toGCPData.mainRange) ;
 
-        const task_ReleaseLockOfGS = this.ReleaseLockOfGS(toGCPData.lockRange) ;
+        const task_SendToTG     = this.SendToTG(toGCPData.toReadRange) ;
+        const task_SendtoEmail  = this.SendToEmail(toGCPData.toEmailRange) ;
+        await Promise.allSettled([task_SendToTG, task_SendtoEmail]);
 
-        const task_SendToTG     = this.SendToTG() ;
-        const task_SendtoEmail  = this.SendToEmail() ;
+        await this.ReleaseLockOfGS(toGCPData.lockRange) ;
 
-        await Promise.allSettled([task_ReleaseLockOfGS, task_SendToTG, task_SendtoEmail]);
     }
 };
 
@@ -1017,13 +1041,11 @@ export async function HandleTV(raw_tvData) {
     const   FlagGood    =  '✔ '  ;
 
     try {
-        const startResult = await D.Start(raw_tvData) ;
-        if (!isStrictTrue(startResult) && isStrictString(startResult) && startResult.includes('Get Lock Fail')) { console.log(FlagBad + startResult); return; } 
-
-        console.log(FlagGood + 'running end')
+        await D.Start(raw_tvData) ;
+        console.log(FlagGood + 'HandleTV running end') ;
 
     } catch(e) {
-        console.log(FlagBad + 'running fail: ' + e.message)
+        console.log(FlagBad + 'HandleTV running fail: ' + e.message)
 
     }
     
