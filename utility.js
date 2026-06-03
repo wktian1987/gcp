@@ -1,54 +1,224 @@
+export function isStrictNumber  (val) { return typeof val === 'number' && Number.isFinite(val)          }
+export function isStrictBoolean (val) { return typeof val === "boolean"                                 }
+export function isStrictTrue    (val) { return isStrictBoolean(val) && val                              }
+export function isStrictFalse   (val) { return isStrictBoolean(val) && !val                             }
+export function isStrictString  (val) { return typeof val === "string" && val.trim() !== ""             }
+export function isStrictSet     (val) { return Object.prototype.toString.call(val) === '[object Set]'   }
 
-
-export function NumStrBool(ns) {
-    // Number("") 和 Number(null) 会变成 0
-    // 如果不希望空值变0，可以加判断：
-    if (ns === "" || ns === null || ns === undefined) return ns;
-
-    if (typeof ns === 'string') {
-        // 处理布尔类字符串判断 (忽略大小写)
-        const lowerNS = ns.toLowerCase().trim();
-        if (lowerNS === "true") return true;
-        if (lowerNS === "false") return false;
-        // 处理百分号 (新增逻辑)
-        if (lowerNS.endsWith('%')) {
-            let val = Number(lowerNS.replace('%', ''));
-            if (!isNaN(val)) return val / 100; // 返回 0.05
-        }
-        // 日期拦截逻辑
-        // 如果包含 "-" 或 "/"，且不是负数（负数后面紧跟数字），则视为日期字符串，直接返回
-        // 这里的正则识别格式如: 2026-05-06, 05/06/2026 等
-        if (lowerNS.includes('-') || lowerNS.includes('/')) {
-            // 排除掉负数的情况，例如 "-123.45" 应该继续走数字转换
-            if (!/^-?\d+(\.\d+)?(e[+-]?\d+)?$/.test(lowerNS)) {
-                return ns.trim();
-            }
-        }
-    }
-    
-    // 如果输入本身就是布尔类型，直接返回
-    if (typeof ns === 'boolean') return ns;
-
-    // 尝试转换为数字
-    let NS = Number(String(ns).trim().replace(/,/g, ''));
-
-    // 4. 判断结果：是数字返回数字，否则转为字符串
-    return isNaN(NS) ? String(ns) : NS;
+export function isPlainObject(val) {
+    if (typeof val !== 'object' || val === null) return false;
+    const proto = Object.getPrototypeOf(val);
+    // 支持 Object.create(null) 创建的纯干净对象，或者原型直指 Object 的对象
+    return proto === null || proto === Object.prototype;
 }
 
 /**
- * 清洗对象 A 中的所有属性
- * @param {Object} obj - 需要转换的对象
+ * 将新的信息行添加到旧信息后面 
+ * @param {string} theOld 
+ * @param {string} theNew 
+ * @returns 
  */
-export function CleanObjToNumStrBool(obj) {
-    if (!obj || typeof obj !== 'object') return obj;
+function addMessage (theOld, theNew) {
+    const   newMessage  =   isStrictString(theNew)  ?  theNew.trim()  :  "not available new message"    ;
+    if (isStrictString(theOld)) {
+        const   oldMessage  =   theOld.trim()  ;
+        return  oldMessage.includes(newMessage)      ?
+                    oldMessage                       :
+                    oldMessage + "\n" + newMessage      ;
+    } else {
+        return  newMessage  ;
+    }
+}
 
-    // 遍历对象的每一个键
-    Object.keys(obj).forEach(key => {
-        obj[key] = NumStrBool(obj[key]);
+/**
+ * 将字符串形式的数字转换为纯数字
+ * 不会处理带有%的数字
+ * 3,4.5这种不符合千分位,逗号规则的字符串会判定为false
+ * 本函数 需配合 isStrictNumber() 使用
+ * 如果对于不能转换为数字的值转换为一个默认值，可以添加第二个参数 NA0
+ * @param {string} val 
+ * @param {number} NA0 , 如果输入的值不是数字类型的话，则遇到不能转换为数字的形式，转换为false
+ * @returns  false or strictNumber or NA0
+ */
+export function toStrictNumber(val, NA0) {
+    const NA0Val =  isStrictNumber(NA0)  ?  NA0  :  false  ;
+
+    if ( isStrictNumber(val) ) {return val  }
+    if (!isStrictString(val) ) {return NA0Val}
+    const cleanVal = val.trim() ;
+    // 处理数字 (支持标准金融千分位，如 "65,000.50"，但铁面拦截像 "3,4.5" 的位置错误刺客)
+    // 正则含义：检查字符串里是否包含逗号，如果包含了，就必须符合标准的金融千分位规则
+    if (cleanVal.includes(',')) {
+        // 这个正则的意思是：逗号后面必须紧跟 3 位数字，直到碰到小数点、另一个逗号或字符串结尾
+        // 如果不符合这个规整的财务格式，直接判定为脏文本，跳过不当数字处理！
+        if (!/^\s*-?\d{1,3}(,\d{3})+(\.\d+)?\s*$/.test(cleanVal)) {
+            // 没通过标准的千分位指纹检测，说明是像 "3,4.5" 或 "123,45" 这样的手误，拒绝当成数字！
+            return NA0Val ;
+        }
+    }
+    // 只有通过了上面的千分位指纹检测（或者原本就没有逗号），才允许拔掉逗号
+    const valNumber = Number(cleanVal.replaceAll(',', ''));
+    if (isStrictNumber(valNumber)) { return valNumber; }
+    return NA0Val  ;
+}
+
+/**
+ * 👑 工业级高阶万能字符串确权器（完全体）
+ * 100% 免疫任何反人类崩溃，绝不吐出 [object Object]，保留对象与数组的真实业务肉身
+ */
+export function ToStrictString(val, notAvailableValueTo) {
+    const notAvailableValue = isStrictString(notAvailableValueTo) ? notAvailableValueTo.trim() : 'notAvailableValue';
+
+    // 🛡️ 1. 前置安全确权：null 和 undefined 直接原位安全串化，免去后续探测开销
+    if (val === null) return 'null';
+    if (val === undefined) return 'undefined';
+
+    try {
+        // 🌟 核心增益：如果是一个对象（不管是普通对象还是数组矩阵）
+        // 绝对不要用无情的 String()，而是用 JSON.stringify 完美锁死、保留它的数据资产！
+        if (typeof val === 'object') {
+            return JSON.stringify(val);
+        }
+
+        // 🚀 剩下的原生基础类型 (number, string, boolean, 还有合法的 Symbol)
+        // 直接由最安全的显式 String() 畅通无阻地转化输出
+        return String(val);
+        
+    } catch {
+        // 🛡️ 终极防空壕：一旦遭遇循环引用、爆栈死循环、或者 Object.create(null) 孤儿对象抛错
+        // 绝不砸盘，由你亲手指定的保底占位符完成最后的荣誉兜底
+        return notAvailableValue;
+    }
+}
+
+export function isStrictNumBoolStr(val) {
+    if (isStrictTrue(isStrictNumber (val))) {return true}
+    if (isStrictTrue(isStrictBoolean(val))) {return true}
+    if (isStrictTrue(isStrictString (val))) {return true}
+    return false ;
+}
+
+export function toStrictNumBoolStr(val, notAvailableValueTo) {
+    const notAvailableValue = isStrictString(notAvailableValueTo)  ?  notAvailableValueTo.trim()  :  "notAvailableValue"  ;
+    // Number("") 和 Number(null) 会变成 0
+    // 如果不希望空值变0，可以加判断：
+    if (val === "" || val === null || val === undefined) return notAvailableValue;
+
+    if (isStrictNumber (val) ) {return val}
+    if (isStrictBoolean(val) ) {return val}
+
+    if (isStrictString (val) ) {
+        const cleanVal = val.trim()  ;
+
+        // 处理布尔类字符串判断 (忽略大小写)
+        const lowerVal  =  cleanVal.toLowerCase()  ;
+        if (lowerVal === "true" ) { return true     }
+        if (lowerVal === "false") { return false    }
+
+        // 处理百分数
+        if (cleanVal.endsWith('%') && !cleanVal.startsWith('%')) {
+            const val100 = toStrictNumber(cleanVal.replace('%', ''))  ;
+            if (isStrictNumber(val100)) { return val100 / 100 } // 返回 0.05, 也可能返回零
+        }
+
+        // 处理数字，包括符合千分位规则的含逗号数字
+        const valNumber = toStrictNumber(cleanVal)  ;
+        if (isStrictNumber(valNumber)) {return valNumber}
+
+        return  cleanVal  ;
+    }
+    
+    return  notAvailableValue  ;
+}
+
+/**
+ * 将一个二维数组转换为标准的obj
+ * @param {Array} a2d 需要转换的二维数组: [['key1', 'val1'], ['key2', 'val2']] 形式
+ * @param {String} notAvailableValueTo , 将不合法的数据全部转换为此
+ * @returns obj
+ */
+export function A2dToObj(a2d, notAvailableValueTo) {
+    const notAvailableValue = isStrictString(notAvailableValueTo) ? notAvailableValueTo.trim() : "notAvailableValue" ;
+    if (!Array.isArray(a2d) || a2d.length === 0) {return false}
+    const clean_a2d = a2d.map(val => {
+        let newA2d = [] ;
+        if (!Array.isArray(val)) {newA2d = [notAvailableValue, notAvailableValue]}
+        if (Array.isArray(val) && val.length===0) {newA2d = [notAvailableValue, notAvailableValue]}
+        if (Array.isArray(val) && val.length===1) {newA2d = [ToStrictString(val[0], notAvailableValue), notAvailableValue]}
+        if (Array.isArray(val) && val.length  >1) {newA2d = [ToStrictString(val[0], notAvailableValue), toStrictNumBoolStr(val[1], notAvailableValue)]}
+        return newA2d ;
+    })
+
+    return Object.fromEntries(clean_a2d) ;
+}
+
+export function A2LinesToObj(a2lines) {
+    const notAvailableValue = isStrictString(notAvailableValueTo) ? notAvailableValueTo.trim() : "notAvailableValue" ;
+    if( !Array.isArray(a2lines)                 ||
+        a2lines.length !== 2                    ||
+        !Array.isArray(a2lines[0])              ||
+        !Array.isArray(a2lines[1])              ||
+        a2lines[0].length !== a2lines[1].length     ) {
+        return false ;
+    }
+    const [keys, values] = [a2lines[0], a2lines[1]] ;
+
+    const entries = keys.map((key, i) => { return [key, values[i]] });
+
+    return A2dToObj(entries);
+}
+
+/**
+ * 标准对象转二维数组矩阵确权器
+ * 并将字符串形式的FALSE, '12'等转换为false, 12
+ */
+export function ObjToA2dNumBoolStr(obj) {
+    // 1. 前置安全门禁
+    if (!isPlainObject(obj)) { return false; }
+
+    // 2. 动用高效的 Object.keys 管道，一枪流出水
+    return Object.keys(obj)
+        .filter(key => isStrictNumBoolStr(obj[key])) // 第一步：在海选阶段，就把 Function/Set 等脏垃圾物理蒸发掉
+        .map(key => {
+            // 第二步：此时留下的全是绝对合规的核心资产
+            // 对 key 进行严格串化（确保安全），而对 value，我们要保留它纯正的物理原色！
+            const cleanKey = toStrictString(key, "INVALID_KEY");
+            const cleanValue = toStrictNumBoolStr(obj[key]);
+
+            return [cleanKey, cleanValue];
+        });
+}
+
+/**
+ * 清洗对象 o 中的所有属性, 返回新的对象，不是直接在原对象上修改 ; 
+ * 对于对象中的 function, set, array 等修改为 notAvailableValueTo， 
+ * 仅保留 number, bool, string . 
+ * @param {object} o  需要转换的对象 , 需要是一个标准对象{A:1, B:'b'} 这样的形式
+ * @param {String} notAvailableValueTo 对于不可转换的元素转换为此 
+ * @returns 如果返回值是false表示输入的值不是标准的object ; 
+ * @returns 如果确认输入值为标准对象，可以不判断返回值，直接使用返回的cleanO
+ */
+export function CleanObjToNumBoolStr(o, notAvailableValueTo) {
+    const notAvailableValue = isStrictString(notAvailableValueTo) ? notAvailableValueTo.time() : 'notAvailableValue' ;
+    if (!isPlainObject(o)) {return false}
+    const cleanO = {} ;
+    Object.keys(o).forEach(key => {
+        cleanO[key] = toStrictNumBoolStr(o[key], notAvailableValueTo);
     });
+    return cleanO; 
+}
 
-    return obj; 
+/**
+ * 清洗数组 a 中的所有属性 ; 
+ * 对于对象中的 function, set, array 等转换为 'NA', 保留这个位置的目的是避免有效数据在Array中的index发生变化 ; 
+ * 仅保留 number, bool, string . 
+ * @param {Array} a  需要转换的对象 
+ * @param {String} notAvailableValueTo 对于不可用数据需要替换的内容
+ * @returns 如果返回值是false表示输入的值不是标准的Array
+ */
+export function CleanArrayToNumStrBool(a, notAvailableValueTo) {
+    if (!Array.isArray(a)) {return false}
+    return a.map(val => toStrictNumBoolStr(val, notAvailableValueTo));
 }
 
 /**
@@ -129,172 +299,287 @@ export function ConvertRowsToHtmlTable(rows) {
     return html;
 }
 
-export async function GetSpreadsheetID(botNumber, sheets) {
+/**
+ * 从 "0" 号核心配置表中精准提取指定键的原生高精度类型值
+ * @async
+ * @param {string} keyName - 期望读取的配置项键名（例如："IS_BOT_OPEN", "MAX_SLIPPAGE"）
+ * @param {object} sheets - 已初始化的 Google Sheets API 实例 (google.sheets.v4.Sheets)
+ * @returns {Promise<string|number|boolean>} 返回底层未经格式化的原生 JS 类型数据（字符串、数字或布尔值）
+ * @throws {Error} 当 keyName 类型非法、process.env.SHEET_ID 缺失或表格中找不到该配置项时抛出致命异常
+ */
+export async function GetKeyValueFrom0(keyName, sheets) {
+    if (!isStrictString(keyName)) {throw new Error('GetKeyValueFrom0 参数错误: keyName 只能是字符串')}
     const TradingBot_00_ID  =   process.env.SHEET_ID  ;
-    try {
-        const botList =  CleanObjToNumStrBool ( Object.fromEntries( await GetDataFromSheet(sheets, TradingBot_00_ID, "0!A:B") ) )  ;
-        if (botList[botNumber]) {
-            return botList[botNumber]  ;
-        } else {
-            throw new Error(`not find spreadsheetId for ${botNumber}`)  ;
-        }
-    } catch (err) {
-        console.log(`✘ GetSpreadsheetID error: `, err.message) ;
-        throw new Error(err.message)  ;
-    }
-
+    if (!TradingBot_00_ID) {throw new Error('GetKeyValueFrom0 参数错误: keyName 或 process.env.SHEET_ID 环境变量不能为空') }
+    const keyvalues =  CleanObjToNumBoolStr ( Object.fromEntries( await GetGS(sheets, TradingBot_00_ID, "0!A:B") ) )  ;
+    if (keyvalues[keyName] !== undefined) { return String(keyvalues[keyName]) } 
+    throw new Error(`not find value for ${keyName}`) ;
 }
 
-
-
-
-
-
-
+export async function GetSpreadsheetID(botNumber, sheets) {return await GetKeyValueFrom0(botNumber, sheets) } 
 
 /**
- * 判断指定名称的工作表是否存在
- * @param {object} sheets - 已授权的 Google Sheets 实例
- * @param {string} spreadsheetId - 电子表格 ID
- * @param {string} sheetTitle - 你要查找的工作表名称
- * @param {boolean} ifNoThenNew
- * @returns {Promise<boolean>}  <-- 加上这一行 
+ * 精准检测特定工作表(Tab)是否存在，支持不存在时自动原子创建
+ * @async
+ * @function CheckIfSheetExists
+ * @param {object} sheets - 已初始化的 Google Sheets API 实例 (google.sheets.v4.Sheets)
+ * @param {string} spreadsheetID - 电子表格 ID
+ * @param {string} sheetTitle - 期望检查或创建的工作表名称（如："MAIN", "LOG_2026"）
+ * @param {boolean} [ifNoThenNew=false] - 可选：若为 true 且表格不存在时，自动触发原子创建操作
+ * @returns {Promise<boolean>} 返回最终是否存在（或是否成功创建）的布尔标志
+ * @throws {Error} 当入参非法或网络请求失败时向外层抛出原始异常
  */
-export async function CheckIfSheetExists(sheets, spreadsheetId, sheetTitle, ifNoThenNew = false) {
-    try {
-        // 使用 fields 参数只请求需要的字段，减少网络传输量
-        const response = await sheets.spreadsheets.get({
-            spreadsheetId,
-            fields: 'sheets.properties.title'
-        });
-
-        const sheetList = response.data.sheets;
-
-        // 检查是否存在匹配的 title
-        let exists = sheetList.some(sheet => sheet.properties.title === sheetTitle);
-
-        if (exists) {
-            console.log(`✔ 工作表"${sheetTitle}"存在。`);
-        } else {
-            console.log(`✘ 未找到名为"${sheetTitle}"的工作表。`);
-        }
-
-        if (!exists && ifNoThenNew) {
-            await sheets.spreadsheets.batchUpdate({
-                spreadsheetId,
-                requestBody: {
-                    requests: [{
-                        addSheet: {
-                            properties: { title: sheetTitle }
-                        }
-                    }]
-                }
-            });
-            exists = true;
-            console.log(`✔ 已自动创建新表: "${sheetTitle}"`);
-        }
-
-        return exists;
-
-    } catch (err) {
-        console.error(`检查"${sheetTitle}"存在性时出错:` + err.message);
-        throw new Error(`检查"${sheetTitle}"存在性时出错:` + err.message);
+export async function CheckIfSheetExists(sheets, spreadsheetID, sheetTitle, ifNoThenNew = false) {
+    // 🛡️ 哨兵防线：基础输入严格拦截
+    if (!spreadsheetID || !isStrictString(sheetTitle)) {
+        throw new Error('CheckIfSheetExists 参数错误: spreadsheetID 不能为空且 sheetTitle 必须是严格字符串');
     }
+
+    // 1. 极致网络优化：只捞取所有子表的 title 属性，斩断冗余数据流
+    const response = await sheets.spreadsheets.get({
+        spreadsheetId: spreadsheetID,
+        fields: 'sheets.properties.title'
+    });
+
+    const sheetList = response.data.sheets || [];
+
+    // 2. 检查是否存在完全匹配的 title
+    let exists = sheetList.some(sheet => sheet?.properties?.title === sheetTitle);
+
+    // 3. 临门一脚：触发自动原子创建
+    if (!exists && ifNoThenNew) {
+        await sheets.spreadsheets.batchUpdate({
+            spreadsheetId: spreadsheetID,
+            requestBody: {
+                requests: [{
+                    addSheet: {
+                        properties: { title: sheetTitle }
+                    }
+                }]
+            }
+        });
+        exists = true; // 创建成功后，状态强行修正为存在
+    }
+
+    return exists;
 }
 
 /**
- * 
- * @param {*} sheets 
- * @param {string} spreadsheetId 
- * @param {*} fullRange 
- * @returns - 返回一个二维数组
- * 如果只有 "A!A1:B5" 这个区域内有数据的话，用"A!A:B" 会比"A!A1:B5" 效率不会差很多，可以不考虑
- */
-export async function GetDataFromSheet(sheets, spreadsheetId, fullRange) {
-    try {
-        const response = await sheets.spreadsheets.values.get({
-            spreadsheetId: spreadsheetId,
-            range: fullRange,
-        });
-
-        const rows = response.data.values;
-
-        if (!rows || rows.length === 0) {
-            console.log('→ 未找到相关数据。');
-            return null;
-        }
-
-        // return rows.filter(row => row.length >= 2 && row[0] !== ""); // 返回二维数组
-        return rows ;;
-    } catch (err) {
-        console.log('✘ GetDataFromSheet 报错: ', err.message);
-        throw err;
-    }
-}
-
-/**
- * 获取指定工作表中含有有效数字的表格范围 (A1 表示法)
- * @param {object} sheets - 已授权的 Google Sheets 实例
- * @param {string} spreadsheetId - 电子表格 ID
+ * 精准扫描指定工作表，计算并返回含有任何有效数据（数字、字符串、布尔值等）的最小闭环 A1 范围边界
+ * @async
+ * @function GetActiveDataRange
+ * @param {object} sheets - 已初始化的 Google Sheets API 实例 (google.sheets.v4.Sheets)
+ * @param {string} spreadsheetID - 电子表格 ID
  * @param {string} sheetTitle - 工作表名称
- * @returns {Promise<string|null>} - 返回 A1 表示法的范围字符串 (例如 "Sheet1!A1:C5")，如果没有数字数据则返回 null
+ * @returns {Promise<string|null>} 返回 A1 表示法的全域范围字符串（例如 "MAIN!A1:E25"），若全表完全为空则返回 null
+ * @throws {Error} 当参数非法或网络底座请求崩溃时抛出原始异常
  */
-export async function GetNumericDataRange(sheets, spreadsheetId, sheetTitle) {
-    try {
-        // 获取整个工作表的数据
-        const response = await sheets.spreadsheets.values.get({
-            spreadsheetId: spreadsheetId,
-            range: sheetTitle, // 获取整个工作表的所有数据
-        });
-
-        const rows = response.data.values;
-
-        if (!rows || rows.length === 0) {
-            console.log(`工作表"${sheetTitle}"中没有数据。`);
-            return null;
-        }
-
-        let maxRowIndex = -1;
-        let maxColIndex = -1;
-
-        // 遍历数据，找到包含数字的最后一行和最后一列
-        for (let r = 0; r < rows.length; r++) {
-            for (let c = 0; c < rows[r].length; c++) {
-                const cellValue = rows[r][c];
-                // 检查是否是有效数字 (包括字符串形式的数字，但排除空字符串)
-                // Number("") 会转换为 0，isNaN(0) 为 false，所以需要额外检查空字符串
-                if (cellValue !== undefined && cellValue !== null && String(cellValue).trim() !== "" && !isNaN(Number(cellValue))) {
-                    maxRowIndex = Math.max(maxRowIndex, r);
-                    maxColIndex = Math.max(maxColIndex, c);
-                }
-            }
-        }
-
-        if (maxRowIndex === -1) {
-            console.log(`工作表"${sheetTitle}"中没有找到有效数字。`);
-            return null;
-        }
-
-        // 将列索引转换为 A1 字母表示
-        const colIndexToLetter = (col) => {
-            let letter = '';
-            let tempCol = col;
-            while (tempCol >= 0) {
-                letter = String.fromCharCode(65 + (tempCol % 26)) + letter;
-                tempCol = Math.floor(tempCol / 26) - 1;
-            }
-            return letter;
-        };
-
-        const startCell = `A1`;
-        const endCell = `${colIndexToLetter(maxColIndex)}${maxRowIndex + 1}`;
-
-        return `${sheetTitle}!${startCell}:${endCell}`;
-
-    } catch (err) {
-        console.error(`获取工作表"${sheetTitle}"的数字数据范围时出错: `, err.message);
-        throw err;
+export async function GetActiveDataRange(sheets, spreadsheetID, sheetTitle) {
+    // 🛡️ 哨兵防线：严格基础入参校验
+    if (!spreadsheetID || !isStrictString(sheetTitle)) {
+        throw new Error('GetActiveDataRange 参数错误: spreadsheetID 不能为空且 sheetTitle 必须是严格字符串');
     }
+
+    // 1. 临门一脚：调用高精度 GetGS 底座，拿回原生全要素二维数组
+    const rows = await GetGS(sheets, spreadsheetID, sheetTitle);
+
+    if (rows.length === 0) {
+        return null;
+    }
+
+    let maxRowIndex = -1;
+    let maxColIndex = -1;
+
+    // 2. 深度遍历矩阵，捕捉任意非空数据的最大边缘
+    for (let r = 0; r < rows.length; r++) {
+        const row = rows[r];
+        if (!row || !Array.isArray(row)) { continue; } // 行节点防空防御
+
+        for (let c = 0; c < row.length; c++) {
+            const cellValue = row[c];
+            
+            // 🛡️ 核心判定升级：全要素拦截
+            // 只要格子被赋值了，且把它强转字符串并去掉两端空格后不是空字符串 ""
+            // 那么不管是 true, false, "BTC", 0 还是 -1.5，全部视作有效数据占位！
+            if (
+                cellValue !== undefined && 
+                cellValue !== null && 
+                String(cellValue).trim() !== ""
+            ) {
+                maxRowIndex = Math.max(maxRowIndex, r);
+                maxColIndex = Math.max(maxColIndex, c);
+            }
+        }
+    }
+
+    // 如果把整张表翻个底朝天，全是空气，优雅熔断
+    if (maxRowIndex === -1) {
+        return null;
+    }
+
+    // 3. 将列下标无损转为 A1 字母符号的纯函数
+    const colIndexToLetter = (col) => {
+        let letter = '';
+        let tempCol = col;
+        while (tempCol >= 0) {
+            letter = String.fromCharCode(65 + (tempCol % 26)) + letter;
+            tempCol = Math.floor(tempCol / 26) - 1;
+        }
+        return letter;
+    };
+
+    // 4. 组装具备绝对确定性的全要素 A1 边界航道
+    const startCell = 'A1';
+    const endCell = `${colIndexToLetter(maxColIndex)}${maxRowIndex + 1}`;
+
+    return `${sheetTitle}!${startCell}:${endCell}`;
+}
+
+/**
+ * 从固定区域读取数据
+ * @param {*} sheets 
+ * @param {string} spreadsheetID 
+ * @param {string} fullRange 
+ * @returns  
+ * 返回一个二维数组 ; 
+ * 如果只有 "A!A1:B5" 这个区域内有数据的话，用"A!A:B" 会比"A!A1:B5" 效率不会差很多，可以不考虑 ; 
+ */
+export async function GetGS(sheets, spreadsheetID, fullRange) {
+    if (!spreadsheetID || !fullRange) {throw new Error('GetDataFromSheet 参数错误: spreadsheetID 或 fullRange 不能为空')}
+    const response = await sheets.spreadsheets.values.get(  {
+        spreadsheetId           : spreadsheetID         ,
+        range                   : fullRange             ,
+        valueRenderOption       : 'UNFORMATTED_VALUE'   , // 脱掉格式外衣，直接拿最底层的 Number, Boolean 和纯 String（保护精度）
+        dateTimeRenderOption    : 'FORMATTED_STRING'    }   )   ;  // 日期保持字符串形式（防止时间戳沦为奇怪的浮点数）
+
+    const rows = response.data.values;
+    // 安全兜底：如果表格完全为空，rows 为 undefined，此时转为空数组 [] 返回
+    // 这样外层可以直接安全地执行 forEach、map 或读取 .length，绝不崩溃
+    return rows || [];
+}
+
+/**
+ * 擦除指定区域的数据（单项原子清空）
+ * @param {object} sheets - Google Sheets API 实例
+ * @param {string} spreadsheetID - 电子表格 ID
+ * @param {string} fullRange - 想要清空的单区域，例如 'MAIN!A2:D'
+ */
+export async function ClearGS(sheets, spreadsheetID, fullRange) {
+    // 哨兵防线：前置白名单拦截
+    if (!spreadsheetID || !fullRange) {
+        throw new Error('ClearGS 参数错误: spreadsheetID 或 fullRange 不能为空');
+    }
+
+    // 临门一脚，直接调用原生的 clear 接口，干净利落
+    await sheets.spreadsheets.values.clear({
+        spreadsheetId   : spreadsheetID ,
+        range           : fullRange     
+    });
+}
+
+/**
+ * 往指定区域写入数据（单项原子覆盖/写入）
+ * @param {object} sheets - Google Sheets API 实例
+ * @param {string} spreadsheetID - 电子表格 ID
+ * @param {string} fullRange - 想要写入的单区域，例如 'MAIN!A23:23' 或 'MAIN!A11:D'
+ * @param {Array<Array>} values - 期望写入的二维数组数据
+ */
+export async function UpdateGS(sheets, spreadsheetID, fullRange, values) {
+    // 短路验证（基础非空 ➔ 数组判定 ➔ 空数组探测 ➔ 二维深度抽查）
+    if (!spreadsheetID || !fullRange || !values || !Array.isArray(values) || values.length === 0 || !Array.isArray(values[0])) {
+        throw new Error('UpdateGS 参数错误: 输入结构非法或 values 不是合法的非空二维数组');
+    }
+
+    await sheets.spreadsheets.values.update({
+        spreadsheetId   : spreadsheetID ,
+        range           : fullRange     ,
+        valueInputOption: 'USER_ENTERED', // 锁死用户输入模式，保护数字与布尔的原生高精度
+        resource        : { values      }
+    });
+}
+
+/**
+ * 批量读取多个区域内容（多区域打包，类型对齐，精度不失）
+ * @param {object} sheets - Google Sheets API 实例
+ * @param {string} spreadsheetID - 电子表格 ID
+ * @param {Array<string>} rangesList - 想要读取的区域数组，例如 ['MAIN!A:B', 'LOG!C:D']
+ * @returns {Array<Array<Array>>} 返回一个三维数组，顺序对应 rangesList 中每个区域的二维数据
+ */
+export async function BatchGetGS(sheets, spreadsheetID, rangesList) {
+    // 哨兵防线 1：鉴别大外壳是否为数组，且不能为空
+    if (!Array.isArray(rangesList) || rangesList.length === 0) {
+        throw new Error('BatchGetGS @param rangesList 输入错误，期望非空数组');
+    }
+    if (!spreadsheetID) {
+        throw new Error('BatchGetGS @param spreadsheetID 不能为空');
+    }
+
+    // 临门一脚，打包请求
+    const response = await sheets.spreadsheets.values.batchGet({
+        spreadsheetId: spreadsheetID,
+        ranges: rangesList, // 👈 直接把你的区域数组丢给 ranges 参数
+        
+        // 🌟 核心补丁 1：脱掉格式外衣，直接拿最底层的 Number, Boolean 和纯 String（保护精度）
+        valueRenderOption: 'UNFORMATTED_VALUE',
+        
+        // 💡 核心补丁 2：日期保持字符串形式（防止时间戳沦为奇怪的 Excel 浮点数）
+        dateTimeRenderOption: 'FORMATTED_STRING' 
+    });
+
+    // Google 返回的结构在 response.data.valueRanges 中
+    const valueRanges = response.data.valueRanges;
+
+    // 🛡️ 安全兜底：遍历每个区域的数据，如果某个区域完全为空，Google 吐回的该项没有 values 属性
+    // 我们用 .map 和 || [] 把它洗成干净的空数组，确保外层接收到的结构绝对整齐，读 .length 永不崩溃
+    return valueRanges.map(rangeData => rangeData.values || []);
+}
+
+/**
+ * 批量清空对应区域数据
+ * @param {Array<String>} toClearRangeList 必须保证输入的toClearRangeList是一个数组; 例如： ["MAIN!A:B", "toGCP!A:B"];
+ * @returns 
+ * 无返回值，只要正确运行就说明操作成功
+ */
+export async function BatchClearGS(sheets, spreadsheetID, toClearRangeList) {
+    if (!Array.isArray(toClearRangeList) ) { throw new Error('BatchClearGS @param toClearRangeList 输入错误') }
+    if (toClearRangeList.length === 0    ) { return }
+    await sheets.spreadsheets.values.batchClear(    {
+        spreadsheetId   : spreadsheetID             ,
+        requestBody     : {ranges: toClearRangeList }   }   )   ;
+}
+
+/**
+ * 批量更新区域内容；
+ * 先清空，后写入;
+ * 这个函数使用时，必须保证清空更新范围，必须是一个大的无限类型的区域;
+ * 例如: A:B 这样，
+ * @param {*} toUpdateRangeList 
+ * 必须保证输入的toUpdateRangeList是一个数组;
+ * 数组中每个元素都是一个对象，对象包括range 和 values两个属性
+ * 例如[{range: 'MAIN!A:B', values:[[3,4],[5,6]]}, {range: 'MAIN2!A:B', values:[['A','B'],['C','D']]}]
+ * @returns 无返回值，只要正确运行就说明操作成功
+ */
+export async function BatchClearUpdateGS(sheets, spreadsheetID, toUpdateRangeList) {
+    if (!Array.isArray(toUpdateRangeList) ) { throw new Error('BatchClearUpdateGS @param toUpdateRangeList 输入错误') }
+    if (toUpdateRangeList.length === 0    ) { return }
+    const toClearList       = []  ;
+    const toClearUpdateList = []  ;
+    toUpdateRangeList.forEach(element => {
+        const {range, values} = element ;
+        if (!range || !values || !Array.isArray(values) || values.length===0 || !Array.isArray(values[0])) {
+            throw new Error("BatchClearUpdateGS @param toUpdateRangeList 输入错误") ;
+        } 
+        toClearList.push(range)    ;
+        toClearUpdateList.push( {range , values     } )    ;
+    });
+
+    await BatchClearGS(sheets, spreadsheetID, toClearList) ;
+
+    await sheets.spreadsheets.values.batchUpdate(   {
+        spreadsheetId   :   spreadsheetID  ,
+        resource        :   { 
+            valueInputOption    : 'USER_ENTERED'    , 
+            data                : toClearUpdateList }   }   )   ;
 }
 
 export async function SendSplitTGMessages(botToken, chatId, subject, text) {
@@ -356,7 +641,6 @@ export async function SendSplitTGMessages(botToken, chatId, subject, text) {
         await new Promise(res => setTimeout(res, 1000));
     }
 }
-
 
 export async function SendEmail(mailUser, mailPass, receiver, mail_subject, mail_content) {
     const { createTransport } = await import('nodemailer');

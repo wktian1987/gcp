@@ -1,10 +1,30 @@
-import {    NumStrBool                      , 
-            CleanObjToNumStrBool            ,
+import {    isStrictNumber                  ,
+            isStrictBoolean                 ,
+            isStrictTrue                    ,
+            isStrictFalse                   , 
+            isStrictString                  ,
+            isStrictSet                     ,
+            isPlainObject                   ,
+            toStrictNumber                  ,
+            ToStrictString                  ,
+            toStrictNumBoolStr              , 
+            CleanObjToNumBoolStr            ,
+            CleanArrayToNumStrBool          ,
+            A2dToObj                        ,
+            A2LinesToObj                    ,
+            ObjToA2dNumBoolStr              ,
+            addMessage                      ,
             GetTimeStringWithOffset         , 
             SendSplitTGMessages             ,
             FormatMatrixToString            ,            
             GetSpreadsheetID                ,
-            GetDataFromSheet                } from "./utility.js";
+            GetGS                           ,         
+            UpdateGS                        ,
+            BatchClearGS                    ,
+            BatchClearUpdateGS              ,
+            BatchGetGS,                      
+            ClearGS} from "./utility.js";
+
 import {    SendOrderToBroker               ,
             CheckOrderConfirm               ,               
             CheckFundFee                    } from "./broker.js";    
@@ -15,11 +35,11 @@ const auth = new google.auth.GoogleAuth({
 });
 const sheets = google.sheets({ version: 'v4', auth });
 
-const   accStatus_normal                    =  "normal"                                     ;
-const   accStatus_liquidated                =  "liquidated"                                 ;
-const   accStatus_stopC                     =  "stop due to Coinloss"                       ;
-const   accStatus_stopF                     =  "stop due to Fundloss"                       ;
-const   accStatus_stopCF                    =  "stop due to Coinloss and Fundloss"          ;
+
+const   accStatus_liquidated                =  "liquidated"     ;
+const   accStatus_stopC                     =  "stopC"          ;
+const   accStatus_stopF                     =  "stopF"          ;
+const   accStatus_stopCF                    =  "stopCF"         ;
 
 const   BuyReason_belowTarget               =  "below targetLow"                            ;
 
@@ -60,7 +80,6 @@ const   noLOCK          =  "noLOCK"         ;
 const   NA              =  "NA"             ;
 const   toFill          =  "toFill"         ;
 const   toGCPRanges     =  "toGCP!A:B"      ;
-const   lockRange       =  "toGCP!B1"       ;
 const   HuanHang        =  "__HuangHang__"  ;
 const   order_T_LMT     =  "LMT"            ;
 const   order_T_MKT     =  "MKT"            ; 
@@ -70,763 +89,945 @@ const   order_FUND      =  "F"              ;
 const   order_pending   =  "pending"        ;
 const   order_waiting   =  "waiting"        ;
 const   order_confirm   =  "confirm"        ;
+const   order_partial   =  'partial'        ;
 const   order_cancel    =  "cancel"         ;
 
-function GetGridDifficulty(positionN, difficultyCoefficient, maxGridNumber) { 
-    let gridDifficulty   =   Math.pow(positionN, (difficultyCoefficient + 1)) / Math.pow(maxGridNumber, difficultyCoefficient) + (maxGridNumber-positionN) / maxGridNumber  ;
-    let enDifficulty     =   gridDifficulty / maxGridNumber  ;
-    let exDifficulty     =   (maxGridNumber - gridDifficulty) / maxGridNumber  ;
-    return [gridDifficulty, enDifficulty, exDifficulty]  ;
-}
 
-function GetLiquidateStopPrice( allPosition         ,
-                                avgBuyPrice         , 
-                                inFund              , 
-                                netProfit           , 
-                                crtCoin             , 
-                                operatePrice        , 
-                                bPrice              , 
-                                baseCoinHairCut     , 
-                                Adn2B               , 
-                                waveUpChg           , 
-                                hghestFund          , 
-                                hghestCoin          , 
-                                stopRate4F          , 
-                                stopRate4C          ,
-                                notStop4F           , 
-                                notStop4C           ) {
-    // 基础变量提取 (命名对齐你的 GetAccountStatusByPrice)
-    let C    = crtCoin              ;
-    let S    = bPrice               ;
-    let P    = operatePrice         ;
-    let L    = allPosition          ;
-    let K    = inFund + netProfit   ;
-    let A    = avgBuyPrice          ;
-    let H    = baseCoinHairCut      ;
-    let R    = waveUpChg            ;
-    
-    let liquidatePrice = null;
-    let stopPriceC     = null;
-    let stopPriceF     = null;
+const D = {
+    sheets                  : sheets        ,
+    toUpdateRangeList       : []            ,
+    toClearRangeSet         : new Set()     ,
+    alertMessageSet         : new Set()     ,
+    runningWellSet          : new Set()     , // 每次有运行中的错误都写入这个Set, 所以可以根据isRunningWell()来判断是否有错误发生
 
-    // ==========================================
-    // 1. 求 _liquidatePrice (爆仓价)
-    // 条件: V_f(P, Haircut) = R * L * P
-    // ==========================================
-    let slope_f_h       = (C * S * Adn2B * H / P) + L
-    let intercept_f_h   = K - (L * A) + (C * S * H * (1 - Adn2B))
-    
-    // 方程: slope_f_h * P + intercept_f_h = R * L * P
-    // 移项: P * (slope_f_h - R * L) = -intercept_f_h
-    liquidatePrice      = -intercept_f_h / (slope_f_h - R * L)
+    /**
+     * 依据runningWellSet中是否有元素来判断是否有运行错误
+     * @returns true: 运行中无错误
+     * @returns false: 运行中有错误
+     */
+    isRunningWell() {
+        return this.runningWellSet.size === 0 ;
+    } ,
 
-    // ==========================================
-    // 2. 求 _stopPriceF (金本位止损价)
-    // 需要计算两个条件：stopRate4F (止损) 和 notStop4C (交叉限制)
-    // 最终取两者中较高的价格 (即下跌时先碰到的那个)
-    // ==========================================
-    let slope_f   = (C * S * Adn2B / P) + L
-    let intercept_f = K - (L * A) + (C * S * (1 - Adn2B))
-    
-    let targetF_1   = hghestFund * (1 + stopRate4F / 100)
-    let targetF_2   = hghestFund * (1 + notStop4F / 100)
-    
-    let resF1       = (targetF_1 - intercept_f) / slope_f
-    let resF2       = (targetF_2 - intercept_f) / slope_f
-    
-    // 根据你的逻辑，最终结果由交叉条件限制，此处取 math.min 对应下跌时更高的价格
-    stopPriceF = Math.min(resF1, resF2)
+    /**
+    * 添加新的报警行; 
+    * 如果发现新进来的警报在历史缓存里有重名的, 先无情抹杀掉旧的占位; 
+    * 刷新到整个集合的最底部（最新时间线）; 
+    * 如果确认输入的两个参数值都是正确的格式(Set, String)的话, 可以不验证使用
+    * @param {Set} messageSet 
+    * @param {string} newMessageLine 
+    * @returns Set: 表示成功并返回添加新元素后Set的本身
+    * @returns string: 表示错误信息
+    */
+    AddAlertMessage(messageSet, newMessageLine) {
+        if (!isStrictSet(messageSet)) { return 'AddAlertMessage Error: oldMessageSet is not strictSet' } 
+        if (!isStrictString(newMessageLine)) { return 'AddAlertMessage Error: newMessage is not strictString' }
+        const cleanMsg = newMessageLine.trim();
+        // 核心防线：如果发现新进来的警报在历史缓存里有重名的, 先无情抹杀掉旧的占位！
+        if (messageSet.has(cleanMsg)) { messageSet.delete(cleanMsg) }
+        // 重新 add。因为 Set 严格按插入顺序排列，这一步会强行把这条重复的最新警报，刷新到整个集合的最底部（最新时间线）！
+        return messageSet.add(cleanMsg) ;
+    } ,
 
-    // ==========================================
-    // 3. 求 _stopPriceC (币本位止损价)
-    // 条件: V_f(P, H=1) / P_b(P) = TargetCoin
-    // ==========================================
-    let targetC_1 = hghestCoin * (1 + stopRate4C / 100)
-    let targetC_2 = hghestCoin * (1 + notStop4C / 100)
-    
-    // 币本位方程推导: (slope_f * P + intercept_f) / (S0 * (1 + (P-P0)/P0 * Adn2B)) = Target
-    // 令 m_slope = S0 * Adn2B / P0, m_intercept = S0 * (1 - Adn2B)
-    let m_slope     = S * Adn2B / P
-    let m_intercept = S * (1 - Adn2B)
-    
-    // 方程化简为一次方程: P * (slope_f - Target * m_slope) = Target * m_intercept - intercept_f
-    let resC1 = (targetC_1 * m_intercept - intercept_f) / (slope_f - targetC_1 * m_slope)
-    let resC2 = (targetC_2 * m_intercept - intercept_f) / (slope_f - targetC_2 * m_slope)
-    
-    stopPriceC = Math.min(resC1, resC2)
+    /**
+     * 对来自TV的原始数据对象rawTVData进行校验,并进行CleanObjToNumBoolString ; 
+     * 注意：得到一个新的对象, 并不是在原对象rawTVData进行修改, 原始对象除thisAlertMessage外原封不动 ; 
+     * 之所以修改原始对象rawTVData的thisAlertMessage是因为这个属性, 本来就是为了传输做了修改, 这里是改为它本应的样子 ; 
+     * @param {Object} raw_tvData 来自TV的原始数据
+     * @returns 1个新对象
+     * @returns String表示运行中的错误
+     */
+    Get_tvData(raw_tvData) {
+        const errPrefix = 'clean_tvData Error: ' ;
 
-    return [liquidatePrice, stopPriceC, stopPriceF]
+        if (!isPlainObject(raw_tvData)) {
+            return errPrefix + "rawTVData is not plain Object" ;
+        }
+        if (!Object.hasOwn(raw_tvData, 'dataSource') || raw_tvData.dataSource.trim() !== 'TradingView') {
+            return errPrefix + "rawTVData dataSource 校验失败" ;
+        }
+        if (isStrictString(raw_tvData.thisAlertMessage)) {
+            raw_tvData.thisAlertMessage = raw_tvData.thisAlertMessage.replaceAll(HuanHang, '\n').trim() ;
+            this.AddAlertMessage(this.alertMessageSet, raw_tvData.thisAlertMessage) ;
+            delete raw_tvData.thisAlertMessage ;
+        } else {
+            return errPrefix + "rawTVData thisAlertMessage no content" ;
+        }
 
-}
+        return CleanObjToNumBoolStr(raw_tvData)  ;
+    } ,
 
-function CalUncloseordersAvgprice(uncloseOrders) {
-    let all_P   = 0  ;
-    let all_PXQ = 0  ;
-    uncloseOrders.forEach(element => {
-        all_P   += Number(element[5]) ;
-        all_PXQ += Number(element[6]) ;
-    });
-    return all_PXQ / all_P  ;
-}
+    /**
+     * 获取spreadsheetID 并写入到this大对象中 
+     * @async
+     * @param {String} botNumber 
+     * @returns 无返回值, 若有返回值则说明运行错误
+     * @returns String 说明运行错误, 但这只是一种错误类型 
+     * @returns 另一种错误类型说明调用GetSpreadsheetID()出错, 需要上层调用者用catch捕获
+     */
+    async Set_spreadsheetID(botNumber) {
+        if (!isStrictString(botNumber)) {return 'Set_spreadsheetID Error: @param botNumber not available string'}
+        this.spreadsheetID = await GetSpreadsheetID(botNumber, this.sheets) 
+    } ,
 
-function isValue(v) {
-    if (v === NA)                           return true ;
-    if (typeof v === "boolean")             return true ;
-    if (typeof v === "number" && !isNaN(v)) return true ; // 纯数字类型            return true;
-    return false ;
-}
-function isNotV(v) {
-    return !isValue(v) ;
-}
-function NA0(v, z) {
-    if (v === NA) return (z===undefined ? 0 : z);
-    return v;
-}
+    /**
+     * 获取GS数据, mainData {} 和 uncloseOrders []
+     * @returns  正确的返回结果: [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA]
+     * @returns  String: 返回已知的错误类型
+     */
+    async Get_gsData() {
+        if( !isStrictString(this.spreadsheetID)     || 
+            !isStrictString(toGCPRanges)            || 
+            !toGCPRanges.includes(":")              || 
+            !toGCPRanges.includes("!")              )   {
+                return "Get_gsData Error: GetGS() @param error"  ;
+            }
+        toGCPData = CleanObjToNumBoolStr(A2dToObj(await GetGS(this.sheets, this.spreadsheetID, toGCPRanges )))  ;
+        if(!Object.hasOwn(toGCPData, "LOCK") ) {return "Get_gsData Error: get toGCPData error" }
 
-function ReNewAccount(D, newData) {
-        if (newData !== undefined) { Object.assign(D, newData) ; }
-        CleanObjToNumStrBool(D) ;
-        D.thisAlertMessage  +=  "\n"  ;
+        const rangesList = [    toGCPData.mainRange                ,       // 0 
+                                toGCPData.uncloseOrdersRange       ,       // 1
+                                toGCPData.ingOrderLine             ,       // 2
+                                toGCPData.tradeHistoryTitleLine    ,       // 3
+                                toGCPData.uncloseOrdersTitleLine   ,       // 4
+                                toGCPData.ingOrderTitleLine        ] ;     // 5
+        const valuesArray   = await BatchGetGS(this.sheets, this.spreadsheetID, rangesList);
+        const raw_mainData  = valuesArray[0];
+        if (!Array.isArray(raw_mainData) || !Array.isArray(raw_mainData[0]) ) {return 'Get_gsData Error: didnt get available data'}
+        const mainData  = CleanObjToNumBoolStr(A2dToObj(raw_mainData), 'notAvailableValue') ;
+        if (    !Object.hasOwn('dataSource')            ||
+                !isStrictString(mainData.dataSource)    ||
+                mainData.dataSource !== 'GoogleSheets'  )   { 
+            return 'Get_gsData Error: didnt get available data' ;
+        }
 
-        D.gridNum               =  isNaN(D.gridNum)  ?  0               :  D.gridNum    ;
-        D.therePosition         =  D.gridNum > 0     ?  true            :  false        ;
-        D.allPosition           =  D.therePosition   ?  D.allPosition   :  NA           ;
-        D.avgBuyPrice           =  D.therePosition   ?  D.avgBuyPrice   :  NA           ;
-        D.openProfit            =  D.therePosition   ?  D.allPosition * (D.TradingSymbolPrice - D.avgBuyPrice)  :  NA     ;
-        D.usedMargin            =  D.therePosition   ?  D.allPosition * D.TradingSymbolPrice / D.leverage       :  NA     ;
+        const uncloseOrdersA2d      = isStrictTrue(mainData.therePosition) ? (valuesArray[1]).map(lines => CleanArrayToNumStrBool(lines)) : [] ;
 
-        D.netProfit             =  isNotV(D.netProfit)  ?  NA  :  D.netProfit  ;
+        const ingOrderLineA         = mainData.ing_orderStatus === order_waiting ? CleanArrayToNumStrBool(valuesArray[2][0]) : [] ;
+        const ingOrderTitleA        = CleanArrayToNumStrBool(valuesArray[5][0]) ;
+        const ingOrderData          = mainData.ing_orderStatus === order_waiting ? A2LinesToObj([ingOrderTitleA, ingOrderLineA]) : null ;
 
-        D.crtFund               =  D.inFund + NA0(D.netProfit) + NA0(D.openProfit)                                  ;
-        D.crtCoin               =  D.inCoin                                                                         ;
-        D.freeMargin            =  D.crtFund + D.crtCoin * D.BaseCoinPrice * D.BaseCoinHairCut - NA0(D.usedMargin)  ;
-        D.allFund               =  D.crtFund + D.crtCoin * D.BaseCoinPrice                                          ;
-        D.allCoin               =  D.crtFund / D.BaseCoinPrice + D.crtCoin                                          ;
-        D.initialFund           =  D.inFund + D.inCoin * D.inBaseCoinPrice                                          ;
-        D.initialCoin           =  D.inFund / D.inBaseCoinPrice + D.inCoin                                          ;
+        const uncloseOrdersTitleA   = CleanArrayToNumStrBool(valuesArray[4][0]) ;
 
-        D.hghestFund            =  isNaN(D.hghestFund)  ?  D.initialFund  :  ( D.allFund > D.hghestFund ? D.allFund : D.hghestFund )   ;
-        D.lowestFund            =  isNaN(D.lowestFund)  ?  D.initialFund  :  ( D.allFund < D.lowestFund ? D.allFund : D.lowestFund )   ;
-        D.hghestCoin            =  isNaN(D.hghestCoin)  ?  D.initialCoin  :  ( D.allCoin > D.hghestCoin ? D.allCoin : D.hghestCoin )   ;
-        D.lowestCoin            =  isNaN(D.lowestCoin)  ?  D.initialCoin  :  ( D.allCoin < D.lowestCoin ? D.allCoin : D.lowestCoin )   ;
+        const tradeHistoryTitleA    = CleanArrayToNumStrBool(valuesArray[3][0])  ;
 
-        D.allTradeFee           =  isNotV(D.allTradeFee )  ?  NA  :  D.allTradeFee   ;
-        D.allFundFee            =  isNotV(D.allFundFee  )  ?  NA  :  D.allFundFee    ;
+        return [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA] ;
+    } ,
 
-        D.buyTimes              =  isNaN(D.buyTimes )  ?  0  :  D.buyTimes   ;
-        D.sellTimes             =  isNaN(D.sellTimes)  ?  0  :  D.sellTimes  ;
+    /**
+     * 设置this.lockName, 依据TV数据的时间戳
+     * @param {Number} tv_timestamp 
+     * @returns 无返回值, 默认不会出错, 因为这个函数运行的前提是调用它的函数前面不会出错. 
+     */
+    Set_lockName(tv_timestamp) { 
+        this.lockName = 'T' + String(tv_timestamp) ;
+    } ,
 
-        D.avgBuyPriceUnclose    =  !D.therePosition  ?  NA  :  D.avgBuyPriceUnclose   ;
-        D.lstBuyPriceUnclose    =  !D.therePosition  ?  NA  :  D.lstBuyPriceUnclose   ;
-        D.hghBuyPriceUnclose    =  !D.therePosition  ?  NA  :  D.hghBuyPriceUnclose   ;
-        D.lowBuyPriceUnclose    =  !D.therePosition  ?  NA  :  D.lowBuyPriceUnclose   ;
-        D.lstBuySerialUnclose   =  !D.therePosition  ?  NA  :  D.lstBuySerialUnclose  ;
-        D.hghBuySerialUnclose   =  !D.therePosition  ?  NA  :  D.hghBuySerialUnclose  ;
-        D.lowBuySerialUnclose   =  !D.therePosition  ?  NA  :  D.lowBuySerialUnclose  ;
+    /**
+     * 检测当前GS中分布式锁的真实归属, 检测是否与输入参数相同
+     * @async
+     * @param {String} lockRange 
+     * @param {string} lockName   String: 期望判定的锁持有人名称, 如 "T1779239400694"
+     * @returns {Promise<boolean>} true:  若当前锁的主人与传入的 lockName 一致则返回 true
+     * @returns {Promise<boolean>} false: 若当前锁的主人与传入的 lockName 不一致则返回false
+     * @returns {Promise<String>} String: 参数输入错误时, 返回错误信息
+     */
+    async CheckLockFromGS(lockRange, lockName) {
+        if (!isStrictString(lockRange) || !lockName || !this.spreadsheetID) { return 'CheckLockFromGS Error: param input error' }
+        const _currentLOCK = await GetGS(this.sheets, this.spreadsheetID, lockRange);
+        const currentLOCK = _currentLOCK?.[0]?.[0];
+        return currentLOCK === lockName;
+    } ,
 
-        D.lstBuyPrice           =  isNotV(D.lstBuyPrice        )  ?  NA  :  D.lstBuyPrice          ;
-        D.lstBuySerial          =  isNotV(D.lstBuySerial       )  ?  NA  :  D.lstBuySerial         ;
+    /**
+     * 分布式碰撞抢锁：抢占排他性写锁，带高频自旋重试机制
+     * @async
+     * @param {String} lockRange 
+     * @param {number} [MAX_ATTEMPTS=30] number: 最多尝试次数, 每次间隔1s, 默认值30s
+     * @returns {bollean} true: 抢锁成功返回
+     * @returns {String} String: 失败或超时熔断返回 
+     * @returns 永远不会返回false
+     */
+    async SetLockToGS(lockRange, MAX_ATTEMPTS = 30) {
+        if (!isStrictString(this.lockName) || this.lockName === noLOCK || !this.lockName.startsWith("T") ) {return 'SetLockToGS Error: 逻辑错误'}
 
-        D.lstTradeTime          =  isNotV(D.lstTradeTime       )  ?  NA  :  D.lstTradeTime         ;
-        D.lstFundTime           =  isNotV(D.lstFundTime        )  ?  NA  :  D.lstFundTime          ;
+        let attempts = 1;
+        while (attempts <= MAX_ATTEMPTS) {
+            // 先检查是不是处于无锁状态
+            const isFree = await this.CheckLockFromGS(lockRange, noLOCK);
+            if (isFree) {
+                // 临门一脚一枪流写入：尝试用写操作强行占领
+                await UpdateGS(this.sheets, this.spreadsheetID, lockRange, [[this.lockName]]) ;
+                //  终极二次原子验证（Double-Check）：写入后立刻回读！
+                // 只有回读出来的持有人确实是我，才代表我在多实例的盲盒碰撞中真正赢得了这场争夺战！
+                const weWon = await this.CheckLockFromGS(lockRange, this.lockName);
+                if (isStrictTrue(weWon) ) { return true }
+                // 如果回读发现不是我，说明在刚才的毫秒真空期里，有人比我先一步落盘了！
+                // 抢锁失败，进入下一次自旋等待。
+            }
 
-        D.rcd_hghFund           =  isNaN(D.rcd_hghFund )  ?  D.hghestFund  :  D.rcd_hghFund  ;
-        D.rcd_lowFund           =  isNaN(D.rcd_lowFund )  ?  D.lowestFund  :  D.rcd_lowFund  ;
-        D.rcd_hghCoin           =  isNaN(D.rcd_hghCoin )  ?  D.hghestCoin  :  D.rcd_hghCoin  ;
-        D.rcd_lowCoin           =  isNaN(D.rcd_lowCoin )  ?  D.lowestCoin  :  D.rcd_lowCoin  ;
+            attempts += 1;
+            // 自旋平滑器：等待 1000ms 再次尝试
+            await new Promise(res => setTimeout(res, 1000));
+        }
 
-        D.frCRT_avgBuyPrice         =  D.therePosition  ?  (D.avgBuyPrice           - D.TradingSymbolPrice) / D.TradingSymbolPrice  :  NA  ;
-        D.frCRT_avgBuyPriceUnclose  =  D.therePosition  ?  (D.avgBuyPriceUnclose    - D.TradingSymbolPrice) / D.TradingSymbolPrice  :  NA  ;
-        D.frCRT_lstBuyPriceUnclose  =  D.therePosition  ?  (D.lstBuyPriceUnclose    - D.TradingSymbolPrice) / D.TradingSymbolPrice  :  NA  ;
-        D.frCRT_hghBuyPriceUnclose  =  D.therePosition  ?  (D.hghBuyPriceUnclose    - D.TradingSymbolPrice) / D.TradingSymbolPrice  :  NA  ;
-        D.frCRT_lowBuyPriceUnclose  =  D.therePosition  ?  (D.lowBuyPriceUnclose    - D.TradingSymbolPrice) / D.TradingSymbolPrice  :  NA  ;
-        D.frCRT_lstBuyPrice         =  typeof D.lstBuyPrice === "number"  ?  (D.lstBuyPrice - D.TradingSymbolPrice) / D.TradingSymbolPrice  :  NA  ;
+        // 达到 30 次（约 30 秒）仍未抢到锁，执行防御性熔断，宣布失败
+        return 'SetLockToGS Error: LOCK被占用, 或未知错误';
+    } ,
 
-        D.toCRT_initialFund     =  (D.allFund - D.initialFund) / D.initialFund      ;
-        D.toCRT_hghestFund      =  (D.allFund - D.hghestFund ) / D.hghestFund       ;
-        D.toCRT_lowestFund      =  (D.allFund - D.lowestFund ) / D.lowestFund       ;
-        D.toCRT_initialCoin     =  (D.allCoin - D.initialCoin) / D.initialCoin      ;
-        D.toCRT_hghestCoin      =  (D.allCoin - D.hghestCoin ) / D.hghestCoin       ;
-        D.toCRT_lowestCoin      =  (D.allCoin - D.lowestCoin ) / D.lowestCoin       ;
+    /**
+     * 释放分布式排他锁
+     * @async
+     * @param {String} lockRange 
+     * @returns {Promise<boolean>} true:   解锁成功返回
+     * @returns {Promise<boolean>} false:  解锁失败
+     * @returns                    String: 明确的出错信息
+     */
+    async ReleaseLockOfGS(lockRange) {
+        // 确权拦截：先看自己现在还有没有解锁的权力（防止自己超时被别人强刷后，误把别人的锁给解了）
+        const hasRight = await CheckLockFromGS(lockRange, this.lockName);
+        if (!hasRight) { return 'ReleaseLockOfGS Error: 当前锁状态出错，并不是正在处理轮的锁，出现系统错误' }
+        await UpdateGS(this.sheets, this.spreadsheetID, lockRange, [[noLOCK]]);
+        // 验证是否真正安全归还
+        return await CheckLockFromGS(lockRange, noLOCK);
+    } ,
 
+    /**
+     * initiate 仅仅是系统首次初始化 ; 
+     * 每次信号进来的时候的初始化 用 start() ;
+     * @returns true: 表示初始化成功
+     * @returns false: 表示不需要初始化
+     * @returns String: 表示初始化中遇到的明确错误
+     */
+    async ToCheckInitiate(mainData, tvData, toGCPData) {
+        if (isStrictTrue(mainData.initiated)) {return false}
+
+        // 初始化时间不能在GS中预设的交易开始时间之后
+        if (tvData.timestamp > mainData.realTradeTime) { return 'Inititate Error: 初始化时间不能在GS中预设的交易开始时间之后' }
+
+        // 下面是初始化过程
+        // 系统处于未初始化状态
+        const iD = {} ;
+
+        iD.initiated        =   true                                                        ;
+        iD.initiateTime     =   tvData.timestamp                                            ;
+        iD.initialFund      =   mainData.inFund + mainData.inCoin * tvData.BaseCoinPrice    ;
+        iD.hghestFund       =   iD.initialFund                                              ;
+        iD.lowestFund       =   iD.initialFund                                              ;
+        iD.initialCoin      =   iD.initialFund / tvData.BaseCoinPrice                       ;
+        iD.hghestCoin       =   iD.initialCoin                                              ;
+        iD.lowestCoin       =   iD.initialCoin                                              ;
+
+        const i_toClearRangeSet     =  new Set()    ;
+        const i_toUpdateRangeList   =  []           ;
+
+        i_toClearRangeSet.add( toGCPData.uncloseOrdersRange )  ;
+        i_toClearRangeSet.add( toGCPData.tradeHistoryRange  )  ;
+        i_toClearRangeSet.add( toGCPData.HghLowRange        )  ;
+        i_toClearRangeSet.add( toGCPData.simBrokerRange     )  ;
+        i_toClearRangeSet.add( toGCPData.BrokerRange        )  ;
+        i_toClearRangeSet.add( toGCPData.toWriteMainRange   )  ;
+
+        const newHghLowV    = [ [iD.initiated   ]    ,
+                                [iD.initiateTime]    ,
+                                [iD.initialFund ]    ,
+                                [iD.hghestFund  ]    ,
+                                [iD.lowestFund  ]    ,
+                                [iD.initialCoin ]    ,
+                                [iD.hghestCoin  ]    ,
+                                [iD.lowestCoin  ]    ]   ;
+            
+        i_toUpdateRangeList.push(    {
+            range   : toGCPData.HghLowRange     ,
+            values  : newHghLowV                } ) ;
+
+
+        await BatchClearGS(this.sheets, this.spreadsheetID, Array.from(i_toClearRangeSet));
+
+        await BatchClearUpdateGS(this.sheets, this.spreadsheetID, i_toUpdateRangeList);
+
+        this.AddAlertMessage(this.alertMessageSet, 'just initiated')  ;
+
+        return true ;
+    } ,
+
+    /**
+     * 检查fundfee
+     * @param {Object} mainData
+     * @param {Object} tvData 
+     * @param {Array<String>} tradeHistoryTitleA 
+     * @param {String} newTradeHistoryLine 
+     * @returns true: 表示收取fundFee并写入成功
+     * @returns false: 表示不需要检查fund fee
+     * @returns String: 表示运行错误
+     */
+    async ToCheckFundFee(mainData, tvData, tradeHistoryTitleA, newTradeHistoryLine) {
+        if (!isPlainObject(mainData) || !isPlainObject(toGCPData) || !Array.isArray(tradeHistoryTitleA) || !isStrictString(newTradeHistoryLine)) {
+            return "ToCheckFundFee Error: input @param error"  ;
+        }
+
+        let toCheckFundFee = false;
+        if ( isStrictNumber(mainData.lstFundTime) ) {
+            const lstRound  = Math.floor(mainData.lstFundTime / 28800000); // 8 * 60 * 60 * 1000
+            const thisRound = Math.floor(mainData.timestamp   / 28800000);
+            toCheckFundFee  = lstRound === thisRound ? false : true;
+        } else {toCheckFundFee = true}
         
+        if (isStrictFalse(toCheckFundFee)) {return false} 
 
-        [D.gridDifficulty, D.enDifficulty, D.exDifficulty] = GetGridDifficulty( D.gridNum               ,
-                                                                                D.difficultyCoefficient , 
-                                                                                D.MaxGrid               )  ;
+        let S = {}  ;
+        S.fund_orderID          = 'F-' + GetTimeStringWithOffset(8, 28800000 * Math.floor(tvData.timestamp / 28800000)) ;
+        S.fund_orderTimestamp   = Date.now()                                                                            ;
+        S.fund_orderDate        = GetTimeStringWithOffset(8, S.fund_orderTimestamp)                                     ;
+        S.fund_buysell          = order_FUND                                                                            ;
+        S.fund_avgBuyPrice      = mainData.avgBuyPrice                                                                  ;
+        S.fund_reason           = "FundFee"                                                                             ;
+        S.fund_orderStatus      = order_pending                                                                         ;
 
-        [D.liquidatePrice, D.stopPriceC, D.stopPriceF] = GetLiquidateStopPrice( D.allPosition           , 
-                                                                                D.avgBuyPrice           , 
-                                                                                D.inFund                , 
-                                                                                D.netProfit             , 
-                                                                                D.crtCoin               , 
-                                                                                D.TradingSymbolPrice    , 
-                                                                                D.BaseCoinPrice         , 
-                                                                                D.BaseCoinHairCut       , 
-                                                                                D.avgAdn2B              , 
-                                                                                D.waveUpChg             , 
-                                                                                D.hghestFund            , 
-                                                                                D.hghestCoin            , 
-                                                                                D.stopRate4F            , 
-                                                                                D.stopRate4C            , 
-                                                                                D.notStop4F             , 
-                                                                                D.notStop4C             );
+        const returnS = await CheckFundFee(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
 
-        D.liquidatePrice    =  D.therePosition  ?  D.liquidatePrice  :  NA  ;
-        D.stopPriceC        =  D.therePosition  ?  D.stopPriceC      :  NA  ;
-        D.stopPriceF        =  D.therePosition  ?  D.stopPriceF      :  NA  ;
-        D.frCRT_liquidatePrice  =  D.therePosition  ?  (D.liquidatePrice - D.TradingSymbolPrice) / D.TradingSymbolPrice  :  NA  ;
-        D.frCRT_stopPriceC      =  D.therePosition  ?  (D.stopPriceC     - D.TradingSymbolPrice) / D.TradingSymbolPrice  :  NA  ;
-        D.frCRT_stopPriceF      =  D.therePosition  ?  (D.stopPriceF     - D.TradingSymbolPrice) / D.TradingSymbolPrice  :  NA  ;
+        const newFundHistoryA = tradeHistoryTitleA.map(v => {returnS['fund_'+v] || NA})
+
+        await UpdateGS(this.sheets, this.spreadsheetID, newTradeHistoryLine, [newFundHistoryA]) ;
+
+        this.AddAlertMessage(this.alertMessageSet, "New fund fee: " + String(returnS.fund_fundFee)) ;
+
+        return true ;
+
+    } ,
+
+    /**
+     * 判断waiting 订单状态
+     * @param {Object} ingOrderData 
+     * @param {Array<Array>} uncloseOrdersA2d 
+     * @param {Array<String>} uncloseOrdersTitleA 
+     * @param {Array<String>} tradeHistoryTitleA 
+     * @param {Object} mainData 
+     * @param {Object} tvData 
+     * @param {Object} toGCPData 
+     * @returns false: 没有状态更改
+     * @returns true:  有状态更改
+     */
+    async ToCheckWaitingOrder(ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA, mainData, tvData, toGCPData) {
+        if (!isStrictTrue(mainData.ifOrderWaiting)) {return false}
+
+        let ifWaitingThenCancel = true ;
+        if (ingOrderData.ing_buysell === order_BUY  && tvData.TradingSymbolPrice < ingOrderData.ing_orderPrice * (1 + tvData.waveUpChg)) { ifWaitingThenCancel = false }
+        if (ingOrderData.ing_buysell === order_SELL && tvData.TradingSymbolPrice > ingOrderData.ing_orderPrice * (1 + tvData.waveDnChg)) { ifWaitingThenCancel = false }
+
+        // 去交易所查看成交情况
+        // 此时获得的数据已经是clean
+        const res_broker = await CheckOrderConfirm(ingOrderData.ing_orderID, ifWaitingThenCancel, this.isReal, tvData.TradingSymbol, this.sheets, this.spreadsheetID);
+
+        const w_toUpdateRangeList = [];
+        const w_toClearRangeSet = new Set();
+
+        let ingOrderStatusChange = false ;
+
+        // 对于部分成交的情况,
+        // 如果ifWaitingThenCancel = false,  只修改ing_orderStatus一个变量
+        // 如果ifWaitingThenCancel = true ,  当做confirm来判断
+        if  (res_broker.ing_orderStatus === order_confirm                                   || 
+            (res_broker.ing_orderStatus === order_cancel  && res_broker.ing_partial > 0 )   )   {
+
+            if (ingOrderData.ing_buysell === order_BUY) {
+                const newUncloseOrderLine = uncloseOrdersTitleA.map(v => {res_broker['ing_'+v] || NA}) ;
+                uncloseOrdersA2d.push(newUncloseOrderLine) ;
+            }
+            if (ingOrderData.ing_buysell === order_SELL) {
+                const indexOfSerial = uncloseOrdersTitleA.indexOf('serial') ;
+                if (indexOfSerial > -1) {uncloseOrdersA2d = uncloseOrdersA2d.filter(row => String(row[indexOfSerial]) !== String(Math.abs(res_broker.ing_serial))) }
+            }
+
+            w_toClearRangeSet.add(toGCPData.ingOrderLine) ;
+            w_toClearRangeSet.add(toGCPData.uncloseOrdersRange) ;
+
+            const newTradeHistoryA = tradeHistoryTitleA.map(v => {res_broker['ing_'+v] || NA}) ;
+
+            w_toUpdateRangeList.push({
+                range   : toGCPData.newTradeHistoryLine     ,
+                values  : [newTradeHistoryA]                } ) ;
+
+            if (uncloseOrdersA2d.length > 0) {
+                w_toUpdateRangeList.push( {
+                    range   : toGCPData.uncloseOrdersRange  ,
+                    values  : uncloseOrdersA2d                 } ) ;
+            }
+
+            const thisMessage = res_broker.ing_orderStatus === order_confirm                                ?
+                (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order confirmed"               :
+                (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order partially confirmed"           ;
+
+            this.AddAlertMessage(this.alertMessageSet, thisMessage) ;
+
+            ingOrderStatusChange = true ;
+        }
+
+        if (res_broker.ing_orderStatus === order_waiting && res_broker.ing_partial > 0 && res_broker.ing_partial > ingOrderData.ing_partial) {
+            ingOrderData.ing_partial = res_broker.ing_partial ;
+            const new_ingOrderLineA = ingOrderTitleA.map(v => {ingOrderData[v] || NA}) ;
+            w_toUpdateRangeList.push({
+                range   : toGCPData.ingOrderLine    , 
+                values  : [new_ingOrderLineA]       } ) ;
+            this.AddAlertMessage(this.alertMessageSet, (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order more partial confirmed") ;
+
+            ingOrderStatusChange = true ;
+        }
+
+        if (res_broker.ing_orderStatus === order_cancel) {
+            w_toClearRangeSet.add(toGCPData.ingOrderLine) ;
+            this.AddAlertMessage(this.alertMessageSet, (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order canceled") ;
+
+            ingOrderStatusChange = true ;
+        }
+
+        if (isStrictFalse(ingOrderStatusChange)) {return false}
+
+        await BatchClearGS(this.sheets, this.spreadsheetID, Array.from(w_toClearRangeSet) ) ;
+
+        await BatchClearUpdateGS(this.sheets, this.spreadsheetID, w_toUpdateRangeList)  ;
+
+        return true ;
+
+    } ,
+
+    /**
+     * 判断可写入的新数据key
+     * @param {String} key 
+     * @returns 
+     */
+    isCanWriteAtt(key) {
+        // 原型链毒素刚性黑名单（掐死原型污染攻击）
+        const FORBIDDEN_KEYS = ['__proto__', 'constructor', 'prototype'] ;
+        if (FORBIDDEN_KEYS.includes(key)) {return false}
+        if (isStrictNumber (this[key])) {return true}
+        if (isStrictBoolean(this[key])) {return true}
+        if (isStrictString (this[key])) {return true}
+        if (!Object.hasOwn (this, key)) {return true}
+        return false ;
+    } ,
+
+    /**
+     * 将新数据写入this大对象中 ; 
+     * @param {Object} newData 需要写入的新数据, 需保证newData是clean状态
+     * @returns {string} 失败返回具体熔断错误字符串
+     */
+    UpdateDataToThis(newData) {
+        // 前置安全门禁与类型确权
+        if (!isPlainObject(newData)) {
+            return 'UpdateData Error: incoming newData must be a valid plain object';
+        }
+        Object.keys(newData).forEach(key => {
+            if (this.isCanWriteAtt(key)) {this[key] = newData[key]}
+        }) ;
+    } ,
+
+    /**
+     * 计算 [liquidatePrice, stopPriceC, stopPriceF] ; 
+     * 直接从this大对象中获取必要参数, 不需要额外输入 
+     * @returns 计算后的 [liquidatePrice, stopPriceC, stopPriceF]
+     */
+    GetLiquidateStopPrice() {
+        // 基础变量提取 (命名对齐你的 GetAccountStatusByPrice)
+        let C  = this.crtCoin                   ;
+        let S  = this.BaseCoinPrice             ;
+        let P  = this.TradingSymbolPrice        ;
+        let L  = this.allPosition               ;
+        let K  = this.inFund + this.netProfit   ;
+        let A  = this.avgBuyPrice               ;
+        let H  = this.BaseCoinHairCut           ;
+        let R  = this.waveUpChg                 ;
+        let D  = this.Adn2B                     ;
+        let SF = this.stopRate4F                ;
+        let SC = this.stopRate4C                ;
+        let NF = this.notStop4F                 ;
+        let NC = this.notStop4C                 ;
+        let NF = this.hghestFund                ;
+        let HC = this.hghestCoin                ;
+
+        let liquidatePrice  = null  ;
+        let stopPriceC      = null  ;
+        let stopPriceF      = null  ;
+
+        // ==========================================
+        // 1. 求 _liquidatePrice (爆仓价)
+        // 条件: V_f(P, Haircut) = R * L * P
+        // ==========================================
+        let slope_f_h = (C * S * D * H / P) + L                     ;
+        let intercept_f_h = K - (L * A) + (C * S * H * (1 - D))     ;
+
+        // 方程: slope_f_h * P + intercept_f_h = R * L * P
+        // 移项: P * (slope_f_h - R * L) = -intercept_f_h
+        liquidatePrice = -intercept_f_h / (slope_f_h - R * L)  ;
+
+        // ==========================================
+        // 2. 求 _stopPriceF (金本位止损价)
+        // 需要计算两个条件：stopRate4F (止损) 和 notStop4C (交叉限制)
+        // 最终取两者中较高的价格 (即下跌时先碰到的那个)
+        // ==========================================
+        let slope_f     = (C * S * D / P) + L               ;
+        let intercept_f = K - (L * A) + (C * S * (1 - D))   ;
+
+        let targetF_1 = NF * (1 + SF / 100)     ;
+        let targetF_2 = NF * (1 + NF / 100)     ;
+
+        let resF1 = (targetF_1 - intercept_f) / slope_f ;
+        let resF2 = (targetF_2 - intercept_f) / slope_f ;
+
+        // 根据你的逻辑，最终结果由交叉条件限制，此处取 math.min 对应下跌时更高的价格
+        stopPriceF = Math.min(resF1, resF2) ;
+
+        // ==========================================
+        // 3. 求 _stopPriceC (币本位止损价)
+        // 条件: V_f(P, H=1) / P_b(P) = TargetCoin
+        // ==========================================
+        let targetC_1 = HC * (1 + SC / 100)  ;
+        let targetC_2 = HC * (1 + NC / 100)  ;
+
+        // 币本位方程推导: (slope_f * P + intercept_f) / (S0 * (1 + (P-P0)/P0 * Adn2B)) = Target
+        // 令 m_slope = S0 * Adn2B / P0, m_intercept = S0 * (1 - Adn2B)
+        let m_slope     = S * D / P     ;
+        let m_intercept = S * (1 - D)   ;
+
+        // 方程化简为一次方程: P * (slope_f - Target * m_slope) = Target * m_intercept - intercept_f
+        let resC1 = (targetC_1 * m_intercept - intercept_f) / (slope_f - targetC_1 * m_slope)   ;
+        let resC2 = (targetC_2 * m_intercept - intercept_f) / (slope_f - targetC_2 * m_slope)   ;
+
+        stopPriceC = Math.min(resC1, resC2) ;
+
+        return [liquidatePrice, stopPriceC, stopPriceF]  ;
+
+    } ,
+
+    /**
+     * 对当前账户状态进行更新 ; 
+     * 直接从this大对象中获取数据, 不需要额外输入 ; 
+     * this大对象中的数据, 来源于GS, TV, 以及Initiate() ;
+     * 除了修改的数据之外, 认为这些数据是绝对正确的
+     */
+    ReNew() {
+        this.openProfit =  isStrictTrue(this.therePosition) ?  this.allPosition * (this.TradingSymbolPrice - this.avgBuyPrice)  :  NA    ;
+        this.usedMargin =  isStrictTrue(this.therePosition) ?  this.allPosition * this.TradingSymbolPrice / this.leverage       :  NA    ;
+        this.crtFund    =  this.inFund + toStrictNumber(this.netProfit, 0) + toStrictNumber(this.openProfit, 0)                          ;
+        this.crtCoin    =  this.inCoin                                                                                                   ;
+        this.freeMargin =  this.crtFund + this.crtCoin * this.BaseCoinPrice * this.BaseCoinHairCut - toStrictNumber(this.usedMargin, 0)  ;
+        this.allFund    =  this.crtFund + this.crtCoin * this.BaseCoinPrice                                                              ;
+        this.allCoin    =  this.crtFund / this.BaseCoinPrice + this.crtCoin                                                              ;
+
+        this.rcd_fund   =  toStrictNumber(this.rcd_fund, this.allFund)  ;
+        this.rcd_coin   =  toStrictNumber(this.rcd_coin, this.allCoin)  ;
+
+        [this.liquidatePrice, this.stopPriceC, this.stopPriceF] = this.GetLiquidateStopPrice();
+        this.liquidatePrice    =  isStrictTrue(this.therePosition)  ?  this.liquidatePrice  :  NA  ;
+        this.stopPriceC        =  isStrictTrue(this.therePosition)  ?  this.stopPriceC      :  NA  ;
+        this.stopPriceF        =  isStrictTrue(this.therePosition)  ?  this.stopPriceF      :  NA  ;
+
+        this.ifOrderWaiting  =  this.ing_orderStatus === order_waiting  ;
 
         // 账户状态判断
-        D.accStatus =  'Normal' ; 
-        if (D.TradingSymbolPrice < D.liquidatePrice) {
-            D.accStatus         = 'liquidated'                      ;
-            D.thisAlertMessage  =  accStatus_liquidated     + '\n'  ;
+        this.accStatus =  'Normal' ; 
+        if (this.TradingSymbolPrice < this.liquidatePrice) {
+            this.accStatus         =  accStatus_liquidated                                                  ;
+            this.thisAlertMessage  =  this.AddAlertMessage(this.alertMessageSet, accStatus_liquidated)      ;
         }
-        if (D.TradingSymbolPrice < D.stopPriceC    ) {
-            D.accStatus         = 'stopC'                           ;
-            D.thisAlertMessage  =  accStatus_stopC          + '\n'  ;
+        if (this.TradingSymbolPrice < this.stopPriceC    ) {
+            this.accStatus         =  accStatus_stopC                                                       ;
+            this.thisAlertMessage  =  this.AddAlertMessage(this.alertMessageSet, accStatus_stopC)           ;
         } 
-        if (D.TradingSymbolPrice < D.stopPriceF    ) {
-            D.accStatus         = 'stopF'                           ;
-            D.thisAlertMessage  =  accStatus_stopF          + '\n'  ;
+        if (this.TradingSymbolPrice < this.stopPriceF    ) {
+            this.accStatus         =  accStatus_stopF                                                       ;
+            this.thisAlertMessage  =  this.AddAlertMessage(this.alertMessageSet, accStatus_stopF)           ;
         }
-        if (D.TradingSymbolPrice < D.stopPriceC  &&  D.TradingSymbolPrice < D.stopPriceF ) {
-            D.accStatus         = 'stopCF'                          ;
-            D.thisAlertMessage  =  accStatus_stopCF         + '\n'  ;
-        }
-
-        
-
-        if (D.allFund > (1+D.barChgA)*D.rcd_hghFund) { D.thisAlertMessage += 'new rcd_hghFund' + '\n' ; D.rcd_hghFund = D.allFund ;}
-        if (D.allFund < (1-D.barChgA)*D.rcd_lowFund) { D.thisAlertMessage += 'new rcd_lowFund' + '\n' ; D.rcd_lowFund = D.allFund ;}
-        if (D.allCoin > (1+D.barChgA)*D.rcd_hghCoin) { D.thisAlertMessage += 'new rcd_hghCoin' + '\n' ; D.rcd_hghCoin = D.allCoin ;}
-        if (D.allCoin < (1-D.barChgA)*D.rcd_lowCoin) { D.thisAlertMessage += 'new rcd_lowCoin' + '\n' ; D.rcd_hghCoin = D.allCoin ;}
-
-        D.closeToRndHgh     =  D.roundHgh / Math.pow((1+D.waveUpChg), D.notBuyCloseToRndHghStep)  ;
-        D.closeToRndLow     =  D.roundLow / Math.pow((1+D.waveDnChg), D.notBuyCloseToRndLowStep)  ;
-        D.hghToBuy          =  Math.min(D.basicHghToBuy                             ,
-                                        D.closeToRndHgh                             ,
-                                        NA0(D.lowBuyPriceUnclose, D.basicHghToBuy)  )   ;
-        D.lowToBuy          =  Math.max(D.basicLowToBuy, D.closeToRndLow    )   ;
-        D.lowToSell         =  Math.max(D.basicLowToSell                    )   ;
-
-        D.canBuy            =  true     ;
-        D.cantBuyReason     =  ""       ;
-        D.canSell           =  true     ;
-        D.cantSellReason    =  ""       ;
-
-        if (D.timestamp - D.lstTradeTime < D.ordersInterval * 60000) {
-            D.canSell           =  false  ;
-            D.cantBuyReason     +=  'cant buy: '  + 'there order just done, wait some time' + '\n' ;
-            D.cantSellReason    +=  'cant sell: ' + 'there order just done, wait some time' + '\n' ;
+        if (this.TradingSymbolPrice < this.stopPriceC  &&  this.TradingSymbolPrice < this.stopPriceF ) {
+            this.accStatus         =  accStatus_stopCF                                                      ;
+            this.thisAlertMessage  =  this.AddAlertMessage(this.alertMessageSet, accStatus_stopCF)          ;
         }
 
-        D.ifOrderWaiting  =  D.ing_orderStatus === order_waiting  ;
-        if (D.ifOrderWaiting) {
-            D.canBuy            =  false  ;
-            D.canSell           =  false  ;
-            D.cantBuyReason     +=  'cant buy: '  + 'there order waiting' + '\n' ;
-            D.cantSellReason    +=  'cant sell: ' + 'there order waiting' + '\n' ;
+        if (this.allFund > this.rcd_fund*(1+this.barChgA) ) {this.rcd_fund = this.allFund ; this.AddAlertMessage(this.alertMessageSet, '↑ new rcd_fund') ; }
+        if (this.allFund < this.rcd_fund*(1-this.barChgA) ) {this.rcd_fund = this.allFund ; this.AddAlertMessage(this.alertMessageSet, '↓ new rcd_fund') ; }
+        if (this.allCoin > this.rcd_coin*(1+this.barChgB) ) {this.rcd_coin = this.allCoin ; this.AddAlertMessage(this.alertMessageSet, '↑ new rcd_coin') ; }
+        if (this.allCoin < this.rcd_coin*(1-this.barChgB) ) {this.rcd_coin = this.allCoin ; this.AddAlertMessage(this.alertMessageSet, '↓ new rcd_coin') ; }
+
+        if (this.allFund > this.hghestFund) {this.toWriteHghLow = true; this.hghestFund = this.allFund; this.AddAlertMessage(this.alertMessageSet, "↑ new hghestFund" ) ; }
+        if (this.allFund < this.lowestFund) {this.toWriteHghLow = true; this.lowestFund = this.allFund; this.AddAlertMessage(this.alertMessageSet, "↓ new lowestFund" ) ; }
+        if (this.allCoin > this.hghestCoin) {this.toWriteHghLow = true; this.hghestCoin = this.allCoin; this.AddAlertMessage(this.alertMessageSet, "↑ new hghestCoin" ) ; }
+        if (this.allCoin < this.lowestCoin) {this.toWriteHghLow = true; this.lowestCoin = this.allCoin; this.AddAlertMessage(this.alertMessageSet, "↓ new lowestCoin" ) ; }
+
+        this.closeToRndHgh     =  this.roundHgh / Math.pow((1+this.waveUpChg), this.notBuyCloseToRndHghStep)  ;
+        this.closeToRndLow     =  this.roundLow / Math.pow((1+this.waveDnChg), this.notBuyCloseToRndLowStep)  ;
+
+        this.hghToBuy   =  Math.min(this.basicHghToBuy                                          ,
+                                    this.closeToRndHgh                                          ,
+                                    toStrictNumber(this.lowBuyPriceUnclose, this.basicHghToBuy) )   ;
+
+        this.lowToBuy   =  Math.max(this.basicLowToBuy, this.closeToRndLow )   ;
+        this.lowToSell  =  Math.max(this.basicLowToSell                    )   ;
+
+        this.inTradingTime     =  this.timestamp > this.realTradeTime && this.timestamp < this.realTradeTimeTo ;
+
+        this.canBuy            =  true     ;
+        this.cantBuyReason     =  ""       ;
+        this.canSell           =  true     ;
+        this.cantSellReason    =  ""       ;
+
+        if (!this.inTradingTime) {
+            this.canBuy            =  false  ;
+            this.canSell           =  false  ;
+            this.cantBuyReason     =  addMessage(this.cantBuyReason , 'cant buy: '  + 'not in trading time' )  ;
+            this.cantSellReason    =  addMessage(this.cantSellReason, 'cant sell: ' + 'not in trading time' )  ;
         }
 
-        if (D.gridNum >= D.MaxGrid) {
-            D.canBuy            =   false                           ;
-            D.cantBuyReason     +=  'cant buy: '  + "gridNum >== MaxGrid"    + "\n" ;
+        if (this.timestamp - this.lstTradeTime < this.ordersInterval * 60000) {
+            this.canBuy            =  false  ;
+            this.canSell           =  false  ;
+            this.cantBuyReason     =  addMessage(this.cantBuyReason , 'cant buy: '  + 'there order just done, wait some time' )  ;
+            this.cantSellReason    =  addMessage(this.cantSellReason, 'cant sell: ' + 'there order just done, wait some time' )  ;
+        }
+
+        if (this.ifOrderWaiting) {
+            this.canBuy            =  false  ;
+            this.canSell           =  false  ;
+            this.cantBuyReason     =  addMessage(this.cantBuyReason , 'cant buy: '  + 'there order waiting' )  ;
+            this.cantSellReason    =  addMessage(this.cantSellReason, 'cant sell: ' + 'there order waiting' )  ;
+        }
+
+        if (Number(this.gridNum) >= Number(this.MaxGrid) ) {
+            this.canBuy            =   false ;
+            this.cantBuyReason     =   addMessage(this.cantBuyReason, 'cant buy: ' + "gridNum >= MaxGrid")         ;
         }
             
-        if (D.TradingSymbolPrice > D.basicHghToBuy) {
-            D.canBuy            =   false                           ;
-            D.cantBuyReason     +=  'cant buy: '  + 'price > basicHghToBuy'  + '\n' ;
+        if (this.TradingSymbolPrice > this.basicHghToBuy) {
+            this.canBuy            =   false ;
+            this.cantBuyReason     =   addMessage(this.cantBuyReason, 'cant buy: ' + 'price > basicHghToBuy'  )     ;
         }
-        if (D.TradingSymbolPrice > D.closeToRndHgh) {
-            D.canBuy            =   false                           ;
-            D.cantBuyReason     +=  'cant buy: '  + 'price closeToRndHgh'    + '\n' ;
+        if (this.TradingSymbolPrice > this.closeToRndHgh) {
+            this.canBuy            =   false ;
+            this.cantBuyReason     =   addMessage(this.cantBuyReason, 'cant buy: '  + 'price closeToRndHgh'    )    ;
         }
-        if(D.TradingSymbolPrice > D.lowBuyPriceUnclose) {
-            D.canBuy            =   false                           ;
-            D.cantBuyReason     +=  'cant buy: '  + 'price > lowBuyPriceUnclose' + '\n' ;
+        if(this.TradingSymbolPrice > this.lowBuyPriceUnclose) {
+            this.canBuy            =   false ;
+            this.cantBuyReason     =   addMessage(this.cantBuyReason, 'cant buy: '  + 'price > lowBuyPriceUnclose') ;
         }
-        if (D.TradingSymbolPrice < D.basicLowToBuy) {
-            D.canBuy            =   false                           ;
-            D.cantBuyReason     +=  'cant buy: '  + 'price < basicLowToBuy'  + '\n' ;
+        if (this.TradingSymbolPrice < this.basicLowToBuy) {
+            this.canBuy            =   false ;
+            this.cantBuyReason     =   addMessage(this.cantBuyReason, 'cant buy: '  + 'price < basicLowToBuy'  )    ;
         } 
-        if (D.TradingSymbolPrice < D.closeToRndLow) {
-            D.canBuy            =   false                           ;
-            D.cantBuyReason     +=  'cant buy: '  + 'price closeToRndLow'    + '\n' ;
+        if (this.TradingSymbolPrice < this.closeToRndLow) {
+            this.canBuy            =   false ;
+            this.cantBuyReason     =   addMessage(this.cantBuyReason, 'cant buy: '  + 'price closeToRndLow'    )    ;
         }
-        if (D.freeMargin / (D.MaxGrid - D.gridNum) < 1.1 * D.minEnExPosition * D.TradingSymbolPrice / D.leverage) {
-            D.canBuy            =   false                           ;
-            D.cantBuyReason     +=   'cant buy: '  + 'Not enough freeMargin' + '\n' ;
-        }
-
-
-
-        if (D.TradingSymbolPrice < D.basicLowToSell) {
-            D.canSell           =   false                           ;
-            D.cantSellReason    +=  'cant sell: ' + 'price < basicLowToSell' + '\n' ;
+        if (this.freeMargin / (this.MaxGrid - this.gridNum) < 1.1 * this.minEnExPosition * this.TradingSymbolPrice / this.leverage) {
+            this.canBuy            =   false ;
+            this.cantBuyReason     =   addMessage(this.cantBuyReason,  'cant buy: '  + 'Not enough freeMargin' )    ;
         }
 
-        if (D.gridNum < 1) {
-            D.canSell           =   false                           ;
-            D.cantSellReason    +=  'cant sell: ' + 'No position to sell'    + '\n' ;
+        if (this.TradingSymbolPrice < this.basicLowToSell) {
+            this.canSell           =   false                           ;
+            this.cantSellReason    =  addMessagee(this.cantSellReason, 'cant sell: ' + 'price < basicLowToSell' ) ;
         }
 
-        D.thisAlertMessage      +=  D.cantBuyReason + D.cantSellReason  ;
+        if (!isStrictTrue(this.therePosition)) {
+            this.canSell           =   false                           ;
+            this.cantSellReason    =  addMessagee(this.cantSellReason, 'cant sell: ' + 'No position to sell'    ) ;
+        }
 
-}
+        this.AddAlertMessage(this.alertMessageSet, this.cantBuyReason ) ;
+        this.AddAlertMessage(this.alertMessageSet, this.cantSellReason) ;
+    } ,
 
-async function CheckLock(lockName, sheets, spreadsheetId) {
-    const _currentLOCK = await GetDataFromSheet(sheets, spreadsheetId, lockRange) ;
-    const currentLOCK  = _currentLOCK[0][0]  ;
-    return currentLOCK === lockName  ?  true  :  false  ;
-}
-async function SetLock(lockName, sheets, spreadsheetId) {
-    let currentNoLock = await CheckLock(noLOCK, sheets, spreadsheetId)  ;
-    let attempts = 1 ;
-    while (!currentNoLock && attempts < 30) {
-        attempts    +=  1  ;
-        await new Promise(res => setTimeout(res, 1000));
-        currentNoLock = await CheckLock(noLOCK, sheets, spreadsheetId)  ;
-        console.log(`第${attempts}次尝试获取lock`) ;
+    /**
+     * 判断是否要发出卖单, 并实际下单
+     * 只有当实际卖出信号发出时，才会返回true
+     * @param {Array<Array>} uncloseOrdersA2d 
+     * @param {Array<String>} uncloseOrdersTitleA
+     * @param {Array<String>} ingOrderTitleA 
+     * @param {String} ingOrderLine 
+     * @returns true: 表示卖出信号发出, 且收到了交易所的回复
+     * @returns false: 经判断不能卖出, 没有信号发生
+    */
+    async ToSell(uncloseOrdersA2d, uncloseOrdersTitleA, ingOrderTitleA, ingOrderLine) {
+        if (!isStrictTrue(this.canSell)) { return false }
+
+        let toSell = false;
+        let toSellOrderA;
+        const S = {};
+
+        // orderID	confirmDate	serial	triggerPrice	confirmPrice	qty	P×Q	reason
+        // 0        1           2       3               4               5   6   7
+        const idx_orderID       = uncloseOrdersTitleA.indexOf('orderID'         ) ;
+        const idx_serial        = uncloseOrdersTitleA.indexOf('serial'          ) ;
+        const idx_confirmPrice  = uncloseOrdersTitleA.indexOf('confirmPrice'    ) ;
+        const idx_qty           = uncloseOrdersTitleA.indexOf('qty'             ) ;
+
+        // touch targetHgh
+        if ( (this.TradingSymbolPrice > (1+this.waveUpChg) * this.lowBuyPriceUnclose)  &&  this.touchTargetHgh  ) {
+            toSell = true;
+            toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.lowBuySerialUnclose));
+            S.ing_reason = 'touchTargetHgh';
+        }
+        // mustSellProfitStep
+        if ( (this.TradingSymbolPrice > Math.pow((1+this.waveUpChg), this.mustSellProfitStep) * Math.max( this.lowBuyPriceUnclose , this.avgBuyPriceUnclose) ) ) {
+            toSell = true;
+            toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.lowBuySerialUnclose));
+            S.ing_reason = 'must sell Profit';
+        }
+        // cut too high buy order
+        if ( (this.hghBuyPriceUnclose/this.TradingSymbolPrice > this.roundHgh/this.roundLow) && (this.hghBuyPriceUnclose > (1+this.waveUpChg) * this.TradingSymbolPrice) ) {
+            toSell = true;
+            toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
+            S.ing_reason = 'cut too hgh buy order';
+        }
+        // cut due to stopC
+        if ( this.TradingSymbolPrice < this.stopPriceC ) {
+            toSell = true;
+            toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
+            S.ing_reason = 'cut due to stopC';
+        }
+        // cut due to stopF
+        if ( this.TradingSymbolPrice < this.stopPriceF ) {
+            toSell = true;
+            toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
+            S.ing_reason = 'cut due to stopF';
+        }
+        // cut to prevent liquidate
+        if ( this.TradingSymbolPrice < (1+this.mustSellToPreventLiq/100)*this.liquidatePrice) {
+            toSell = true;
+            toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
+            S.ing_reason = 'cut to prevent liquidate';
+        }
+
+        if (isStrictFalse(toSell)) {return false}
+
+        if (isStrictTrue(toSell)) {
+            S.ing_orderID           =  toSellOrderA[idx_orderID].trim().replace('B', 'S')       ;
+            S.ing_orderTimestamp    =  Date.now()                                               ;
+            S.ing_orderDate         =  GetTimeStringWithOffset(8, S.ing_orderTimestamp)         ;
+            S.ing_serial            =  -1 * toSellOrderA[idx_serial]                            ;
+            S.ing_buysell           =  order_SELL                                               ;
+            S.ing_triggerPrice      =  this.TradingSymbolPrice                                  ;
+            S.ing_orderType         =  order_T_LMT                                              ;
+            S.ing_orderPrice        =  S.ing_triggerPrice                                       ;
+            S.ing_boughtPrice       =  toSellOrderA[idx_confirmPrice]                           ;
+            S.ing_qty               =  -1 * toSellOrderA[idx_qty]                               ;
+            S.ing_orderStatus       =  order_pending                                            ;
+
+            const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
+            // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
+
+            const new_ingOrderLineA = ingOrderTitleA.map(v => {returnS[v] || NA}) ;
+
+            this.toUpdateRangeList.push({
+                range   : ingOrderLine          ,
+                values  : [new_ingOrderLineA]   } ) ;
+
+            this.AddAlertMessage(this.alertMessageSet, "New sell order, waiting confirmed")  ;
+
+            return true ;
+        }
+
+    } ,
+
+    /**
+     * 判断是否要发出买单, 并实际下单
+     * 只有当实际买入信号发出时，才会返回true
+     * @param {Array<String>} ingOrderTitleA 
+     * @param {String} ingOrderLine 
+     * @returns true: 表示买入信号发出, 且收到了交易所的回复
+     * @returns false: 经判断不能买入, 没有信号发生
+     */
+    async ToBuy(ingOrderTitleA, ingOrderLine) {
+        if (!isStrictTrue(this.canBuy)) {return false}
+
+        let toBuy = false ;
+        const S = {};
+
+        if (isStrictTrue(this.touchTargetLow)) {toBuy = true}
+
+        // 目前对于买入信号的判断, 只有一个判断: touchTargetLow
+
+        if ( isStrictFalse(toBuy) ) {return false}
+
+        if ( isStrictTrue(toBuy) ) {
+            S.ing_orderID           =  'B-' + GetTimeStringWithOffset(8, this.timestamp)                                                                                                            ;
+            S.ing_orderTimestamp    =  Date.now()                                                                                                                                                   ;
+            S.ing_orderDate         =  GetTimeStringWithOffset(8, S.ing_orderTimestamp)                                                                                                             ;
+            S.ing_serial            =  toStrictNumber(this.lstBuySerial, 0) + 1                                                                                                                     ;
+            S.ing_buysell           =  order_BUY                                                                                                                                                    ;
+            S.ing_triggerPrice      =  this.TradingSymbolPrice                                                                                                                                      ;
+            S.ing_orderType         =  order_T_LMT                                                                                                                                                  ;
+            S.ing_orderPrice        =  S.ing_triggerPrice                                                                                                                                           ;
+            S.ing_qty               =  this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin*this.leverage/this.TradingSymbolPrice/this.minEnExPosition/(this.MaxGrid - this.gridNum)) )    ;
+            S.ing_reason            =  BuyReason_belowTarget                                                                                                                                        ;
+            S.ing_orderStatus       =  order_pending                                                                                                                                                ;
+
+            const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
+            // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
+
+            const new_ingOrderLineA = ingOrderTitleA.map(v => {returnS[v] || NA}) ;
+
+            this.toUpdateRangeList.push({
+                range   : ingOrderLine          ,
+                values  : [new_ingOrderLineA]   } ) ;
+
+            this.AddAlertMessage(this.alertMessageSet, "New buy order: waiting confirmed") ;
+
+            return true ;
+        }
+    } ,
+
+    /**
+     * 将this大对象中的数据写入GS
+     * @returns true表示写入成功，false表示写入失败
+     */
+    async WriteToGS(toWriteMainRange, mainRange) {
+        await BatchClearGS(this.sheets, this.spreadsheetID, Array.from(this.toClearRangeSet));
+
+        if (this.runningWellSet.size === 0 ) { this.runningWel   = true} 
+        if (this.runningWellSet.size  >  0 ) { this.runningWell  = [...this.runningWellSet ].join('\n') }
+        if (this.alertMessageSet.size >  0 ) { this.alertMessage = [...this.alertMessageSet].join('\n') }
+
+        this.gcpWriteTime = Date.now();
+
+        //精准按 value 类型过滤
+        const writeToGSArray = ObjToA2dNumBoolStr(this);
+        this.toUpdateRangeList.push(    {
+            range   : toWriteMainRange  ,
+            values  : writeToGSArray    }  )  ;
+        await BatchClearUpdateGS(this.sheets, this.spreadsheetID, this.toUpdateRangeList);
+
+        const MAX_ATTEMPTS = 10;
+        let attempts = 1;
+        while (attempts <= MAX_ATTEMPTS) {
+            const newD = CleanObjToNumBoolStr(A2dToObj(await GetGS(this.sheets, this.spreadsheetID, mainRange)));
+            if (newD.timestamp === this.timestamp) { return true }
+                attempts += 1;
+        }
+
+        return false;
+    } ,
+
+    async SendToTG() {} ,
+
+    async SendToEmail() {} ,
+
+    async Start(raw_tvData) {
+        this.gcpGetTime = Date.now() ;
+
+        const tvData = this.Get_tvData(raw_tvData) ;
+        if (isStrictString(tvData)) {throw new Error(tvData)}
+
+        const r_Set_spreadsheetID = await this.Set_spreadsheetID(tvData.botNumber)  ;
+        if (isStrictString(r_Set_spreadsheetID)) {throw new Error(r_Set_spreadsheetID)}
+
+        let toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA ;
+
+        const r_Get_gsData = await this.Get_gsData()  ;
+        if (Array.isArray(r_Get_gsData)) {
+            [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA] = r_Get_gsData ;
+        } else {throw new Error(r_Get_gsDat)}
+
+        this.Set_lockName(tvData.timestamp)  ;
+
+        const r_SetLockToGS = await this.SetLockToGS(mainData.lockRange, 30) ;
+        if (isStrictString(r_SetLockToGS)) {throw new Error(r_SetLockToGS.trim())}
+
+        // 当获得lock后就可以不主动抛出错误了
+        // 因为拿到了lock就可以往GS写入数据了
+        // 可以将错误信息 写入 runningWellSet
+
+        // 检查是否已经初始化，如果没有初始化的话则去初始化
+        if (this.isRunningWell() ) {
+            const r_ToCheckInitiate = await this.ToCheckInitiate() ;
+            if (isStrictString(r_ToCheckInitiate)) { this.AddAlertMessage(this.runningWellSet, r_ToCheckInitiate.trim()) }
+            if (isStrictTrue(r_ToCheckInitiate)) {
+                // 因为GS中数据已更新所以需要重新获取
+                const r_Get_gsData = await this.Get_gsData();
+                if (Array.isArray(r_Get_gsData)) {
+                    [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA] = r_Get_gsData;
+                } else { this.AddAlertMessage(this.runningWellSet, "after ToCheckInitiate() error: " + r_Get_gsData) }
+            }
+        }
+
+        // 检查是否需要fund fee 查看
+        if (this.isRunningWell()) {
+            const r_ToCheckFundFee = await this.ToCheckFundFee(mainData, tvData, toGCPData) ;
+            if (isStrictString(r_ToCheckFundFee)) {this.AddAlertMessage(this.runningWellSet, r_ToCheckFundFee.trim())}
+            if (isStrictTrue(r_ToCheckFundFee)) {
+                // 因为GS中数据已更新所以需要重新获取
+                const r_Get_gsData = await this.Get_gsData();
+                if (Array.isArray(r_Get_gsData)) {
+                    [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA] = r_Get_gsData;
+                } else { this.AddAlertMessage(this.runningWellSet, "after ToCheckFundFee() error: " + r_Get_gsData) }
+            }
+        }
+
+        // 检查当前waiting order 状态
+        if (this.isRunningWell()) {
+            const r_ToCheckWaitingOrder = await this.ToCheckWaitingOrder(   ingOrderData            ,
+                                                                            ingOrderTitleA          ,
+                                                                            uncloseOrdersA2d        ,
+                                                                            uncloseOrdersTitleA     ,
+                                                                            tradeHistoryTitleA      ,
+                                                                            mainData                ,
+                                                                            tvData                  ,
+                                                                            toGCPData               ) ;
+            if (isStrictString(r_ToCheckWaitingOrder)) {this.AddAlertMessage(this.runningWellSet, r_ToCheckWaitingOrder.trim())}
+            if (isStrictTrue(r_ToCheckWaitingOrder)) {
+                // 因为GS中数据已更新所以需要重新获取
+                const r_Get_gsData = await this.Get_gsData();
+                if (Array.isArray(r_Get_gsData)) {
+                    [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA] = r_Get_gsData;
+                } else { this.AddAlertMessage(this.runningWellSet, "after ToCheckWaitingOrder() error: " + r_Get_gsData) }
+            }
+
+        }
+
+        // 至此，不再需要更新mainData中的状态
+        // 可以进行挂单
+
+        // 将 mainData 和 tvData 写入到this大对象中
+        // 必须先写入mainData, 再写入tvData
+        // 因为mainData包含旧数据
+        const r_Update_mainData    =  this.UpdateDataToThis(mainData)  ;
+        if (isStrictString(r_Update_mainData)) {this.AddAlertMessage(this.runningWellSet, r_Update_mainData.trim())}
+        const r_Update_tvData      = this.UpdateDataToThis(tvData) ;
+        if (isStrictString(r_Update_tvData)) {this.AddAlertMessage(this.runningWellSet, r_Update_tvData.trim())}
+
+        this.ReNew() ;
+
+        // 按照如下顺序, 确认是否可以挂单 并挂单
+        // 先 检查是否可以挂卖单
+        // 再 检查是否可以挂买单
+        await this.ToSell(uncloseOrdersA2d, uncloseOrdersTitleA, ingOrderTitleA, toGCPData.ingOrderLine) ;
+        await this.ToBuy(ingOrderTitleA, toGCPData.ingOrderLine) ;
+
+        await this.WriteToGS(toGCPData.toWriteMainRange, toGCPData.mainRange) ;
+
+        const task_ReleaseLockOfGS = this.ReleaseLockOfGS(toGCPData.lockRange) ;
+
+        const task_SendToTG     = this.SendToTG() ;
+        const task_SendtoEmail  = this.SendToEmail() ;
+
+        await Promise.allSettled([task_ReleaseLockOfGS, task_SendToTG, task_SendtoEmail]);
     }
-    if (attempts > 25) {return false}
-    await sheets.spreadsheets.values.update({
-                        spreadsheetId                                           ,
-                        range               : lockRange                         ,
-                        valueInputOption    : 'USER_ENTERED'                    , 
-                        requestBody         : { values: [[lockName]] }          }   )   ;
-    return await CheckLock(lockName, sheets, spreadsheetId) ;
-}
-async function ReleaseLock(lockName, sheets, spreadsheetId) {
-    let currentLockRight = await CheckLock(lockName, sheets, spreadsheetId)  ;
-    if (!currentLockRight) {return false ;}
-    await sheets.spreadsheets.values.update({
-                    spreadsheetId                                           ,
-                    range               : lockRange                         ,
-                    valueInputOption    : 'USER_ENTERED'                    , 
-                    requestBody         : { values: [[noLOCK]] }            }   )   ;
-    currentLockRight = await CheckLock(noLOCK, sheets, spreadsheetId)  ;
-    if (!currentLockRight) {return false ;}
-    return true ;
-}
+};
 
-export async function HandleTV(d) {
-    CleanObjToNumStrBool(d) ;
-    d.thisAlertMessage          =   String(d.thisAlertMessage || "").replaceAll(HuanHang, "\n")  ;
-    d.gcpGetTime                =   Date.now()                                                   ;
-
-    const thisLockName = 'T' + String(d.timestamp) ;
+export async function HandleTV(raw_tvData) {
+    const   FlagBad     =  '✘ '  ;
+    const   FlagGood    =  '✔ '  ;
 
     try {
-        const spreadsheetId = await GetSpreadsheetID(d.botNumber, sheets)  ;
-        //获取现存数据
-        const ranges    =   CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, toGCPRanges )))           ;
-        const D         =   ranges.toGCP                                                                                            ?
-                            CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, ranges.toGCP)))   :  
-                            {}                                                                                                              ;
-        Object.assign(D, d);
+        const startResult = await D.Start(raw_tvData) ;
+        if (!isStrictTrue(startResult) && isStrictString(startResult) && startResult.includes('Get Lock Fail')) { console.log(FlagBad + startResult); return; } 
 
-        const setLock = await SetLock(thisLockName, sheets, spreadsheetId)  ;
-        console.log( setLock ?  '✔ get lock success'  :  '✘ get lock fail')  ;
-        if (!setLock) {throw new Error('get lock fail')}
+        console.log(FlagGood + 'running end')
 
-        if (D.timestamp > D.realTradeTime) {
+    } catch(e) {
+        console.log(FlagBad + 'running fail: ' + e.message)
 
-            let toCheckFundFee  =  false  ;
-            toCheckFundFee      =  D.lstFundTime===NA ? true : toCheckFundFee ;
-            if (D.lstFundTime != NA) {
-                const lstRound  = Math.floor( D.lstFundTime / 28800000 ) ; // 8 * 60 * 60 * 1000
-                const thisRound = Math.floor( D.timestamp   / 28800000 ) ;
-                toCheckFundFee  = lstRound === thisRound  ?  false  :  true  ;
-            }
-            if (toCheckFundFee) {
-                let S = {} ;
-                S.fund_orderID           =  'F-' + GetTimeStringWithOffset(8, 28800000*Math.floor(D.timestamp/28800000) )    ;
-                S.fund_orderTimestamp    =  Date.now()                                                                       ;
-                S.fund_orderDate         =  GetTimeStringWithOffset(8, S.fund_orderTimestamp)                                ;
-                S.fund_confirmTimestamp  =  NA                                                                               ;
-                S.fund_confirmDate       =  NA                                                                               ;
-                S.fund_serial            =  NA                                                                               ;
-                S.fund_buysell           =  order_FUND                                                                       ;
-                S.fund_triggerPrice      =  NA                                                                               ;
-                S.fund_orderType         =  NA                                                                               ;
-                S.fund_orderPrice        =  NA                                                                               ;
-                S.fund_confirmPrice      =  NA                                                                               ;
-                S.fund_boughtPrice       =  NA                                                                               ;
-                S.fund_qty               =  NA                                                                               ;
-                S.fund_getProfit         =  NA                                                                               ;
-                S.fund_avgBuyPrice       =  D.avgBuyPrice                                                                    ;
-                S.fund_tradeFee          =  NA                                                                               ;
-                S.fund_fundFee           =  NA                                                                               ;
-                S.fund_allFund           =  NA                                                                               ;
-                S.fund_allCoin           =  NA                                                                               ;
-                S.fund_reason            =  "FundFee"                                                                        ;
-                S.fund_orderStatus       =  order_pending                                                                    ;
-
-                S  =  await CheckFundFee(S, D.isReal, D.TradingSymbol, sheets, spreadsheetId)  ;
-                Object.assign(D, S)  ;
-
-                D.allFundFee    =  NA0(D.allFundFee) + D.fund_fundFee  ;
-                D.netProfit     =  NA0(D.netProfit)  + D.fund_fundFee  ;
-                D.lstFundTime   =  D.fund_confirmTimestamp             ;
-                ReNewAccount(D)  ;
-                D.fund_allFund  =  D.allFund  ;
-                D.fund_allCoin  =  D.allCoin  ;
-
-                const newTradehistory = [ [ D.fund_orderID       || NA  ,
-                                            D.fund_orderDate     || NA  ,
-                                            D.fund_confirmDate   || NA  ,
-                                            D.fund_serial        || NA  ,
-                                            D.fund_buysell       || NA  ,
-                                            D.fund_triggerPrice  || NA  ,
-                                            D.fund_orderType     || NA  ,
-                                            D.fund_orderPrice    || NA  ,
-                                            D.fund_confirmPrice  || NA  ,
-                                            D.fund_boughtPrice   || NA  ,
-                                            D.fund_qty           || NA  ,
-                                            D.fund_getProfit     || NA  ,
-                                            D.fund_avgBuyPrice   || NA  ,
-                                            D.fund_tradeFee      || NA  ,
-                                            D.fund_fundFee       || NA  ,
-                                            D.fund_allFund       || NA  ,
-                                            D.fund_allCoin       || NA  ,
-                                            D.fund_reason        || NA  ] ]  ;
-                await sheets.spreadsheets.values.append({
-                    spreadsheetId                                           ,
-                    range               : "tradeHistory!A1:A"               ,
-                    valueInputOption    : 'USER_ENTERED'                    , 
-                    requestBody         : { values: newTradehistory }       }   )   ;
-
-
-                D.thisAlertMessage  +=  "New fund fee: " + String(D.fund_fundFee) + "\n"   ;
-
-                delete D.fund_orderID          ;
-                delete D.fund_orderTimestamp   ;
-                delete D.fund_orderDate        ;
-                delete D.fund_confirmTimestamp ;
-                delete D.fund_confirmDate      ;
-                delete D.fund_serial           ;
-                delete D.fund_buysell          ;
-                delete D.fund_triggerPrice     ;
-                delete D.fund_orderType        ;
-                delete D.fund_orderPrice       ;
-                delete D.fund_confirmPrice     ;
-                delete D.fund_boughtPrice      ;
-                delete D.fund_qty              ;
-                delete D.fund_getProfit        ;
-                delete D.fund_avgBuyPrice      ;
-                delete D.fund_tradeFee         ;
-                delete D.fund_fundFee          ;
-                delete D.fund_allFund          ;
-                delete D.fund_allCoin          ;
-                delete D.fund_reason           ;
-                delete D.fund_orderStatus      ;
-            }
-
-            ReNewAccount(D) ;
-
-            let uncloseOrders       =  []  ;
-            let uncloseOrdersSort   =  []  ;
-            // orderID	confirmDate	serial	triggerPrice	confirmPrice	qty	P×Q	reason
-            // 0        1           2       3               4               5   6   7
-            if (D.therePosition) {
-                uncloseOrders       =  await GetDataFromSheet(sheets, spreadsheetId, ranges.uncloseOrdersRange)             ;
-                uncloseOrdersSort   =  uncloseOrders.toSorted( (order1, order2) => Number(order1[4]) - Number(order2[4]) )  ;
-            }
-
-            if (D.ifOrderWaiting) {
-
-                let ifWaitingThenCancel = true  ;
-                if (D.ing_buysell === order_BUY  && D.TradingSymbolPrice < D.ing_orderPrice*(1+D.waveUpChg)) {ifWaitingThenCancel = false ;}
-                if (D.ing_buysell === order_SELL && D.TradingSymbolPrice > D.ing_orderPrice*(1+D.waveDnChg)) {ifWaitingThenCancel = false ;}
-                const res_broker = await CheckOrderConfirm(D.ing_orderID, ifWaitingThenCancel, D.isReal, D.TradingSymbol, sheets, spreadsheetId) ;
-
-
-                if (res_broker.ing_orderStatus  === order_confirm)  {
-                    Object.assign(D, res_broker)  ;
-                    
-                    if (D.ing_buysell === order_BUY) {
-                        uncloseOrders.push( [ 
-                                            D.ing_orderID                   || NA  ,
-                                            D.ing_confirmDate               || NA  ,
-                                            D.ing_serial                    || NA  ,
-                                            D.ing_triggerPrice              || NA  ,
-                                            D.ing_confirmPrice              || NA  ,
-                                            D.ing_qty                       || NA  ,
-                                            D.ing_confirmPrice * D.ing_qty  || NA  ,
-                                            D.ing_reason                    || NA  ] ) ;
-                        uncloseOrdersSort   =  uncloseOrders.toSorted( (order1, order2) => Number(order1[4]) - Number(order2[4]) )  ;
-                        
-                        D.lstBuyPrice   =  D.ing_confirmPrice   ;
-                        D.lstBuySerial  =  D.ing_serial         ;
-                    } 
-                    if (D.ing_buysell === order_SELL) {
-                        uncloseOrders       =  uncloseOrders.filter(row => String(row[2]) !== String(Math.abs(D.ing_serial)) )      ;
-                        uncloseOrdersSort   =  uncloseOrders.toSorted( (order1, order2) => Number(order1[4]) - Number(order2[4]) )  ;
-                    }
-
-                    D.netProfit             =   NA0(D.netProfit) + D.ing_getProfit + D.ing_tradeFee                                                             ;
-                    D.avgBuyPrice           =   D.ing_buysell===order_BUY                                                                                   ? 
-                                                (NA0(D.allPosition)*NA0(D.avgBuyPrice) + D.ing_qty*D.ing_confirmPrice) / (NA0(D.allPosition)+D.ing_qty)     :  
-                                                D.gridNum > 0 ? D.avgBuyPrice : NA                                                                              ;
-
-                    D.allTradeFee           =   NA0(D.allTradeFee) + D.ing_tradeFee                                                                             ;
-                    D.gridNum               +=  D.ing_buysell===order_BUY  ?  1  : -1                                                                           ;
-                    D.buyTimes              +=  D.ing_buysell===order_BUY  ?  1  : 0                                                                            ;
-                    D.sellTimes             +=  D.ing_buysell===order_SELL ?  1  : 0                                                                            ;
-                    D.allPosition           =   D.gridNum > 0  ?  NA0(D.allPosition) + D.ing_qty  :  NA                                                         ;
-
-                    D.avgBuyPriceUnclose    =  D.gridNum > 0  ?  CalUncloseordersAvgprice(uncloseOrders)    :  NA  ;
-                    D.lstBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrders    [D.gridNum-1][4]          :  NA  ;
-                    D.hghBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrdersSort[D.gridNum-1][4]          :  NA  ; 
-                    D.lowBuyPriceUnclose    =  D.gridNum > 0  ?  uncloseOrdersSort[0]          [4]          :  NA  ; 
-                    D.lstBuySerialUnclose   =  D.gridNum > 0  ?  uncloseOrders    [D.gridNum-1][2]          :  NA  ;
-                    D.hghBuySerialUnclose   =  D.gridNum > 0  ?  uncloseOrdersSort[D.gridNum-1][2]          :  NA  ;
-                    D.lowBuySerialUnclose   =  D.gridNum > 0  ?  uncloseOrdersSort[0]          [2]          :  NA  ;
-
-                    D.lstTradeTime          =  D.ing_confirmTimestamp   ;
-
-                    ReNewAccount(D) ;
-                    D.ing_avgBuyPrice   =  D.avgBuyPrice    ;
-                    D.ing_allFund       =  D.allFund        ;
-                    D.ing_allCoin       =  D.allCoin        ;
-                    const newTradehistory = [ [ D.ing_orderID       || NA  ,
-                                                D.ing_orderDate     || NA  ,
-                                                D.ing_confirmDate   || NA  ,
-                                                D.ing_serial        || NA  ,
-                                                D.ing_buysell       || NA  ,
-                                                D.ing_triggerPrice  || NA  ,
-                                                D.ing_orderType     || NA  ,
-                                                D.ing_orderPrice    || NA  ,
-                                                D.ing_confirmPrice  || NA  ,
-                                                D.ing_boughtPrice   || NA  ,
-                                                D.ing_qty           || NA  ,
-                                                D.ing_getProfit     || NA  ,
-                                                D.ing_avgBuyPrice   || NA  ,
-                                                D.ing_tradeFee      || NA  ,
-                                                D.ing_fundFee       || NA  ,
-                                                D.ing_allFund       || NA  ,
-                                                D.ing_allCoin       || NA  ,
-                                                D.ing_reason        || NA  ] ]  ;
-                    await sheets.spreadsheets.values.append({
-                        spreadsheetId                                           ,
-                        range               : "tradeHistory!A1:A"               ,
-                        valueInputOption    : 'USER_ENTERED'                    , 
-                        requestBody         : { values: newTradehistory }       }   )   ;
-
-                    await sheets.spreadsheets.values.clear( {
-                        spreadsheetId                                   ,
-                        range           : ranges.uncloseOrdersRange     } ) ;
-                    if (uncloseOrders.length > 0) {
-                        await sheets.spreadsheets.values.update({
-                            spreadsheetId                                           ,
-                            range               : ranges.uncloseOrdersRange         ,
-                            valueInputOption    : 'USER_ENTERED'                    , 
-                            requestBody         : { values: uncloseOrders }         }   )   ;
-                    }
-
-                    D.thisAlertMessage  +=  D.ing_buysell===order_BUY           ?
-                                            "Buy  Order confirmed" + "\n"       :
-                                            "Sell Order confirmed" + "\n"                   ;
-                    
-
-                }
-
-                if (res_broker.ing_orderStatus === order_cancel || res_broker.ing_orderStatus === order_confirm)  {
-                    delete D.ing_orderID            ; 
-                    delete D.ing_orderTimestamp     ; 
-                    delete D.ing_orderDate          ; 
-                    delete D.ing_confirmTimestamp   ; 
-                    delete D.ing_confirmDate        ; 
-                    delete D.ing_serial             ; 
-                    delete D.ing_buysell            ; 
-                    delete D.ing_triggerPrice       ; 
-                    delete D.ing_orderType          ; 
-                    delete D.ing_orderPrice         ; 
-                    delete D.ing_confirmPrice       ; 
-                    delete D.ing_boughtPrice        ; 
-                    delete D.ing_qty                ; 
-                    delete D.ing_getProfit          ; 
-                    delete D.ing_avgBuyPrice        ; 
-                    delete D.ing_tradeFee           ; 
-                    delete D.ing_fundFee            ;
-                    delete D.ing_allFund            ; 
-                    delete D.ing_allCoin            ; 
-                    delete D.ing_reason             ; 
-                    delete D.ing_orderStatus        ; 
-                }
-
-            }
-
-
-            if (D.canBuy && D.touchTargetLow) {
-                let nowTimestamp = Date.now()   ;
-                let S = {} ;
-                S.ing_orderID           =  'B-' + GetTimeStringWithOffset(8, D.timestamp)                                                                                       ;
-                S.ing_orderTimestamp    =  nowTimestamp                                                                                                                         ;
-                S.ing_orderDate         =  GetTimeStringWithOffset(8, nowTimestamp)                                                                                             ;
-                S.ing_confirmTimestamp  =  NA                                                                                                                                   ;
-                S.ing_confirmDate       =  NA                                                                                                                                   ;
-                S.ing_serial            =  NA0(D.lstBuySerial) + 1                                                                                                              ;
-                S.ing_buysell           =  order_BUY                                                                                                                            ;
-                S.ing_triggerPrice      =  D.TradingSymbolPrice                                                                                                                 ;
-                S.ing_orderType         =  order_T_LMT                                                                                                                          ;
-                S.ing_orderPrice        =  S.ing_triggerPrice                                                                                                                   ;
-                S.ing_confirmPrice      =  NA                                                                                                                                   ;
-                S.ing_boughtPrice       =  NA                                                                                                                                   ;
-                S.ing_qty               =  D.minEnExPosition * Math.max(1, Math.floor(D.freeMargin*D.leverage/D.TradingSymbolPrice/D.minEnExPosition/(D.MaxGrid - D.gridNum)) ) ;
-                S.ing_getProfit         =  NA                                                                                                                                   ;
-                S.ing_avgBuyPrice       =  NA                                                                                                                                   ;
-                S.ing_tradeFee          =  NA                                                                                                                                   ;
-                S.ing_fundFee           =  NA                                                                                                                                   ;
-                S.ing_allFund           =  NA                                                                                                                                   ;
-                S.ing_allCoin           =  NA                                                                                                                                   ;
-                S.ing_reason            =  BuyReason_belowTarget                                                                                                                ;
-                S.ing_orderStatus       =  order_pending                                                                                                                        ;
-
-                S = await SendOrderToBroker(S, D.isReal, D.TradingSymbol, sheets, spreadsheetId) ;
-
-                Object.assign(D, S) ;
-                D.ifOrderWaiting    =   S.ing_orderStatus === order_waiting  ;
-                D.thisAlertMessage  +=  "New buy order, waiting confirmed" + "\n"  ;
-            }
-
-            D.toSell        =  false    ;
-            let toSellOrder =  []       ;
-            // orderID	confirmDate	serial	triggerPrice	confirmPrice	qty	P×Q	reason
-            // 0        1           2       3               4               5   6   7
-            if ( D.canSell && (D.TradingSymbolPrice > (1+D.waveUpChg) * D.lowBuyPriceUnclose)  &&  D.touchTargetHgh  ) {
-                D.toSell    =  true  ;
-                toSellOrder = uncloseOrders.find( v => String(v[2]) === String(D.lowBuySerialUnclose)   ) ;
-                toSellOrder[7] = 'touchTargetHgh'   ;
-            }
-
-            // mustSellProfitStep
-            if ( D.canSell && (D.TradingSymbolPrice > Math.pow((1+D.waveUpChg), D.mustSellProfitStep) * Math.max( D.lowBuyPriceUnclose , D.avgBuyPriceUnclose) ) ) {
-                D.toSell    =  true  ;
-                toSellOrder = uncloseOrders.find( v => String(v[2]) === String(D.lowBuySerialUnclose)   ) ;
-                toSellOrder[7] = 'must sell Profit'  ;
-            }
-
-            //cut too high buy order
-            if ( D.canSell && (D.hghBuyPriceUnclose/D.TradingSymbolPrice > D.roundHgh/D.roundLow)  ) {
-                D.toSell    =  true  ;
-                toSellOrder = uncloseOrders.find( v => String(v[2]) === String(D.hghBuySerialUnclose) ) ;
-                toSellOrder[7] = 'cut too hgh buy order'  ;
-            }
-            //cut due to stopC
-            if ( D.canSell && (D.TradingSymbolPrice < D.stopPriceC)  ) {
-                D.toSell    =  true  ;
-                toSellOrder = uncloseOrders.find( v => String(v[2]) === String(D.hghBuySerialUnclose) ) ;
-                toSellOrder[7] = 'cut due to stopC'  ;
-            }
-            //cut due to stopF
-            if ( D.canSell && (D.TradingSymbolPrice < D.stopPriceF)  ) {
-                D.toSell    =  true  ;
-                toSellOrder = uncloseOrders.find( v => String(v[2]) === String(D.hghBuySerialUnclose) ) ;
-                toSellOrder[7] = 'cut due to stopF'  ;
-            }
-            //cut due to liquidate
-            if ( D.canSell && (D.TradingSymbolPrice < D.liquidatePrice)  ) {
-                D.toSell    =  true  ;
-                toSellOrder = uncloseOrders.find( v => String(v[2]) === String(D.hghBuySerialUnclose) ) ;
-                toSellOrder[7] = 'cut due to liquidate'  ;
-            }
-
-
-
-            if (D.canSell &&  D.toSell ) {
-                let nowTimestamp = Date.now()   ;
-                let S = {} ;
-                S.ing_orderID           =  toSellOrder[0].trim().replace('B', 'S')          ;
-                S.ing_orderTimestamp    =  nowTimestamp                                     ;
-                S.ing_orderDate         =  GetTimeStringWithOffset(8)                       ;
-                S.ing_confirmTimestamp  =  NA                                               ;
-                S.ing_confirmDate       =  NA                                               ;
-                S.ing_serial            =  -1 * Number(toSellOrder[2])                      ;
-                S.ing_buysell           =  order_SELL                                       ;
-                S.ing_triggerPrice      =  D.TradingSymbolPrice                             ;
-                S.ing_orderType         =  order_T_LMT                                      ;
-                S.ing_orderPrice        =  S.ing_triggerPrice                               ;
-                S.ing_confirmPrice      =  NA                                               ;
-                S.ing_boughtPrice       =  NumStrBool(toSellOrder[4])                       ;
-                S.ing_qty               =  -1 * Number(toSellOrder[5])                      ;
-                S.ing_getProfit         =  NA                                               ;
-                S.ing_avgBuyPrice       =  NA                                               ;
-                S.ing_tradeFee          =  NA                                               ;
-                S.ing_fundFee           =  NA                                               ;
-                S.ing_allFund           =  NA                                               ;
-                S.ing_allCoin           =  NA                                               ;
-                S.ing_reason            =  toSellOrder[7]                                   ;
-                S.ing_orderStatus       =  order_pending                                    ;
-
-                S = await SendOrderToBroker(S, D.isReal, D.TradingSymbol, sheets, spreadsheetId) ;
-
-                Object.assign(D, S) ;
-                D.ifOrderWaiting    =   S.ing_orderStatus === order_waiting ;
-                D.thisAlertMessage  +=  "New sell order, waiting confirmed" + "\n"  ;
-            }
-
-            D.runningWell       =   true    ;
-
-        } else {
-            // 未到交易时刻的逻辑
-            console.log("收到TradingView消息, 但未到交易时刻");
-        }
-
-
-        const writeToRange = D.sheetTitle + '!A:B';
-        // 1. 先清空该区域的所有数据
-        await sheets.spreadsheets.values.clear({
-            spreadsheetId                   ,
-            range           : writeToRange  ,
-        });
-
-        // 2. 写入新数据
-        D.gcpWriteTime = Date.now()  ;
-        await sheets.spreadsheets.values.update({
-            spreadsheetId                                       ,
-            range               : writeToRange                  ,
-            valueInputOption    : 'USER_ENTERED'                ,
-            requestBody         : {values: Object.entries(D) }  }   )  ;
-
-        let newDatasToRead      =  await GetDataFromSheet(sheets, spreadsheetId, ranges.toReadRange)  ;
-        let timestampToRead     =  Number(newDatasToRead.at(-1)[0])     ;
-        let attempts            =  0                                    ;
-        let waitTime            =  1000                                 ;
-
-        while (attempts < 60 && timestampToRead < D.timestamp) {
-            await new Promise(res => setTimeout(res, waitTime));
-            newDatasToRead      =   await GetDataFromSheet(sheets, spreadsheetId, ranges.toReadRange);
-            timestampToRead     =   Number(newDatasToRead.at(-1)[0])    ;
-            attempts            +=  1                                   ;
-            waitTime            =   attempts * 1000                     ;
-        }
-        if (timestampToRead >= D.timestamp) {
-            console.log('✔ TV数据写入表格成功');
-            await SendSplitTGMessages(  process.env.TG_TOKEN                    , 
-                                        process.env.TG_CHAT_ID                  , 
-                                        "Get TV webhook Message"                , 
-                                        FormatMatrixToString(newDatasToRead)    )  ;
-        } else {
-            console.log('✘ TV数据写入表格失败');
-            await SendSplitTGMessages(  process.env.TG_TOKEN                    , 
-                                        process.env.TG_CHAT_ID                  , 
-                                        "Get TV webhook Message"                ,
-                                        "But FAIL write to Google Sheets"       )  ;
-            throw new Error("TV数据写入表格失败");
-        }
-
-        const releaseLock  =  await ReleaseLock(thisLockName, sheets, spreadsheetId)  ;
-        console.log( releaseLock ?  '✔ release lock success'  :  '✘ release lock fail')  ;
-        if (!releaseLock) { throw new Error('release lock fail') }
-
-    } catch (err) {
-        throw new Error(`TV消息处理失败: ${err.message}`);
     }
-
+    
 }
+
+
 

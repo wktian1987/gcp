@@ -1,5 +1,5 @@
-import {    CleanObjToNumStrBool    ,
-            GetDataFromSheet        } from "./utility.js";
+import {    CleanObjToNumBoolStr    ,
+            GetGS        } from "./utility.js";
 
 export async function SendOrderToBroker(S, isReal, TradingSymbol, sheets, spreadsheetId) {
     if (isReal && TradingSymbol.startsWith("BINANCE:")) {return await BINANCE_SendOrderToBroker(S, TradingSymbol) ;}
@@ -15,17 +15,10 @@ export async function SendOrderToBroker(S, isReal, TradingSymbol, sheets, spread
         valueInputOption    : 'USER_ENTERED'                    ,
         requestBody         : {values: Object.entries(S)}       } )  ;
     
-    const res_broker    =  Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A1:B29') )  ;
-    const res           =  CleanObjToNumStrBool(res_broker)  ;
+    const res_broker    =  Object.fromEntries(await GetGS(sheets, spreadsheetId, 'simBroker!A1:B29') )  ;
+    const res           =  CleanObjToNumBoolStr(res_broker)  ;
 
     S.ing_orderID		    = res.orderID        ;
-    S.ing_confirmDate		= res.confirmDate    ;
-    S.ing_confirmPrice		= res.confirmPrice   ;
-    S.ing_getProfit		    = res.getProfit      ;
-    S.ing_avgBuyPrice		= res.avgBuyPrice    ;
-    S.ing_tradeFee		    = res.tradeFee       ;
-    S.ing_allFund		    = res.allFund        ;
-    S.ing_allCoin		    = res.allCoin        ;
     S.ing_orderStatus		= res.orderStatus    ;
 
     return S ;
@@ -36,19 +29,20 @@ async function BINANCE_SendOrderToBroker(S, TradingSymbol) {
 
 export async function CheckOrderConfirm(ing_orderID, ifWaitingThenCancel, isReal, TradingSymbol, sheets, spreadsheetId) { 
     if (isReal && TradingSymbol.startsWith("BINANCE:")) {return await BINANCE_CheckOrderConfirm(ing_orderID, ifWaitingThenCancel) ;}
-    const res   = CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A1:B29'))) ;
+    const res   = CleanObjToNumBoolStr(Object.fromEntries(await GetGS(sheets, spreadsheetId, 'simBroker!A1:B29'))) ;
     if (res.orderStatus === "confirm")  {
-        const S = CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A30:B' )))  ;
-        S.ing_orderID		    = res.orderID           ;
-        S.ing_confirmTimestamp  = res.confirmTimestamp  ;
-        S.ing_confirmDate		= res.confirmDate       ;
-        S.ing_confirmPrice		= res.confirmPrice      ;
-        S.ing_getProfit		    = res.getProfit         ;
-        S.ing_avgBuyPrice		= res.avgBuyPrice       ;
-        S.ing_tradeFee		    = res.tradeFee          ;
-        S.ing_allFund		    = res.allFund           ;
-        S.ing_allCoin		    = res.allCoin           ;
-        S.ing_orderStatus		= res.orderStatus       ;
+        const S = CleanObjToNumBoolStr(Object.fromEntries(await GetGS(sheets, spreadsheetId, 'simBroker!A30:B' )))  ;
+        S.ing_orderID		    = res.orderID                       ;
+        S.ing_confirmTimestamp  = res.confirmTimestamp              ;
+        S.ing_confirmDate		= res.confirmDate                   ;
+        S.ing_confirmPrice		= res.confirmPrice                  ;
+        S.ing_getProfit		    = res.getProfit                     ;
+        S.ing_avgBuyPrice		= res.avgBuyPrice                   ;
+        S.ing_tradeFee		    = res.tradeFee                      ;
+        S.ing_fundFee           = "NA"                              ;
+        S.ing_allFund		    = res.allFund + S.ing_tradeFee      ;
+        S.ing_allCoin		    = S.ing_allFund / res.BaseCoinPrice ;
+        S.ing_orderStatus		= res.orderStatus                   ;
 
         await sheets.spreadsheets.values.clear( {
             spreadsheetId                       ,
@@ -69,10 +63,13 @@ async function BINANCE_CheckOrderConfirm(ing_orderID, ifWaitingThenCancel) {
 
 export async function CheckFundFee(S, isReal, TradingSymbol, sheets, spreadsheetId) {
     if (isReal && TradingSymbol.startsWith("BINANCE:")) {return await BINANCE_CheckFundFee(TradingSymbol) ;}
-    const res                =  CleanObjToNumStrBool(Object.fromEntries(await GetDataFromSheet(sheets, spreadsheetId, 'simBroker!A1:B29'))) ;
+    const res                =  CleanObjToNumBoolStr(Object.fromEntries(await GetGS(sheets, spreadsheetId, 'simBroker!A1:B29'))) ;
     S.fund_fundFee           =  typeof res.fundFee === 'number'  ?  res.fundFee  :  0   ;
     S.fund_confirmDate       =  S.fund_orderDate        ;
     S.fund_confirmTimestamp  =  S.fund_orderTimestamp   ;
+    S.fund_allFund           =  res.allFund + S.fund_fundFee  ;
+    S.fund_allCoin           =  S.fund_allFund / res.BaseCoinPrice  ;
+
    
     return S  ;
 }
