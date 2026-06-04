@@ -7,6 +7,8 @@ app.listen(process.env.PORT || 8080, () => {
 });
 
 app.post('/schedule', json(), async (req, res) => {
+    return ; // 暂时啥也不做 专心处理tvbot
+
     console.log("✔ 收到/schedule连接");
     const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
     await HandleUnreadGmails(req, res);
