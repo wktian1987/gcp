@@ -8,8 +8,8 @@ app.listen(process.env.PORT || 8080, () => {
 
 // 暂时修改这个 
 // 暂时先不处理邮件
-// app.post('/schedule', json(), async (req, res) => {
-app.post('/_schedule', json(), async (req, res) => {
+app.post('/schedule', json(), async (req, res) => {
+    return ; // 直接返回，啥也不做
 
     console.log("✔ 收到/schedule连接");
     const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");

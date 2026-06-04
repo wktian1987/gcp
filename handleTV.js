@@ -898,28 +898,19 @@ const D = {
     async WriteToGS(toWriteMainRange, mainRange) {
         await BatchClearGS(this.sheets, this.spreadsheetID, Array.from(this.toClearRangeSet));
 
-        if (this.runningWellSet.size === 0 ) { this.runningWel   = true} 
-        if (this.runningWellSet.size  >  0 ) { this.runningWell  = [...this.runningWellSet ].join('\n') }
-        if (this.alertMessageSet.size >  0 ) { this.alertMessage = [...this.alertMessageSet].join('\n') }
+        if (this.runningWellSet .size === 0 ) { this.runningWell  = true } 
+        if (this.runningWellSet .size >   0 ) { this.runningWell  = [...this.runningWellSet ].join('\n') }
+        if (this.alertMessageSet.size >   0 ) { this.alertMessage = [...this.alertMessageSet].join('\n') }
 
         this.gcpWriteTime = Date.now();
 
-        //精准按 value 类型过滤
-        const writeToGSArray = ObjToA2dNumBoolStr(this);
         this.toUpdateRangeList.push(    {
-            range   : toWriteMainRange  ,
-            values  : writeToGSArray    }  )  ;
+            range   : toWriteMainRange          ,
+            values  : ObjToA2dNumBoolStr(this)  }  )  ;
         await BatchClearUpdateGS(this.sheets, this.spreadsheetID, this.toUpdateRangeList);
 
-        const MAX_ATTEMPTS = 10;
-        let attempts = 1;
-        while (attempts <= MAX_ATTEMPTS) {
-            const newD = CleanObjToNumBoolStr(A2dToObj(await GetGS(this.sheets, this.spreadsheetID, mainRange)));
-            if (newD.timestamp === this.timestamp) { return true }
-                attempts += 1;
-        }
+        return true ;
 
-        return false;
     } ,
 
     /**
@@ -949,7 +940,7 @@ const D = {
     } ,
 
     async Start(raw_tvData) {
-        this.gcpGetTime = Date.now() ;
+        let gcpGetTime = Date.now() ; 
 
         const tvData = this.Get_tvData(raw_tvData) ;
         if (isStrictString(tvData)) {throw new Error(tvData)}
@@ -1062,6 +1053,7 @@ const D = {
         if (this.isRunningWell()) { await this.ToBuy(ingOrderTitleA, toGCPData.ingOrderLine) }
         console.log('tvBot: ' + 'ToBuy() end') ;
 
+        this.gcpGetTime = gcpGetTime ;
         await this.WriteToGS(toGCPData.toWriteMainRange, toGCPData.mainRange) ;
         console.log('tvBot: ' + 'WriteToGS() end') ;
 

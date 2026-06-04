@@ -689,3 +689,12 @@ export async function SendEmail(mail_subject, mail_content) {
 
     await transporter.sendMail(mailOptions);
 }
+
+/**
+ * 100% 物理对齐动态时效微操，自带安全测谎与 0 毫秒穿透拦截装甲 ; 
+ * 核心确权大闸：如果手抖没传参、传了 undefined、或者是计算出来的 NaN ; 
+ * 使用: await Sleep(1000) ; 
+ * @param {Number} ms - 期望主线程原地躺平的物理毫秒数
+ * @returns {Promise<void>} 纯净的期约原色，由外层总控大闸刚性 await 拦截
+ */
+export function Sleep(ms) { return new Promise(resolve => setTimeout(resolve, isStrictNumber(ms) ? ms : 1000)) }
