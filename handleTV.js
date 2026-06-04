@@ -943,26 +943,26 @@ const D = {
 
         const tvData = this.Get_tvData(raw_tvData) ;
         if (isStrictString(tvData)) {throw new Error(tvData)}
-        console.log('tvBot: ' + 'Get_tvData() success') ;
+        console.log('tvBot: ' + 'Get_tvData() end') ;
 
         const r_Set_spreadsheetID = await this.Set_spreadsheetID(tvData.botNumber)  ;
         if (isStrictString(r_Set_spreadsheetID)) {throw new Error(r_Set_spreadsheetID)}
-        console.log('tvBot: ' + 'Set_spreadsheetID() success') ;
+        console.log('tvBot: ' + 'Set_spreadsheetID() end') ;
 
         let toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA ;
         const r_Get_gsData = await this.Get_gsData()  ;
         if (Array.isArray(r_Get_gsData)) {
             [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA] = r_Get_gsData ;
         } else {throw new Error(r_Get_gsData)}
-        console.log('tvBot: ' + 'Get_gsData() success') ;
+        console.log('tvBot: ' + 'Get_gsData() end') ;
 
 
         this.Set_lockName(tvData.timestamp)  ;
-        console.log('tvBot: ' + 'Set_lockName() success') ;
+        console.log('tvBot: ' + 'Set_lockName() end') ;
 
         const r_SetLockToGS = await this.SetLockToGS(toGCPData.lockRange, 30) ;
         if (isStrictString(r_SetLockToGS)) {throw new Error(r_SetLockToGS.trim())}
-        console.log('tvBot: ' + 'SetLockToGS() success') ;
+        console.log('tvBot: ' + 'SetLockToGS() end') ;
 
         // 当获得lock后就可以不主动抛出错误了
         // 因为拿到了lock就可以往GS写入数据了
@@ -980,7 +980,7 @@ const D = {
                 } else { this.AddAlertMessage(this.runningWellSet, "after ToCheckInitiate() error: " + r_Get_gsData) }
             }
         }
-        console.log('tvBot: ' + 'ToCheckInitiate() success') ;
+        console.log('tvBot: ' + 'ToCheckInitiate() end') ;
 
         // 检查是否需要fund fee 查看
         if (this.isRunningWell()) {
@@ -994,7 +994,7 @@ const D = {
                 } else { this.AddAlertMessage(this.runningWellSet, "after ToCheckFundFee() error: " + r_Get_gsData) }
             }
         }
-        console.log('tvBot: ' + 'ToCheckFundFee() success') ;
+        console.log('tvBot: ' + 'ToCheckFundFee() end') ;
 
         // 检查当前waiting order 状态
         if (this.isRunningWell()) {
@@ -1016,7 +1016,7 @@ const D = {
             }
 
         }
-        console.log('tvBot: ' + 'ToCheckWaitingOrder() success') ;
+        console.log('tvBot: ' + 'ToCheckWaitingOrder() end') ;
 
         // 至此，不再需要更新mainData中的状态
         // 可以进行挂单
@@ -1029,28 +1029,28 @@ const D = {
         const r_Update_tvData      = this.UpdateDataToThis(tvData) ;
         if (isStrictString(r_Update_tvData)) {this.AddAlertMessage(this.runningWellSet, r_Update_tvData.trim())}
 
-        console.log('tvBot: ' + 'UpdateDataToThis() success') ;
+        console.log('tvBot: ' + 'UpdateDataToThis() end') ;
 
         this.ReNew() ;
 
         // 按照如下顺序, 确认是否可以挂单 并挂单
         // 先 检查是否可以挂卖单
         // 再 检查是否可以挂买单
-        await this.ToSell(uncloseOrdersA2d, uncloseOrdersTitleA, ingOrderTitleA, toGCPData.ingOrderLine) ;
-        console.log('tvBot: ' + 'ToSell() success') ;
-        await this.ToBuy(ingOrderTitleA, toGCPData.ingOrderLine) ;
-        console.log('tvBot: ' + 'ToBuy() success') ;
+        if (this.isRunningWell()) { await this.ToSell(uncloseOrdersA2d, uncloseOrdersTitleA, ingOrderTitleA, toGCPData.ingOrderLine) }
+        console.log('tvBot: ' + 'ToSell() end') ;
+        if (this.isRunningWell()) { await this.ToBuy(ingOrderTitleA, toGCPData.ingOrderLine) }
+        console.log('tvBot: ' + 'ToBuy() end') ;
 
         await this.WriteToGS(toGCPData.toWriteMainRange, toGCPData.mainRange) ;
-        console.log('tvBot: ' + 'WriteToGS() success') ;
+        console.log('tvBot: ' + 'WriteToGS() end') ;
 
         const task_SendToTG     = this.SendToTG(toGCPData.toReadRange) ;
         const task_SendtoEmail  = this.SendToEmail(toGCPData.toEmailRange) ;
         await Promise.allSettled([task_SendToTG, task_SendtoEmail]);
-        console.log('tvBot: ' + 'SendToTG() and SendToEmail() success') ;
+        console.log('tvBot: ' + 'SendToTG() and SendToEmail() end') ;
 
         await this.ReleaseLockOfGS(toGCPData.lockRange) ;
-        console.log('tvBot: ' + 'ReleaseLockOfGS() success') ;
+        console.log('tvBot: ' + 'ReleaseLockOfGS() end') ;
 
     }
 }   ;
