@@ -80,7 +80,6 @@ const   NotSellReason_cantProfit            =  "cant get enough Profit"         
 
 const   noLOCK          =  "noLOCK"         ;
 const   NA              =  "NA"             ;
-const   toFill          =  "toFill"         ;
 const   toGCPRanges     =  "toGCP!A:B"      ;
 const   HuanHang        =  "__HuangHang__"  ;
 const   order_T_LMT     =  "LMT"            ;
@@ -184,7 +183,7 @@ const D = {
             !toGCPRanges.includes("!")              )   {
                 return "Get_gsData Error: GetGS() @param error"  ;
             }
-        toGCPData = CleanObjToNumBoolStr(A2dToObj(await GetGS(this.sheets, this.spreadsheetID, toGCPRanges )))  ;
+        const toGCPData = CleanObjToNumBoolStr(A2dToObj(await GetGS(this.sheets, this.spreadsheetID, toGCPRanges )))  ;
         if(!Object.hasOwn(toGCPData, "LOCK") ) {return "Get_gsData Error: get toGCPData error" }
 
         const rangesList = [    toGCPData.mainRange                ,       // 0 
