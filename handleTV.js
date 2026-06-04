@@ -244,7 +244,7 @@ const D = {
      * @async
      * @param {String} lockRange 
      * @param {number} [MAX_ATTEMPTS=30] number: 最多尝试次数, 每次间隔1s, 默认值30s
-     * @returns {boollean} true: 抢锁成功返回
+     * @returns {boolean} true: 抢锁成功返回
      * @returns {String} String: 失败或超时熔断返回 
      * @returns 永远不会返回false
      */
@@ -957,7 +957,7 @@ const D = {
         console.log('tvBot: ' + 'Set_spreadsheetID() end') ;
 
         let toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA ;
-        const r_Get_gsData = await this.Get_gsData()  ;
+        let r_Get_gsData = await this.Get_gsData()  ;
         if (Array.isArray(r_Get_gsData)) {
             [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA] = r_Get_gsData ;
         } else {throw new Error(r_Get_gsData)}
