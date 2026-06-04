@@ -955,7 +955,7 @@ const D = {
         this.Set_lockName(tvData.timestamp)  ;
         console.log('tvBot: ' + 'Set_lockName() success') ;
 
-        const r_SetLockToGS = await this.SetLockToGS(mainData.lockRange, 30) ;
+        const r_SetLockToGS = await this.SetLockToGS(toGCPData.lockRange, 30) ;
         if (isStrictString(r_SetLockToGS)) {throw new Error(r_SetLockToGS.trim())}
         console.log('tvBot: ' + 'SetLockToGS() success') ;
 
@@ -1051,11 +1051,7 @@ const D = {
 }   ;
 
 export async function HandleTV(raw_tvData) {
-    const   FlagBad     =  '✘ '  ;
-    const   FlagGood    =  '✔ '  ;
-
     await D.Start(raw_tvData) ;
-    
 }
 
 
