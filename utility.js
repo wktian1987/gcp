@@ -486,7 +486,7 @@ export async function ClearGS(sheets, spreadsheetID, fullRange) {
  */
 export async function UpdateGS(sheets, spreadsheetID, fullRange, values) {
     // 短路验证（基础非空 ➔ 数组判定 ➔ 空数组探测 ➔ 二维深度抽查）
-    if (!spreadsheetID || !fullRange || !values || !Array.isArray(values) || values.length === 0 || !Array.isArray(values[0])) {
+    if (!isStrictString(spreadsheetID) || !isStrictString(fullRange) || !Array.isArray(values) || values.length === 0 || !Array.isArray(values[0])) {
         throw new Error('UpdateGS 参数错误: 输入结构非法或 values 不是合法的非空二维数组');
     }
 
@@ -494,8 +494,7 @@ export async function UpdateGS(sheets, spreadsheetID, fullRange, values) {
         spreadsheetId   : spreadsheetID ,
         range           : fullRange     ,
         valueInputOption: 'USER_ENTERED', // 锁死用户输入模式，保护数字与布尔的原生高精度
-        resource        : { values      }
-    });
+        resource        : { values }    }  ) ;
 }
 
 /**
