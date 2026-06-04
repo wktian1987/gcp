@@ -6,8 +6,9 @@ app.listen(process.env.PORT || 8080, () => {
     console.log(`✔ 服务开始监听端口 ${process.env.PORT || 8080}，运行...`);
 });
 
-app.post('/schedule', json(), async (req, res) => {
-    return ; // 暂时啥也不做 专心处理tvbot
+// 暂时修改这个 
+// app.post('/schedule', json(), async (req, res) => {
+app.post('/_schedule', json(), async (req, res) => {
 
     console.log("✔ 收到/schedule连接");
     const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
