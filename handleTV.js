@@ -544,7 +544,7 @@ const D = {
         let SC = this.stopRate4C                ;
         let NF = this.notStop4F                 ;
         let NC = this.notStop4C                 ;
-        let NF = this.hghestFund                ;
+        let HF = this.hghestFund                ;
         let HC = this.hghestCoin                ;
 
         let liquidatePrice  = null  ;
@@ -570,8 +570,8 @@ const D = {
         let slope_f     = (C * S * D / P) + L               ;
         let intercept_f = K - (L * A) + (C * S * (1 - D))   ;
 
-        let targetF_1 = NF * (1 + SF / 100)     ;
-        let targetF_2 = NF * (1 + NF / 100)     ;
+        let targetF_1 = HF * (1 + SF / 100)     ;
+        let targetF_2 = HF * (1 + NF / 100)     ;
 
         let resF1 = (targetF_1 - intercept_f) / slope_f ;
         let resF2 = (targetF_2 - intercept_f) / slope_f ;
@@ -1046,7 +1046,6 @@ export async function HandleTV(raw_tvData) {
 
     } catch(e) {
         console.log(FlagBad + 'HandleTV running fail: ' + e.message)
-
     }
     
 }
