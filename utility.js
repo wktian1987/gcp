@@ -199,7 +199,7 @@ export function ObjToA2dNumBoolStr(obj) {
  * @returns 如果确认输入值为标准对象，可以不判断返回值，直接使用返回的cleanO
  */
 export function CleanObjToNumBoolStr(o, notAvailableValueTo) {
-    const notAvailableValue = isStrictString(notAvailableValueTo) ? notAvailableValueTo.time() : 'notAvailableValue' ;
+    const notAvailableValue = isStrictString(notAvailableValueTo) ? notAvailableValueTo.trim() : 'notAvailableValue' ;
     if (!isPlainObject(o)) {return false}
     const cleanO = {} ;
     Object.keys(o).forEach(key => {
