@@ -964,6 +964,12 @@ const D = {
         if (isStrictString(r_SetLockToGS)) {throw new Error(r_SetLockToGS.trim())}
         console.log('tvBot: ' + 'SetLockToGS() end') ;
 
+        r_Get_gsData = await this.Get_gsData()  ;
+        if (Array.isArray(r_Get_gsData)) {
+            [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA] = r_Get_gsData ;
+        } else {throw new Error(r_Get_gsData)}
+        console.log('tvBot: ' + 'after get Lock Get_gsData() end') ;
+
         // 当获得lock后就可以不主动抛出错误了
         // 因为拿到了lock就可以往GS写入数据了
         // 可以将错误信息 写入 runningWellSet
