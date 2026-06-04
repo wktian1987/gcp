@@ -947,7 +947,7 @@ const D = {
         const r_Get_gsData = await this.Get_gsData()  ;
         if (Array.isArray(r_Get_gsData)) {
             [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA] = r_Get_gsData ;
-        } else {throw new Error(r_Get_gsDat)}
+        } else {throw new Error(r_Get_gsData)}
 
         this.Set_lockName(tvData.timestamp)  ;
 
