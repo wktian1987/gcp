@@ -736,12 +736,12 @@ const D = {
 
         if (this.TradingSymbolPrice < this.basicLowToSell) {
             this.canSell           =   false                           ;
-            this.cantSellReason    =  addMessagee(this.cantSellReason, 'cant sell: ' + 'price < basicLowToSell' ) ;
+            this.cantSellReason    =   AddMessage(this.cantSellReason, 'cant sell: ' + 'price < basicLowToSell' ) ;
         }
 
         if (!isStrictTrue(this.therePosition)) {
             this.canSell           =   false                           ;
-            this.cantSellReason    =  addMessagee(this.cantSellReason, 'cant sell: ' + 'No position to sell'    ) ;
+            this.cantSellReason    =   AddMessage(this.cantSellReason, 'cant sell: ' + 'No position to sell'    ) ;
         }
 
         this.AddAlertMessage(this.alertMessageSet, this.cantBuyReason ) ;
@@ -834,6 +834,9 @@ const D = {
                 values  : [new_ingOrderLineA]   } ) ;
 
             this.AddAlertMessage(this.alertMessageSet, "New sell order, waiting confirmed")  ;
+            
+            this.canBuy            =   false ;
+            this.cantBuyReason     =   AddMessage(this.cantBuyReason, 'cant buy: '  + 'just a new sellOrder sent' )    ;
 
             return true ;
         }

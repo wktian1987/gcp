@@ -7,6 +7,7 @@ app.listen(process.env.PORT || 8080, () => {
 });
 
 // 暂时修改这个 
+// 暂时先不处理邮件
 // app.post('/schedule', json(), async (req, res) => {
 app.post('/_schedule', json(), async (req, res) => {
 
