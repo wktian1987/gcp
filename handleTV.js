@@ -364,7 +364,7 @@ const D = {
      * @returns String: 表示运行错误
      */
     async ToCheckFundFee(mainData, tvData, tradeHistoryTitleA, newTradeHistoryLine) {
-        if (!isPlainObject(mainData) || !isPlainObject(toGCPData) || !Array.isArray(tradeHistoryTitleA) || !isStrictString(newTradeHistoryLine)) {
+        if (!isPlainObject(mainData) || !Array.isArray(tradeHistoryTitleA) || !isStrictString(newTradeHistoryLine)) {
             return "ToCheckFundFee Error: input @param error"  ;
         }
 
@@ -1040,13 +1040,7 @@ export async function HandleTV(raw_tvData) {
     const   FlagBad     =  '✘ '  ;
     const   FlagGood    =  '✔ '  ;
 
-    try {
-        await D.Start(raw_tvData) ;
-        console.log(FlagGood + 'HandleTV running end') ;
-
-    } catch(e) {
-        console.log(FlagBad + 'HandleTV running fail: ' + e.message)
-    }
+    await D.Start(raw_tvData) ;
     
 }
 
