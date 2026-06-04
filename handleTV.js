@@ -967,7 +967,7 @@ const D = {
 
         // 检查是否已经初始化，如果没有初始化的话则去初始化
         if (this.isRunningWell() ) {
-            const r_ToCheckInitiate = await this.ToCheckInitiate() ;
+            const r_ToCheckInitiate = await this.ToCheckInitiate(mainData, tvData, toGCPData) ;
             if (isStrictString(r_ToCheckInitiate)) { this.AddAlertMessage(this.runningWellSet, r_ToCheckInitiate.trim()) }
             if (isStrictTrue(r_ToCheckInitiate)) {
                 // 因为GS中数据已更新所以需要重新获取
