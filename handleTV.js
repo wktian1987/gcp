@@ -914,7 +914,7 @@ const D = {
      * @param {String} toReadRange 
      */
     async SendToTG(toReadRange) {
-        const rawMessagesA2d = (await GetGS(this.sheets, this.spreadsheetID, toReadRange)).map(v => CleanArrayToNumStrBool(v)) ;
+        const rawMessagesA2d = (await GetGS(this.sheets, this.spreadsheetID, toReadRange, 'read')).map(v => CleanArrayToNumStrBool(v)) ;
         const messageString  = FormatMatrixToString(rawMessagesA2d) ;
 
         const TG_TOKEN = process.env.TG_TOKEN;
@@ -929,7 +929,7 @@ const D = {
      * @param {String} toEmailRange 
      */
     async SendToEmail(toEmailRange) {
-        const rawMessagesA2d = (await GetGS(this.sheets, this.spreadsheetID, toEmailRange)).map(v => CleanArrayToNumStrBool(v)) ;
+        const rawMessagesA2d = (await GetGS(this.sheets, this.spreadsheetID, toEmailRange, 'read')).map(v => CleanArrayToNumStrBool(v)) ;
         const messageHTML    =  ConvertRowsToHtmlTable(rawMessagesA2d) ;
         const mail_subject   = this.botNumber + '_' + this.TradingSymbol + '_' + String(this.realTradeTime) ;
         await SendEmail(mail_subject, messageHTML) ;
