@@ -231,14 +231,12 @@ const D = {
      * @param {String} lockRange 
      * @param {string} lockName   String: 期望判定的锁持有人名称, 如 "T1779239400694"
      * @returns {Promise<boolean>} true:  若当前锁的主人与传入的 lockName 一致则返回 true
-     * @returns {Promise<boolean>} false: 若当前锁的主人与传入的 lockName 不一致则返回false
-     * @returns {Promise<String>} String: 参数输入错误时, 返回错误信息
+     * @returns {Promise<String>} String: 当前的lockName
      */
     async CheckLockFromGS(lockRange, lockName) {
-        if (!isStrictString(lockRange) || !lockName || !this.spreadsheetID) { return 'CheckLockFromGS Error: param input error' }
         const _currentLOCK = await GetGS(this.sheets, this.spreadsheetID, lockRange);
         const currentLOCK = _currentLOCK?.[0]?.[0];
-        return currentLOCK === lockName;
+        return currentLOCK === lockName ? true : currentLOCK;
     } ,
 
     /**
@@ -246,11 +244,11 @@ const D = {
      * @async
      * @param {String} lockRange 
      * @param {number} [MAX_ATTEMPTS=30] number: 最多尝试次数, 每次间隔1s, 默认值30s
-     * @returns {bollean} true: 抢锁成功返回
+     * @returns {boollean} true: 抢锁成功返回
      * @returns {String} String: 失败或超时熔断返回 
      * @returns 永远不会返回false
      */
-    async SetLockToGS(lockRange, MAX_ATTEMPTS = 30) {
+    async SetLockToGS(lockRange, tv_timestamp, MAX_ATTEMPTS = 30) {
         if (!isStrictString(this.lockName) || this.lockName === noLOCK || !this.lockName.startsWith("T") ) {return 'SetLockToGS Error: 逻辑错误'}
 
         let attempts = 1;
@@ -263,11 +261,20 @@ const D = {
 
             // 先检查是不是处于无锁状态
             const isFree = await this.CheckLockFromGS(lockRange, noLOCK);
-            if (isFree) {
+            if (isStrictTrue(isFree) ) {
                 // 临门一脚一枪流写入：尝试用写操作强行占领
                 await UpdateGS(this.sheets, this.spreadsheetID, lockRange, [[this.lockName]]) ;
                 //  终极二次原子验证（Double-Check）：写入后立刻回读！
                 // 只有回读出来的持有人确实是我，才代表我在多实例的盲盒碰撞中真正赢得了这场争夺战！
+            }
+            if (isStrictString(isFree)) {
+                // 动用正则 \d+ 抓取连续的数字小分队
+                const matchResult = isFree.match(/\d+/);
+                // 确权拦截：防止 match 踏空吐出 null 导致 TypeError 砸盘
+                const cleanNumStr = matchResult ? matchResult[0] : '';
+                // 物理感化：如果后续要拿它去和数字比大小（比如行号对账），强行装箱成 Number
+                const realNumber = Number(cleanNumStr);
+                if (realNumber < tv_timestamp) {attempts = MAX_ATTEMPTS + 1}
             }
 
             attempts += 1;
@@ -290,10 +297,10 @@ const D = {
     async ReleaseLockOfGS(lockRange) {
         // 确权拦截：先看自己现在还有没有解锁的权力（防止自己超时被别人强刷后，误把别人的锁给解了）
         const hasRight = await this.CheckLockFromGS(lockRange, this.lockName);
-        if (!hasRight) { return 'ReleaseLockOfGS Error: 当前锁状态出错，并不是正在处理轮的锁，出现系统错误' }
+        if (!isStrictTrue(hasRight)) { return 'ReleaseLockOfGS Error: 当前锁状态出错，并不是正在处理轮的锁，出现系统错误' }
         await UpdateGS(this.sheets, this.spreadsheetID, lockRange, [[noLOCK]]);
         // 验证是否真正安全归还
-        return await this.CheckLockFromGS(lockRange, noLOCK);
+        return isStrictTrue(await this.CheckLockFromGS(lockRange, noLOCK)) ;
     } ,
 
     /**
@@ -960,7 +967,7 @@ const D = {
         this.Set_lockName(tvData.timestamp)  ;
         console.log('tvBot: ' + 'Set_lockName() end') ;
 
-        const r_SetLockToGS = await this.SetLockToGS(toGCPData.lockRange, 30) ;
+        const r_SetLockToGS = await this.SetLockToGS(toGCPData.lockRange, tvData.timestamp, 30) ;
         if (isStrictString(r_SetLockToGS)) {throw new Error(r_SetLockToGS.trim())}
         console.log('tvBot: ' + 'SetLockToGS() end') ;
 
@@ -969,6 +976,11 @@ const D = {
             [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA] = r_Get_gsData ;
         } else {throw new Error(r_Get_gsData)}
         console.log('tvBot: ' + 'after get Lock Get_gsData() end') ;
+
+        if (mainData.timestamp > tvData.timestamp) {
+            console.log('tvBot: ' + 'after get Lock Get_gsData() error, time passed') ;
+            return ;
+        }
 
         // 当获得lock后就可以不主动抛出错误了
         // 因为拿到了lock就可以往GS写入数据了
