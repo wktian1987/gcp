@@ -194,12 +194,12 @@ const D = {
                                 toGCPData.ingOrderTitleLine        ] ;     // 5
         const valuesArray   = await BatchGetGS(this.sheets, this.spreadsheetID, rangesList);
         const raw_mainData  = valuesArray[0];
-        if (!Array.isArray(raw_mainData) || !Array.isArray(raw_mainData[0]) ) {return 'Get_gsData Error: didnt get available data'}
+        if (!Array.isArray(raw_mainData) || !Array.isArray(raw_mainData[0]) ) {return 'Get_gsData Error: didnt get available data, 1'}
         const mainData  = CleanObjToNumBoolStr(A2dToObj(raw_mainData), 'notAvailableValue') ;
-        if (    !Object.hasOwn('dataSource')            ||
+        if (    !Object.hasOwn(mainData, 'dataSource')  ||
                 !isStrictString(mainData.dataSource)    ||
                 mainData.dataSource !== 'GoogleSheets'  )   { 
-            return 'Get_gsData Error: didnt get available data' ;
+            return 'Get_gsData Error: didnt get available data, 2' ;
         }
 
         const uncloseOrdersA2d      = isStrictTrue(mainData.therePosition) ? (valuesArray[1]).map(lines => CleanArrayToNumStrBool(lines)) : [] ;
