@@ -20,6 +20,7 @@ import {    isStrictNumber                  ,
             GetSpreadsheetID                ,
             GetGS                           ,         
             UpdateGS                        ,
+            AppendGS                        ,
             BatchClearGS                    ,
             BatchClearUpdateGS              ,
             BatchGetGS                      ,
@@ -359,13 +360,13 @@ const D = {
      * @param {Object} mainData
      * @param {Object} tvData 
      * @param {Array<String>} tradeHistoryTitleA 
-     * @param {String} newTradeHistoryLine 
+     * @param {String} tradeHistoryRange 
      * @returns true: 表示收取fundFee并写入成功
      * @returns false: 表示不需要检查fund fee
      * @returns String: 表示运行错误
      */
-    async ToCheckFundFee(mainData, tvData, tradeHistoryTitleA, newTradeHistoryLine) {
-        if (!isPlainObject(mainData) || !Array.isArray(tradeHistoryTitleA) || !isStrictString(newTradeHistoryLine)) {
+    async ToCheckFundFee(mainData, tvData, tradeHistoryTitleA, tradeHistoryRange) {
+        if (!isPlainObject(mainData) || !Array.isArray(tradeHistoryTitleA) || !isStrictString(tradeHistoryRange)) {
             return "ToCheckFundFee Error: input @param error"  ;
         }
 
@@ -391,7 +392,7 @@ const D = {
 
         const newFundHistoryA = tradeHistoryTitleA.map(v => {returnS['fund_'+v] || NA})
 
-        await UpdateGS(this.sheets, this.spreadsheetID, newTradeHistoryLine, [newFundHistoryA]) ;
+        await AppendGS(this.sheets, this.spreadsheetID, tradeHistoryRange, [newFundHistoryA]) ;
 
         this.AddAlertMessage(this.alertMessageSet, "New fund fee: " + String(returnS.fund_fundFee)) ;
 
@@ -422,8 +423,9 @@ const D = {
         // 此时获得的数据已经是clean
         const res_broker = await CheckOrderConfirm(ingOrderData.ing_orderID, ifWaitingThenCancel, this.isReal, tvData.TradingSymbol, this.sheets, this.spreadsheetID);
 
-        const w_toUpdateRangeList = [];
-        const w_toClearRangeSet = new Set();
+        const w_toUpdateRangeList       = []        ;
+        const w_toClearRangeSet         = new Set() ;
+        const w_toAppendTradeHistory    = []        ;
 
         let ingOrderStatusChange = false ;
 
@@ -446,10 +448,9 @@ const D = {
             w_toClearRangeSet.add(toGCPData.uncloseOrdersRange) ;
 
             const newTradeHistoryA = tradeHistoryTitleA.map(v => {res_broker['ing_'+v] || NA}) ;
-
-            w_toUpdateRangeList.push({
-                range   : toGCPData.newTradeHistoryLine     ,
-                values  : [newTradeHistoryA]                } ) ;
+            w_toAppendTradeHistory.toAppend = true                          ;
+            w_toAppendTradeHistory.range    = toGCPData.tradeHistoryRange   ;
+            w_toAppendTradeHistory.values   = [newTradeHistoryA]            ;
 
             if (uncloseOrdersA2d.length > 0) {
                 w_toUpdateRangeList.push( {
@@ -489,6 +490,8 @@ const D = {
         await BatchClearGS(this.sheets, this.spreadsheetID, Array.from(w_toClearRangeSet) ) ;
 
         await BatchClearUpdateGS(this.sheets, this.spreadsheetID, w_toUpdateRangeList)  ;
+
+        if (isStrictTrue(w_toAppendTradeHistory.toAppend)) { await AppendGS(this.sheets, this.spreadsheetID, w_toAppendTradeHistory.range, w_toAppendTradeHistory.values) }
 
         return true ;
 

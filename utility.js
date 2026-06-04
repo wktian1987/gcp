@@ -499,6 +499,26 @@ export async function UpdateGS(sheets, spreadsheetID, fullRange, values) {
 }
 
 /**
+ * 往指定区域最下行追加数据
+ * @param {object} sheets - Google Sheets API 实例
+ * @param {string} spreadsheetID - 电子表格 ID
+ * @param {string} fullRange - 想要写入的单区域, 如tradeHistory!$A$24:Z
+ * @param {Array<Array>} values - 期望写入的二维数组数据
+ */
+export async function AppendGS(sheets, spreadsheetID, fullRange, values) {
+    // 短路验证（基础非空 ➔ 数组判定 ➔ 空数组探测 ➔ 二维深度抽查）
+    if (!isStrictString(spreadsheetID) || !isStrictString(fullRange) || !Array.isArray(values) || values.length === 0 || !Array.isArray(values[0])) {
+        throw new Error('UpdateGS 参数错误: 输入结构非法或 values 不是合法的非空二维数组');
+    }
+    await sheets.spreadsheets.values.append(  {
+        spreadsheetId       : spreadsheetID         ,
+        range               : fullRange             ,
+        valueInputOption    : 'USER_ENTERED'        , // 保持高精度感化
+        insertDataOption    : 'INSERT_ROWS'         , // 核心硬核参数：物理空间不够时，谷歌后台自动插行，绝不报错！
+        resource            : {values: values }     } ) ;
+}
+
+/**
  * 批量读取多个区域内容（多区域打包，类型对齐，精度不失）
  * @param {object} sheets - Google Sheets API 实例
  * @param {string} spreadsheetID - 电子表格 ID
