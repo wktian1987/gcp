@@ -440,15 +440,17 @@ export async function GetActiveDataRange(sheets, spreadsheetID, sheetTitle) {
  * 如果只有 "A!A1:B5" 这个区域内有数据的话，用"A!A:B" 会比"A!A1:B5" 效率不会差很多，可以不考虑
  * @param {*} sheets 
  * @param {string} spreadsheetID 
- * @param {string} fullRange 
+ * @param {string} fullRange
+ * @param {string} [read_calculate='calculate'] 默认值是calculate, 除了'read'其他值包括不输入值都是默认值, 表示从GS中取到的数据都是原始值
  * @returns  返回一个二维数组 ; 
  */
-export async function GetGS(sheets, spreadsheetID, fullRange) {
+export async function GetGS(sheets, spreadsheetID, fullRange, read_calculate = 'calculate') {
     if (!spreadsheetID || !fullRange) {throw new Error('GetDataFromSheet 参数错误: spreadsheetID 或 fullRange 不能为空')}
+    const valueRenderOption = read_calculate === 'read' ? 'FORMATTED_VALUE' : 'UNFORMATTED_VALUE' ;
     const response = await sheets.spreadsheets.values.get(  {
         spreadsheetId           : spreadsheetID         ,
         range                   : fullRange             ,
-        valueRenderOption       : 'UNFORMATTED_VALUE'   , // 脱掉格式外衣，直接拿最底层的 Number, Boolean 和纯 String（保护精度）
+        valueRenderOption       : valueRenderOption     , // 脱掉格式外衣，直接拿最底层的 Number, Boolean 和纯 String（保护精度）
         dateTimeRenderOption    : 'FORMATTED_STRING'    }   )   ;  // 日期保持字符串形式（防止时间戳沦为奇怪的浮点数）
 
     const rows = response.data.values;

@@ -981,7 +981,7 @@ const D = {
 
         // 检查是否需要fund fee 查看
         if (this.isRunningWell()) {
-            const r_ToCheckFundFee = await this.ToCheckFundFee(mainData, tvData, toGCPData) ;
+            const r_ToCheckFundFee = await this.ToCheckFundFee(mainData, tvData, tradeHistoryTitleA, toGCPData.newTradeHistoryLine) ;
             if (isStrictString(r_ToCheckFundFee)) {this.AddAlertMessage(this.runningWellSet, r_ToCheckFundFee.trim())}
             if (isStrictTrue(r_ToCheckFundFee)) {
                 // 因为GS中数据已更新所以需要重新获取
