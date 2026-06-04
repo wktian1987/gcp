@@ -5,15 +5,15 @@ import {    isStrictNumber                  ,
             isStrictString                  ,
             isStrictSet                     ,
             isPlainObject                   ,
-            toStrictNumber                  ,
+            ToStrictNumber                  ,
             ToStrictString                  ,
-            toStrictNumBoolStr              , 
+            ToStrictNumBoolStr              , 
             CleanObjToNumBoolStr            ,
             CleanArrayToNumStrBool          ,
             A2dToObj                        ,
             A2LinesToObj                    ,
             ObjToA2dNumBoolStr              ,
-            addMessage                      ,
+            AddMessage                      ,
             GetTimeStringWithOffset         , 
             SendSplitTGMessages             ,
             FormatMatrixToString            ,            
@@ -611,14 +611,14 @@ const D = {
     ReNew() {
         this.openProfit =  isStrictTrue(this.therePosition) ?  this.allPosition * (this.TradingSymbolPrice - this.avgBuyPrice)  :  NA    ;
         this.usedMargin =  isStrictTrue(this.therePosition) ?  this.allPosition * this.TradingSymbolPrice / this.leverage       :  NA    ;
-        this.crtFund    =  this.inFund + toStrictNumber(this.netProfit, 0) + toStrictNumber(this.openProfit, 0)                          ;
+        this.crtFund    =  this.inFund + ToStrictNumber(this.netProfit, 0) + ToStrictNumber(this.openProfit, 0)                          ;
         this.crtCoin    =  this.inCoin                                                                                                   ;
-        this.freeMargin =  this.crtFund + this.crtCoin * this.BaseCoinPrice * this.BaseCoinHairCut - toStrictNumber(this.usedMargin, 0)  ;
+        this.freeMargin =  this.crtFund + this.crtCoin * this.BaseCoinPrice * this.BaseCoinHairCut - ToStrictNumber(this.usedMargin, 0)  ;
         this.allFund    =  this.crtFund + this.crtCoin * this.BaseCoinPrice                                                              ;
         this.allCoin    =  this.crtFund / this.BaseCoinPrice + this.crtCoin                                                              ;
 
-        this.rcd_fund   =  toStrictNumber(this.rcd_fund, this.allFund)  ;
-        this.rcd_coin   =  toStrictNumber(this.rcd_coin, this.allCoin)  ;
+        this.rcd_fund   =  ToStrictNumber(this.rcd_fund, this.allFund)  ;
+        this.rcd_coin   =  ToStrictNumber(this.rcd_coin, this.allCoin)  ;
 
         [this.liquidatePrice, this.stopPriceC, this.stopPriceF] = this.GetLiquidateStopPrice();
         this.liquidatePrice    =  isStrictTrue(this.therePosition)  ?  this.liquidatePrice  :  NA  ;
@@ -661,7 +661,7 @@ const D = {
 
         this.hghToBuy   =  Math.min(this.basicHghToBuy                                          ,
                                     this.closeToRndHgh                                          ,
-                                    toStrictNumber(this.lowBuyPriceUnclose, this.basicHghToBuy) )   ;
+                                    ToStrictNumber(this.lowBuyPriceUnclose, this.basicHghToBuy) )   ;
 
         this.lowToBuy   =  Math.max(this.basicLowToBuy, this.closeToRndLow )   ;
         this.lowToSell  =  Math.max(this.basicLowToSell                    )   ;
@@ -676,52 +676,52 @@ const D = {
         if (!this.inTradingTime) {
             this.canBuy            =  false  ;
             this.canSell           =  false  ;
-            this.cantBuyReason     =  addMessage(this.cantBuyReason , 'cant buy: '  + 'not in trading time' )  ;
-            this.cantSellReason    =  addMessage(this.cantSellReason, 'cant sell: ' + 'not in trading time' )  ;
+            this.cantBuyReason     =  AddMessage(this.cantBuyReason , 'cant buy: '  + 'not in trading time' )  ;
+            this.cantSellReason    =  AddMessage(this.cantSellReason, 'cant sell: ' + 'not in trading time' )  ;
         }
 
         if (this.timestamp - this.lstTradeTime < this.ordersInterval * 60000) {
             this.canBuy            =  false  ;
             this.canSell           =  false  ;
-            this.cantBuyReason     =  addMessage(this.cantBuyReason , 'cant buy: '  + 'there order just done, wait some time' )  ;
-            this.cantSellReason    =  addMessage(this.cantSellReason, 'cant sell: ' + 'there order just done, wait some time' )  ;
+            this.cantBuyReason     =  AddMessage(this.cantBuyReason , 'cant buy: '  + 'there order just done, wait some time' )  ;
+            this.cantSellReason    =  AddMessage(this.cantSellReason, 'cant sell: ' + 'there order just done, wait some time' )  ;
         }
 
         if (this.ifOrderWaiting) {
             this.canBuy            =  false  ;
             this.canSell           =  false  ;
-            this.cantBuyReason     =  addMessage(this.cantBuyReason , 'cant buy: '  + 'there order waiting' )  ;
-            this.cantSellReason    =  addMessage(this.cantSellReason, 'cant sell: ' + 'there order waiting' )  ;
+            this.cantBuyReason     =  AddMessage(this.cantBuyReason , 'cant buy: '  + 'there order waiting' )  ;
+            this.cantSellReason    =  AddMessage(this.cantSellReason, 'cant sell: ' + 'there order waiting' )  ;
         }
 
         if (Number(this.gridNum) >= Number(this.MaxGrid) ) {
             this.canBuy            =   false ;
-            this.cantBuyReason     =   addMessage(this.cantBuyReason, 'cant buy: ' + "gridNum >= MaxGrid")         ;
+            this.cantBuyReason     =   AddMessage(this.cantBuyReason, 'cant buy: ' + "gridNum >= MaxGrid")         ;
         }
             
         if (this.TradingSymbolPrice > this.basicHghToBuy) {
             this.canBuy            =   false ;
-            this.cantBuyReason     =   addMessage(this.cantBuyReason, 'cant buy: ' + 'price > basicHghToBuy'  )     ;
+            this.cantBuyReason     =   AddMessage(this.cantBuyReason, 'cant buy: ' + 'price > basicHghToBuy'  )     ;
         }
         if (this.TradingSymbolPrice > this.closeToRndHgh) {
             this.canBuy            =   false ;
-            this.cantBuyReason     =   addMessage(this.cantBuyReason, 'cant buy: '  + 'price closeToRndHgh'    )    ;
+            this.cantBuyReason     =   AddMessage(this.cantBuyReason, 'cant buy: '  + 'price closeToRndHgh'    )    ;
         }
         if(this.TradingSymbolPrice > this.lowBuyPriceUnclose) {
             this.canBuy            =   false ;
-            this.cantBuyReason     =   addMessage(this.cantBuyReason, 'cant buy: '  + 'price > lowBuyPriceUnclose') ;
+            this.cantBuyReason     =   AddMessage(this.cantBuyReason, 'cant buy: '  + 'price > lowBuyPriceUnclose') ;
         }
         if (this.TradingSymbolPrice < this.basicLowToBuy) {
             this.canBuy            =   false ;
-            this.cantBuyReason     =   addMessage(this.cantBuyReason, 'cant buy: '  + 'price < basicLowToBuy'  )    ;
+            this.cantBuyReason     =   AddMessage(this.cantBuyReason, 'cant buy: '  + 'price < basicLowToBuy'  )    ;
         } 
         if (this.TradingSymbolPrice < this.closeToRndLow) {
             this.canBuy            =   false ;
-            this.cantBuyReason     =   addMessage(this.cantBuyReason, 'cant buy: '  + 'price closeToRndLow'    )    ;
+            this.cantBuyReason     =   AddMessage(this.cantBuyReason, 'cant buy: '  + 'price closeToRndLow'    )    ;
         }
         if (this.freeMargin / (this.MaxGrid - this.gridNum) < 1.1 * this.minEnExPosition * this.TradingSymbolPrice / this.leverage) {
             this.canBuy            =   false ;
-            this.cantBuyReason     =   addMessage(this.cantBuyReason,  'cant buy: '  + 'Not enough freeMargin' )    ;
+            this.cantBuyReason     =   AddMessage(this.cantBuyReason,  'cant buy: '  + 'Not enough freeMargin' )    ;
         }
 
         if (this.TradingSymbolPrice < this.basicLowToSell) {
@@ -854,7 +854,7 @@ const D = {
             S.ing_orderID           =  'B-' + GetTimeStringWithOffset(8, this.timestamp)                                                                                                            ;
             S.ing_orderTimestamp    =  Date.now()                                                                                                                                                   ;
             S.ing_orderDate         =  GetTimeStringWithOffset(8, S.ing_orderTimestamp)                                                                                                             ;
-            S.ing_serial            =  toStrictNumber(this.lstBuySerial, 0) + 1                                                                                                                     ;
+            S.ing_serial            =  ToStrictNumber(this.lstBuySerial, 0) + 1                                                                                                                     ;
             S.ing_buysell           =  order_BUY                                                                                                                                                    ;
             S.ing_triggerPrice      =  this.TradingSymbolPrice                                                                                                                                      ;
             S.ing_orderType         =  order_T_LMT                                                                                                                                                  ;

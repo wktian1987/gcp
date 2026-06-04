@@ -5,6 +5,13 @@ export function isStrictFalse   (val) { return isStrictBoolean(val) && !val     
 export function isStrictString  (val) { return typeof val === "string" && val.trim() !== ""             }
 export function isStrictSet     (val) { return Object.prototype.toString.call(val) === '[object Set]'   }
 
+export function isStrictNumBoolStr(val) {
+    if (isStrictTrue(isStrictNumber (val))) {return true}
+    if (isStrictTrue(isStrictBoolean(val))) {return true}
+    if (isStrictTrue(isStrictString (val))) {return true}
+    return false ;
+}
+
 export function isPlainObject(val) {
     if (typeof val !== 'object' || val === null) return false;
     const proto = Object.getPrototypeOf(val);
@@ -18,7 +25,7 @@ export function isPlainObject(val) {
  * @param {string} theNew 
  * @returns 
  */
-export function addMessage (theOld, theNew) {
+export function AddMessage (theOld, theNew) {
     const   newMessage  =   isStrictString(theNew)  ?  theNew.trim()  :  "not available new message"    ;
     if (isStrictString(theOld)) {
         const   oldMessage  =   theOld.trim()  ;
@@ -40,7 +47,7 @@ export function addMessage (theOld, theNew) {
  * @param {number} NA0 , 如果输入的值不是数字类型的话，则遇到不能转换为数字的形式，转换为false
  * @returns  false or strictNumber or NA0
  */
-export function toStrictNumber(val, NA0) {
+export function ToStrictNumber(val, NA0) {
     const NA0Val =  isStrictNumber(NA0)  ?  NA0  :  false  ;
 
     if ( isStrictNumber(val) ) {return val  }
@@ -91,14 +98,7 @@ export function ToStrictString(val, notAvailableValueTo) {
     }
 }
 
-export function isStrictNumBoolStr(val) {
-    if (isStrictTrue(isStrictNumber (val))) {return true}
-    if (isStrictTrue(isStrictBoolean(val))) {return true}
-    if (isStrictTrue(isStrictString (val))) {return true}
-    return false ;
-}
-
-export function toStrictNumBoolStr(val, notAvailableValueTo) {
+export function ToStrictNumBoolStr(val, notAvailableValueTo) {
     const notAvailableValue = isStrictString(notAvailableValueTo)  ?  notAvailableValueTo.trim()  :  "notAvailableValue"  ;
     // Number("") 和 Number(null) 会变成 0
     // 如果不希望空值变0，可以加判断：
@@ -117,12 +117,12 @@ export function toStrictNumBoolStr(val, notAvailableValueTo) {
 
         // 处理百分数
         if (cleanVal.endsWith('%') && !cleanVal.startsWith('%')) {
-            const val100 = toStrictNumber(cleanVal.replace('%', ''))  ;
+            const val100 = ToStrictNumber(cleanVal.replace('%', ''))  ;
             if (isStrictNumber(val100)) { return val100 / 100 } // 返回 0.05, 也可能返回零
         }
 
         // 处理数字，包括符合千分位规则的含逗号数字
-        const valNumber = toStrictNumber(cleanVal)  ;
+        const valNumber = ToStrictNumber(cleanVal)  ;
         if (isStrictNumber(valNumber)) {return valNumber}
 
         return  cleanVal  ;
@@ -145,7 +145,7 @@ export function A2dToObj(a2d, notAvailableValueTo) {
         if (!Array.isArray(val)) {newA2d = [notAvailableValue, notAvailableValue]}
         if (Array.isArray(val) && val.length===0) {newA2d = [notAvailableValue, notAvailableValue]}
         if (Array.isArray(val) && val.length===1) {newA2d = [ToStrictString(val[0], notAvailableValue), notAvailableValue]}
-        if (Array.isArray(val) && val.length  >1) {newA2d = [ToStrictString(val[0], notAvailableValue), toStrictNumBoolStr(val[1], notAvailableValue)]}
+        if (Array.isArray(val) && val.length  >1) {newA2d = [ToStrictString(val[0], notAvailableValue), ToStrictNumBoolStr(val[1], notAvailableValue)]}
         return newA2d ;
     })
 
@@ -182,8 +182,8 @@ export function ObjToA2dNumBoolStr(obj) {
         .map(key => {
             // 第二步：此时留下的全是绝对合规的核心资产
             // 对 key 进行严格串化（确保安全），而对 value，我们要保留它纯正的物理原色！
-            const cleanKey = toStrictString(key, "INVALID_KEY");
-            const cleanValue = toStrictNumBoolStr(obj[key]);
+            const cleanKey = ToStrictString(key, "INVALID_KEY");
+            const cleanValue = ToStrictNumBoolStr(obj[key]);
 
             return [cleanKey, cleanValue];
         });
@@ -203,7 +203,7 @@ export function CleanObjToNumBoolStr(o, notAvailableValueTo) {
     if (!isPlainObject(o)) {return false}
     const cleanO = {} ;
     Object.keys(o).forEach(key => {
-        cleanO[key] = toStrictNumBoolStr(o[key], notAvailableValueTo);
+        cleanO[key] = ToStrictNumBoolStr(o[key], notAvailableValueTo);
     });
     return cleanO; 
 }
@@ -218,7 +218,7 @@ export function CleanObjToNumBoolStr(o, notAvailableValueTo) {
  */
 export function CleanArrayToNumStrBool(a, notAvailableValueTo) {
     if (!Array.isArray(a)) {return false}
-    return a.map(val => toStrictNumBoolStr(val, notAvailableValueTo));
+    return a.map(val => ToStrictNumBoolStr(val, notAvailableValueTo));
 }
 
 /**
@@ -639,7 +639,6 @@ export async function SendSplitTGMessages(botToken, chatId, subject, text) {
         await new Promise(res => setTimeout(res, 1000));
     }
 }
-
 
 /**
  * 发送邮件 ;
