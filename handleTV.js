@@ -288,11 +288,11 @@ const D = {
      */
     async ReleaseLockOfGS(lockRange) {
         // 确权拦截：先看自己现在还有没有解锁的权力（防止自己超时被别人强刷后，误把别人的锁给解了）
-        const hasRight = await CheckLockFromGS(lockRange, this.lockName);
+        const hasRight = await this.CheckLockFromGS(lockRange, this.lockName);
         if (!hasRight) { return 'ReleaseLockOfGS Error: 当前锁状态出错，并不是正在处理轮的锁，出现系统错误' }
         await UpdateGS(this.sheets, this.spreadsheetID, lockRange, [[noLOCK]]);
         // 验证是否真正安全归还
-        return await CheckLockFromGS(lockRange, noLOCK);
+        return await this.CheckLockFromGS(lockRange, noLOCK);
     } ,
 
     /**
@@ -920,7 +920,7 @@ const D = {
         const TG_TOKEN = process.env.TG_TOKEN;
         const TG_CHAT_ID = process.env.TG_CHAT_ID;
 
-        const subject = this.botNumber + '_' + this.TradingSymbol ;
+        const subject = this.botNumber + '_' + this.TradingSymbol + '_' + String(this.realTradeTime) ;;
 
         await SendSplitTGMessages(TG_TOKEN, TG_CHAT_ID, subject, messageString) ;
     } ,
@@ -931,7 +931,7 @@ const D = {
     async SendToEmail(toEmailRange) {
         const rawMessagesA2d = (await GetGS(this.sheets, this.spreadsheetID, toEmailRange)).map(v => CleanArrayToNumStrBool(v)) ;
         const messageHTML    =  ConvertRowsToHtmlTable(rawMessagesA2d) ;
-        const mail_subject   = this.botNumber + '_' + this.TradingSymbol ;
+        const mail_subject   = this.botNumber + '_' + this.TradingSymbol + '_' + String(this.realTradeTime) ;
         await SendEmail(mail_subject, messageHTML) ;
     } ,
 
