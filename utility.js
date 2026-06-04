@@ -436,13 +436,12 @@ export async function GetActiveDataRange(sheets, spreadsheetID, sheetTitle) {
 }
 
 /**
- * 从固定区域读取数据
+ * 从固定区域读取数据 ; 
+ * 如果只有 "A!A1:B5" 这个区域内有数据的话，用"A!A:B" 会比"A!A1:B5" 效率不会差很多，可以不考虑
  * @param {*} sheets 
  * @param {string} spreadsheetID 
  * @param {string} fullRange 
- * @returns  
- * 返回一个二维数组 ; 
- * 如果只有 "A!A1:B5" 这个区域内有数据的话，用"A!A:B" 会比"A!A1:B5" 效率不会差很多，可以不考虑 ; 
+ * @returns  返回一个二维数组 ; 
  */
 export async function GetGS(sheets, spreadsheetID, fullRange) {
     if (!spreadsheetID || !fullRange) {throw new Error('GetDataFromSheet 参数错误: spreadsheetID 或 fullRange 不能为空')}

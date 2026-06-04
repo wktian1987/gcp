@@ -254,6 +254,12 @@ const D = {
 
         let attempts = 1;
         while (attempts <= MAX_ATTEMPTS) {
+            let weWon = false ;
+            weWon = await this.CheckLockFromGS(lockRange, this.lockName);
+            if (isStrictTrue(weWon)) { return true }
+            // 如果回读发现不是我，说明在刚才的毫秒真空期里，有人比我先一步落盘了！
+            // 抢锁失败，进入下一次自旋等待。
+
             // 先检查是不是处于无锁状态
             const isFree = await this.CheckLockFromGS(lockRange, noLOCK);
             if (isFree) {
@@ -261,10 +267,6 @@ const D = {
                 await UpdateGS(this.sheets, this.spreadsheetID, lockRange, [[this.lockName]]) ;
                 //  终极二次原子验证（Double-Check）：写入后立刻回读！
                 // 只有回读出来的持有人确实是我，才代表我在多实例的盲盒碰撞中真正赢得了这场争夺战！
-                const weWon = await this.CheckLockFromGS(lockRange, this.lockName);
-                if (isStrictTrue(weWon) ) { return true }
-                // 如果回读发现不是我，说明在刚才的毫秒真空期里，有人比我先一步落盘了！
-                // 抢锁失败，进入下一次自旋等待。
             }
 
             attempts += 1;
