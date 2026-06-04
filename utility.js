@@ -18,7 +18,7 @@ export function isPlainObject(val) {
  * @param {string} theNew 
  * @returns 
  */
-function addMessage (theOld, theNew) {
+export function addMessage (theOld, theNew) {
     const   newMessage  =   isStrictString(theNew)  ?  theNew.trim()  :  "not available new message"    ;
     if (isStrictString(theOld)) {
         const   oldMessage  =   theOld.trim()  ;
