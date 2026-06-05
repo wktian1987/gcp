@@ -1105,7 +1105,7 @@ export async function HandleTV(raw_tvData) {
             console.log('tvBot: ' + 'ToBuy() end') ;
 
             this.gcpGetTime = gcpGetTime ;
-            await this.WriteToGS(toGCPData.toWriteMainRange, toGCPData.mainRange) ;
+            await this.WriteToGS(toGCPData) ;
             console.log('tvBot: ' + 'WriteToGS() end') ;
 
             const task_SendToTG     = this.SendToTG(toGCPData.toReadRange) ;
