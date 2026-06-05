@@ -647,9 +647,10 @@ export async function HandleTV(raw_tvData) {
                 this.lstRcdTargetHgh    = this.lstTargetHgh     ;
             }
             if (isStrictNumber(this.lstRcdTouchHghTime) && this.lstRcdTouchHghTime < this.lstTouchHghTime) {
-                this.markTouchTargetHgh = true                  ;
-                this.lstRcdTouchHghTime = this.lstTouchHghTime  ;
-                this.lstRcdTargetHgh    = this.lstTargetHgh     ;
+                this.markTouchTargetHgh = true                                      ;
+                this.lstRcdTouchHghTime = this.lstTouchHghTime                      ;
+                this.lstRcdTargetHgh    = this.lstTargetHgh                         ;
+                this.AddAlertMessage(this.alertMessageSet, "↑ markTouchTargetHgh")  ; 
             }
             if (isStrictString(this.lstRcdTouchLowTime)) {
                 this.markTouchTargetLow = false                 ;
@@ -657,9 +658,10 @@ export async function HandleTV(raw_tvData) {
                 this.lstRcdTargetLow    = this.lstTargetLow     ;
             }
             if (isStrictNumber(this.lstRcdTouchLowTime) && this.lstRcdTouchLowTime < this.lstTouchLowTime) {
-                this.markTouchTargetLow = true                  ;
-                this.lstRcdTouchLowTime = this.lstTouchLowTime  ;
-                this.lstRcdTargetLow    = this.lstTargetLow     ;
+                this.markTouchTargetLow = true                                      ;
+                this.lstRcdTouchLowTime = this.lstTouchLowTime                      ;
+                this.lstRcdTargetLow    = this.lstTargetLow                         ;
+                this.AddAlertMessage(this.alertMessageSet, "↓ markTouchTargetLow")  ; 
             }
 
 
