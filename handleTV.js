@@ -390,8 +390,8 @@ export async function HandleTV(raw_tvData) {
 
             let toCheckFundFee = false;
             if ( isStrictNumber(mainData.lstFundTime) ) {
-                const lstRound  = Math.floor(tvData.lstFundTime / 28800000); // 8 * 60 * 60 * 1000
-                const thisRound = Math.floor(tvData.timestamp   / 28800000);
+                const lstRound  = Math.floor(mainData.lstFundTime / 28800000) ; // 8 * 60 * 60 * 1000
+                const thisRound = Math.floor(tvData.timestamp     / 28800000) ;
                 toCheckFundFee  = lstRound === thisRound ? false : true;
             } else {toCheckFundFee = true}
 
