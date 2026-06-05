@@ -148,9 +148,6 @@ export async function HandleTV(raw_tvData) {
             if (!isPlainObject(raw_tvData)) {
                 return errPrefix + "rawTVData is not plain Object" ;
             }
-            if (!Object.hasOwn(raw_tvData, 'dataSource') || raw_tvData.dataSource.trim() !== 'TradingView') {
-                return errPrefix + "rawTVData dataSource 校验失败" ;
-            }
             if (isStrictString(raw_tvData.thisAlertMessage)) {
                 raw_tvData.thisAlertMessage = raw_tvData.thisAlertMessage.replaceAll(HuanHang, '\n').trim() ;
                 this.AddAlertMessage(this.alertMessageSet, raw_tvData.thisAlertMessage) ;
@@ -224,6 +221,7 @@ export async function HandleTV(raw_tvData) {
                     if (isStrictTrue(checkWon)) {return true}
                     if (isStrictFalse(checkWon)) {return 'SetLockToGS Error: 锁被其他几乎同时到达的信号抢去'}
                 }
+                if (tv_timestamp < toGCPData.lstLockSignalTime) {return 'SetLockToGS Error: 更新更近的信号已被处理, 忽略本次信号'}
                 if (currentLock !== noLOCK && isStrictString(currentLock) && currentLock.startsWith('T')) {
                     const currentLockTime = ToStrictNumber(currentLock.split('T')[1]) ;
                     if (isStrictNumber(currentLockTime) && currentLockTime > tv_timestamp) {
@@ -972,6 +970,7 @@ export async function HandleTV(raw_tvData) {
             console.log('tvBot: ' + 'Set_lockName() end') ;
 
             const r_SetLockToGS = await this.SetLockToGS(tvData.timestamp, 30000) ;
+            if (isStrictTrue(r_SetLockToGS)) {this.getLOCK = true}
             if (isStrictString(r_SetLockToGS)) {throw new Error(r_SetLockToGS.trim())}
             console.log('tvBot: ' + 'SetLockToGS() end') ;
             // 当获得lock后就可以不主动抛出错误了
@@ -1089,7 +1088,12 @@ export async function HandleTV(raw_tvData) {
         }
     }   ;
 
-    await D.Start(raw_tvData) ;
+    try {
+        await D.Start(raw_tvData) ;
+    } catch(e) {
+        if (isStrictTrue(D.getLOCK)) {await D.ReleaseLockOfGS()}
+        throw e ;
+    }
 }
 
 
