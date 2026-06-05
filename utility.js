@@ -152,7 +152,10 @@ export function A2dToObj(a2d, notAvailableValueTo) {
     return Object.fromEntries(clean_a2d) ;
 }
 
-export function A2LinesToObj(a2lines) {
+/**
+ * 将两行数组, 转换为Obj
+ */
+export function A2LinesToObj(a2lines, notAvailableValueTo) {
     const notAvailableValue = isStrictString(notAvailableValueTo) ? notAvailableValueTo.trim() : "notAvailableValue" ;
     if( !Array.isArray(a2lines)                 ||
         a2lines.length !== 2                    ||
@@ -165,7 +168,7 @@ export function A2LinesToObj(a2lines) {
 
     const entries = keys.map((key, i) => { return [key, values[i]] });
 
-    return A2dToObj(entries);
+    return A2dToObj(entries, notAvailableValue);
 }
 
 /**
