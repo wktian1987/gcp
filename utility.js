@@ -582,18 +582,20 @@ export async function BatchClearGS(sheets, spreadsheetID, toClearRangeList) {
 export async function BatchClearUpdateGS(sheets, spreadsheetID, toUpdateRangeList) {
     if (!Array.isArray(toUpdateRangeList) ) { throw new Error('BatchClearUpdateGS @param toUpdateRangeList 输入错误') }
     if (toUpdateRangeList.length === 0    ) { return }
-    const toClearList       = []  ;
-    const toClearUpdateList = []  ;
+    const toClearListSet    = new Set() ;
+    const toClearUpdateList = []        ;
     toUpdateRangeList.forEach(element => {
         const {range, values} = element ;
         if (!range || !values || !Array.isArray(values) || values.length===0 || !Array.isArray(values[0])) {
             throw new Error("BatchClearUpdateGS @param toUpdateRangeList 输入错误") ;
         } 
-        toClearList.push(range)    ;
+        toClearListSet.add(range)    ;
         toClearUpdateList.push( {range , values     } )    ;
     });
 
-    await BatchClearGS(sheets, spreadsheetID, toClearList) ;
+    await BatchClearGS(sheets, spreadsheetID, Array.from(toClearListSet) ) ;
+
+    await Sleep(500) ;
 
     await sheets.spreadsheets.values.batchUpdate(   {
         spreadsheetId   :   spreadsheetID  ,

@@ -26,7 +26,8 @@ import {    isStrictNumber                  ,
             BatchGetGS                      ,
             ClearGS                         ,
             ConvertRowsToHtmlTable          ,
-            SendEmail                       } from "./utility.js";
+            SendEmail,                       
+            Sleep} from "./utility.js";
 
 import {    SendOrderToBroker               ,
             CheckOrderConfirm               ,               
@@ -175,7 +176,103 @@ export async function HandleTV(raw_tvData) {
         } ,
 
         /**
-         * 获取GS数据, mainData {} 和 uncloseOrders []
+         * 设置this.lockName, 依据TV数据的时间戳
+         * @param {Number} tv_timestamp 
+         * @returns 无返回值, 默认不会出错, 因为这个函数运行的前提是调用它的函数前面不会出错. 
+         */
+        Set_lockName(tv_timestamp) { 
+            this.lockName = 'T' + String(tv_timestamp) ;
+        } ,
+
+        /**
+         * 获取当前toGCPData
+         * @returns {Promise<Object>}
+         */
+        async Get_toGCPData() {
+            return A2dToObj(await GetGS(this.sheets, this.spreadsheetID, toGCPRanges)) ;
+        } ,
+
+        /**
+         * 检测当前GS中分布式锁的真实归属,
+         * @returns {Promise<String>} String: 当前的lockName
+         */
+        async CheckLockFromGS() {
+            const toGCPData = await this.Get_toGCPData() ;
+            return toGCPData.LOCK ;
+        } ,
+
+        /**
+         * 分布式碰撞抢锁：抢占排他性写锁，带高频自旋重试机制
+         * @async
+         * @param {number} tv_timestamp 当前的信号时间戳
+         * @param {number} [cantSetAfter=30000] 当前时间超过多少时便不能再获得锁权限
+         * @returns {boolean} true : 抢锁成功返回
+         * @returns {String} String: 失败或超时熔断返回原因
+         */
+        async SetLockToGS(tv_timestamp, cantSetAfter = 30000) {
+            if (!isStrictString(this.lockName) || !this.lockName.startsWith('T')) {return 'SetLockToGS Error: this.lockName 未设置或设置错误'}
+
+            while (Date.now() < tv_timestamp + cantSetAfter) {
+                const toGCPData     = await this.Get_toGCPData() ;
+                const currentLock   = toGCPData.LOCK ;
+                if (currentLock === noLOCK) {
+                    await UpdateGS(this.sheets, this.spreadsheetID, toGCPData.lockRange, [[this.lockName]]) ;
+                    await Sleep(2000) ; // 等两秒后再确认是否成功, 防止同时有两个信号抢锁
+                    const checkWon = await this.CheckLockFromGS() === this.lockName ;
+                    if (isStrictTrue(checkWon)) {return true}
+                    if (isStrictFalse(checkWon)) {return 'SetLockToGS Error: 锁被其他几乎同时到达的信号抢去'}
+                }
+                if (currentLock !== noLOCK && isStrictString(currentLock) && currentLock.startsWith('T')) {
+                    const currentLockTime = ToStrictNumber(currentLock.split('T')[1]) ;
+                    if (isStrictNumber(currentLockTime) && currentLockTime > tv_timestamp) {
+                        return  'SetLockToGS Error: 无法为当前信号设锁, 因为现有锁时间在当前信号之后';
+                    }
+
+                }
+                await Sleep(1000) ;
+            }
+
+            return 'SetLockToGS Error: 已错过抢锁时机' ;
+        } ,
+
+        /**
+         * 释放分布式排他锁
+         * @returns {Promise<boolean>} true:   解锁成功返回
+         * @returns                    String: 明确的出错信息
+         */
+        async ReleaseLockOfGS() {
+            // 确权拦截：先看自己现在还有没有解锁的权力（防止自己超时被别人强刷后，误把别人的锁给解了）
+            // 这种情况一旦发生, 说明运行有了问题, 需要处理
+            const toGCPData     =  await this.Get_toGCPData() ;
+            const currentLock   =  toGCPData.LOCK ;
+            const hasRight      =  currentLock === this.lockName ;
+            if (isStrictFalse(hasRight)) { return 'ReleaseLockOfGS Error: 当前锁状态出错，并不是正在处理轮的锁，出现系统错误' }
+
+            const MAX_Attempts  = 5 ;
+            let   attempt       = 1  ;
+            while (attempt <= MAX_Attempts) {
+                try {
+                    await UpdateGS(this.sheets, this.spreadsheetID, toGCPData.lockRange, [[noLOCK]]);
+                    await Sleep(300) ;
+                    // 验证是否真正安全归还
+                    const lockNameAfterAttempt = await this.CheckLockFromGS() ;
+                    if (lockNameAfterAttempt === noLOCK) {return true}
+                    // 如果锁被别人抢走也是对的
+                    if (lockNameAfterAttempt !== this.lockName) {return true}
+
+
+                } catch(e) {
+                    // do nothing, continue to try release
+                }
+                attempt += 1 ;
+                await Sleep(1000) ;
+            }
+
+            return 'ReleaseLockOfGS Error: 解锁出错，出现系统错误' ;
+        } ,
+
+        /**
+         * 获取GS数据
          * @returns  正确的返回结果: [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA]
          * @returns  String: 返回已知的错误类型
          */
@@ -216,93 +313,6 @@ export async function HandleTV(raw_tvData) {
             const tradeHistoryTitleA    = CleanArrayToNumStrBool(valuesArray[3][0])  ;
 
             return [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA] ;
-        } ,
-
-        /**
-         * 设置this.lockName, 依据TV数据的时间戳
-         * @param {Number} tv_timestamp 
-         * @returns 无返回值, 默认不会出错, 因为这个函数运行的前提是调用它的函数前面不会出错. 
-         */
-        Set_lockName(tv_timestamp) { 
-            this.lockName = 'T' + String(tv_timestamp) ;
-        } ,
-
-        /**
-         * 检测当前GS中分布式锁的真实归属, 检测是否与输入参数相同
-         * @async
-         * @param {String} lockRange 
-         * @param {string} lockName   String: 期望判定的锁持有人名称, 如 "T1779239400694"
-         * @returns {Promise<boolean>} true:  若当前锁的主人与传入的 lockName 一致则返回 true
-         * @returns {Promise<String>} String: 当前的lockName
-         */
-        async CheckLockFromGS(lockRange, lockName) {
-            const _currentLOCK = await GetGS(this.sheets, this.spreadsheetID, lockRange);
-            const currentLOCK = _currentLOCK?.[0]?.[0];
-            return currentLOCK === lockName ? true : currentLOCK;
-        } ,
-
-        /**
-         * 分布式碰撞抢锁：抢占排他性写锁，带高频自旋重试机制
-         * @async
-         * @param {String} lockRange 
-         * @param {number} [noNeedAfterTime=30000]      
-         * @returns {boolean} true : 抢锁成功返回
-         * @returns {boolean} false: 抢锁失败返回
-         * @returns {String} String: 失败或超时熔断返回 
-         */
-        async SetLockToGS(lockRange, tv_timestamp, noNeedAfterTime = 30000) {
-            if (!isStrictString(this.lockName) || this.lockName === noLOCK || !this.lockName.startsWith("T") ) {return 'SetLockToGS Error: 逻辑错误'}
-
-            let attempts = 1;
-            while (attempts <= noNeedAfterTime) {
-                let weWon = false ;
-                weWon = await this.CheckLockFromGS(lockRange, this.lockName);
-                if (isStrictTrue(weWon)) { return true }
-                // 如果回读发现不是我，说明在刚才的毫秒真空期里，有人比我先一步落盘了！
-                // 抢锁失败，进入下一次自旋等待。
-
-                // 先检查是不是处于无锁状态
-                const isFree = await this.CheckLockFromGS(lockRange, noLOCK);
-                if (isStrictTrue(isFree) ) {
-                    // 临门一脚一枪流写入：尝试用写操作强行占领
-                    await UpdateGS(this.sheets, this.spreadsheetID, lockRange, [[this.lockName]]) ;
-                    //  终极二次原子验证（Double-Check）：写入后立刻回读！
-                    // 只有回读出来的持有人确实是我，才代表我在多实例的盲盒碰撞中真正赢得了这场争夺战！
-                }
-                if (isStrictString(isFree)) {
-                    // 动用正则 \d+ 抓取连续的数字小分队
-                    const matchResult = isFree.match(/\d+/);
-                    // 确权拦截：防止 match 踏空吐出 null 导致 TypeError 砸盘
-                    const cleanNumStr = matchResult ? matchResult[0] : '';
-                    // 物理感化：如果后续要拿它去和数字比大小（比如行号对账），强行装箱成 Number
-                    const realNumber = Number(cleanNumStr);
-                    if (realNumber < tv_timestamp) {attempts = noNeedAfterTime + 1}
-                }
-
-                attempts += 1;
-                // 自旋平滑器：等待 1000ms 再次尝试
-                await new Promise(res => setTimeout(res, 1000));
-            }
-
-            // 达到 30 次（约 30 秒）仍未抢到锁，执行防御性熔断，宣布失败
-            return 'SetLockToGS Error: LOCK被占用, 或未知错误';
-        } ,
-
-        /**
-         * 释放分布式排他锁
-         * @async
-         * @param {String} lockRange 
-         * @returns {Promise<boolean>} true:   解锁成功返回
-         * @returns {Promise<boolean>} false:  解锁失败
-         * @returns                    String: 明确的出错信息
-         */
-        async ReleaseLockOfGS(lockRange) {
-            // 确权拦截：先看自己现在还有没有解锁的权力（防止自己超时被别人强刷后，误把别人的锁给解了）
-            const hasRight = await this.CheckLockFromGS(lockRange, this.lockName);
-            if (!isStrictTrue(hasRight)) { return 'ReleaseLockOfGS Error: 当前锁状态出错，并不是正在处理轮的锁，出现系统错误' }
-            await UpdateGS(this.sheets, this.spreadsheetID, lockRange, [[noLOCK]]);
-            // 验证是否真正安全归还
-            return isStrictTrue(await this.CheckLockFromGS(lockRange, noLOCK)) ;
         } ,
 
         /**
@@ -955,35 +965,26 @@ export async function HandleTV(raw_tvData) {
             if (isStrictString(r_Set_spreadsheetID)) {throw new Error(r_Set_spreadsheetID)}
             console.log('tvBot: ' + 'Set_spreadsheetID() end') ;
 
-            let toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA ;
-            let r_Get_gsData = await this.Get_gsData()  ;
-            if (Array.isArray(r_Get_gsData)) {
-                [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA] = r_Get_gsData ;
-            } else {throw new Error(r_Get_gsData)}
-            console.log('tvBot: ' + 'Get_gsData() end') ;
-
-
             this.Set_lockName(tvData.timestamp)  ;
             console.log('tvBot: ' + 'Set_lockName() end') ;
 
-            const r_SetLockToGS = await this.SetLockToGS(toGCPData.lockRange, tvData.timestamp, 30) ;
+            const r_SetLockToGS = await this.SetLockToGS(tvData.timestamp, 30) ;
             if (isStrictString(r_SetLockToGS)) {throw new Error(r_SetLockToGS.trim())}
             console.log('tvBot: ' + 'SetLockToGS() end') ;
-
-            r_Get_gsData = await this.Get_gsData()  ;
-            if (Array.isArray(r_Get_gsData)) {
-                [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA] = r_Get_gsData ;
-            } else {throw new Error(r_Get_gsData)}
-            console.log('tvBot: ' + 'after get Lock Get_gsData() end') ;
-
-            if (mainData.timestamp > tvData.timestamp) {
-                console.log('tvBot: ' + 'after get Lock Get_gsData() error, time passed') ;
-                return ;
-            }
-
             // 当获得lock后就可以不主动抛出错误了
             // 因为拿到了lock就可以往GS写入数据了
             // 可以将错误信息 写入 runningWellSet
+
+
+            let toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA ;
+            const r_Get_gsData = await this.Get_gsData()  ;
+            if (Array.isArray(r_Get_gsData)) {
+                [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA] = r_Get_gsData ;
+            } else {throw new Error(r_Get_gsData)}
+            if (!isStrictTrue(mainData.runningWell)) {this.AddAlertMessage(this.runningWellSet, "Passed runningWell error: " + mainData.runningWell) }
+            console.log('tvBot: ' + 'Get_gsData() end') 
+
+            if (mainData.timestamp > tvData.timestamp) { throw new Error('tvBot Error: after Get_gsData() time passed tvData.timestamp') }
 
             // 检查是否已经初始化，如果没有初始化的话则去初始化
             if (this.isRunningWell() ) {
@@ -1067,8 +1068,20 @@ export async function HandleTV(raw_tvData) {
             await Promise.allSettled([task_SendToTG, task_SendtoEmail]);
             console.log('tvBot: ' + 'SendToTG() and SendToEmail() end') ;
 
-            await this.ReleaseLockOfGS(toGCPData.lockRange) ;
-            console.log('tvBot: ' + 'ReleaseLockOfGS() end') ;
+            const r_ReleaseLockOfGS = await this.ReleaseLockOfGS() ;
+            if (isStrictTrue(r_ReleaseLockOfGS)) {
+                console.log('tvBot: ' + 'ReleaseLockOfGS() success') ;
+            } else {
+                // 锁释放失败, 尝试将失败信息写入GS
+                this.runningWell =  isStrictString(r_ReleaseLockOfGS)                                       ?
+                                    AddMessage(this.runningWell, r_ReleaseLockOfGS.trim())                  :
+                                    AddMessage(this.runningWell, 'ReleaseLockOfGS Error: Unknown reason')       ;
+                await ClearGS(this.sheets, this.spreadsheetID, toGCPData.toWriteMainRange) ;
+                await Sleep(300) ;
+                await UpdateGS(this.sheets, this.spreadsheetID, toGCPData.toWriteMainRange, ObjToA2dNumBoolStr(this)) ;
+
+            }
+
 
         }
     }   ;
