@@ -209,7 +209,6 @@ export async function HandleTV(raw_tvData) {
         async SetLockToGS(tv_timestamp, cantSetAfter = 30000) {
             if (!isStrictString(this.lockName) || !this.lockName.startsWith('T')) {return 'SetLockToGS Error: this.lockName 未设置或设置错误'}
             if (!isStrictNumber(tv_timestamp)  || !isStrictNumber(cantSetAfter) ) {return 'SetLockToGS Error: input @param 错误'}
-            // 但是 这里做了格式检查
 
             while (Date.now() < tv_timestamp + cantSetAfter) {
                 const toGCPData     = await this.Get_toGCPData() ;
@@ -230,10 +229,9 @@ export async function HandleTV(raw_tvData) {
 
                 }
                 await Sleep(1000) ;
-            } // 为什么 这个 while 永远不会 运行 ？？？
+            } 
 
-            return 'SetLockToGS Error: 已错过抢锁时机, ' + 'Date.now(): ' + String(Date.now())  + ' tv_timestamp: ' + String(tv_timestamp);
-            // 运行到这里的时候，我检查了 Date.now() < tv_timestamp + cantSetAfter 成立
+            return 'SetLockToGS Error: 已过抢锁时间' ;
         } ,
 
         /**
@@ -643,6 +641,28 @@ export async function HandleTV(raw_tvData) {
             this.rcd_fund   =  ToStrictNumber(this.rcd_fund, this.allFund)  ;
             this.rcd_coin   =  ToStrictNumber(this.rcd_coin, this.allCoin)  ;
 
+            if (isStrictString(this.lstRcdTouchHghTime)) {
+                this.markTouchTargetHgh = false                 ;
+                this.lstRcdTouchHghTime = this.lstTouchHghTime  ;
+                this.lstRcdTargetHgh    = this.lstTargetHgh     ;
+            }
+            if (isStrictNumber(this.lstRcdTouchHghTime) && this.lstRcdTouchHghTime < this.lstTouchHghTime) {
+                this.markTouchTargetHgh = true                  ;
+                this.lstRcdTouchHghTime = this.lstTouchHghTime  ;
+                this.lstRcdTargetHgh    = this.lstTargetHgh     ;
+            }
+            if (isStrictString(this.lstRcdTouchLowTime)) {
+                this.markTouchTargetLow = false                 ;
+                this.lstRcdTouchLowTime = this.lstTouchLowTime  ;
+                this.lstRcdTargetLow    = this.lstTargetLow     ;
+            }
+            if (isStrictNumber(this.lstRcdTouchLowTime) && this.lstRcdTouchLowTime < this.lstTouchLowTime) {
+                this.markTouchTargetLow = true                  ;
+                this.lstRcdTouchLowTime = this.lstTouchLowTime  ;
+                this.lstRcdTargetLow    = this.lstTargetLow     ;
+            }
+
+
             [this.liquidatePrice, this.stopPriceC, this.stopPriceF] = this.GetLiquidateStopPrice();
             this.liquidatePrice    =  isStrictTrue(this.therePosition)  ?  this.liquidatePrice  :  NA  ;
             this.stopPriceC        =  isStrictTrue(this.therePosition)  ?  this.stopPriceC      :  NA  ;
@@ -789,9 +809,10 @@ export async function HandleTV(raw_tvData) {
             const idx_qty           = uncloseOrdersTitleA.indexOf('qty'             ) ;
 
             // touch targetHgh
-            if ( (this.TradingSymbolPrice > (1+this.waveUpChg) * this.lowBuyPriceUnclose)  &&  this.touchTargetHgh  ) {
+            if ( (this.TradingSymbolPrice > (1+this.waveUpChg) * this.lowBuyPriceUnclose)  &&  this.markTouchTargetHgh ) {
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.lowBuySerialUnclose));
+                S.ing_orderPrice = this.lstRcdTargetHgh ;
                 S.ing_reason = 'touchTargetHgh';
             }
             // mustSellProfitStep
@@ -835,7 +856,7 @@ export async function HandleTV(raw_tvData) {
                 S.ing_buysell           =  order_SELL                                               ;
                 S.ing_triggerPrice      =  this.TradingSymbolPrice                                  ;
                 S.ing_orderType         =  order_T_LMT                                              ;
-                S.ing_orderPrice        =  S.ing_triggerPrice                                       ;
+                S.ing_orderPrice        =  S.ing_orderPrice || S.ing_triggerPrice                   ;
                 S.ing_boughtPrice       =  toSellOrderA[idx_confirmPrice]                           ;
                 S.ing_qty               =  -1 * toSellOrderA[idx_qty]                               ;
                 S.ing_orderStatus       =  order_pending                                            ;
@@ -873,7 +894,11 @@ export async function HandleTV(raw_tvData) {
             let toBuy = false ;
             const S = {};
 
-            if (isStrictTrue(this.touchTargetLow)) {toBuy = true}
+            if (isStrictTrue(this.markTouchTargetLow)) {
+                toBuy = true ;
+                S.ing_orderPrice = this.lstRcdTargetLow ;
+                S.ing_reason = 'touchTargetLow' ;
+            }
 
             // 目前对于买入信号的判断, 只有一个判断: touchTargetLow
 
@@ -887,9 +912,8 @@ export async function HandleTV(raw_tvData) {
                 S.ing_buysell           =  order_BUY                                                                                                                                                    ;
                 S.ing_triggerPrice      =  this.TradingSymbolPrice                                                                                                                                      ;
                 S.ing_orderType         =  order_T_LMT                                                                                                                                                  ;
-                S.ing_orderPrice        =  S.ing_triggerPrice                                                                                                                                           ;
-                S.ing_qty               =  this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin*this.leverage/this.TradingSymbolPrice/this.minEnExPosition/(this.MaxGrid - this.gridNum)) )    ;
-                S.ing_reason            =  BuyReason_belowTarget                                                                                                                                        ;
+                S.ing_orderPrice        =  S.ing_orderPrice || S.ing_triggerPrice                                                                                                                       ;
+                S.ing_qty               =  this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin*this.leverage/this.ing_orderPrice/this.minEnExPosition/(this.MaxGrid - this.gridNum)) )        ;
                 S.ing_orderStatus       =  order_pending                                                                                                                                                ;
 
                 const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
@@ -940,7 +964,7 @@ export async function HandleTV(raw_tvData) {
             const TG_TOKEN = process.env.TG_TOKEN;
             const TG_CHAT_ID = process.env.TG_CHAT_ID;
 
-            const subject = this.botNumber + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime) ;
+            const subject = this.botNumber + '_' + + GetTimeStringWithOffset(8, this.timestamp) + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime) ;
 
             await SendSplitTGMessages(TG_TOKEN, TG_CHAT_ID, subject, messageString) ;
         } ,
@@ -951,7 +975,7 @@ export async function HandleTV(raw_tvData) {
         async SendToEmail(toEmailRange) {
             const rawMessagesA2d = (await GetGS(this.sheets, this.spreadsheetID, toEmailRange, 'read')).map(v => CleanArrayToNumStrBool(v)) ;
             const messageHTML    =  ConvertRowsToHtmlTable(rawMessagesA2d) ;
-            const mail_subject   = this.botNumber + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime) ;
+            const mail_subject   = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime) ;
             await SendEmail(mail_subject, messageHTML) ;
         } ,
 
