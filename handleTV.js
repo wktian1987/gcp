@@ -390,8 +390,8 @@ export async function HandleTV(raw_tvData) {
 
             let toCheckFundFee = false;
             if ( isStrictNumber(mainData.lstFundTime) ) {
-                const lstRound  = Math.floor(mainData.lstFundTime / 28800000); // 8 * 60 * 60 * 1000
-                const thisRound = Math.floor(mainData.timestamp   / 28800000);
+                const lstRound  = Math.floor(tvData.lstFundTime / 28800000); // 8 * 60 * 60 * 1000
+                const thisRound = Math.floor(tvData.timestamp   / 28800000);
                 toCheckFundFee  = lstRound === thisRound ? false : true;
             } else {toCheckFundFee = true}
 
@@ -408,7 +408,7 @@ export async function HandleTV(raw_tvData) {
 
             const returnS = await CheckFundFee(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
 
-            const newFundHistoryA = tradeHistoryTitleA.map(v => {returnS['fund_'+v] || NA})
+            const newFundHistoryA = tradeHistoryTitleA.map(v => returnS['fund_'+v] || NA)
 
             await AppendGS(this.sheets, this.spreadsheetID, tradeHistoryRange, [newFundHistoryA]) ;
 
@@ -454,7 +454,7 @@ export async function HandleTV(raw_tvData) {
                 (res_broker.ing_orderStatus === order_cancel  && res_broker.ing_partial > 0 )   )   {
 
                 if (ingOrderData.ing_buysell === order_BUY) {
-                    const newUncloseOrderLine = uncloseOrdersTitleA.map(v => {res_broker['ing_'+v] || NA}) ;
+                    const newUncloseOrderLine = uncloseOrdersTitleA.map(v => res_broker['ing_'+v] || NA) ;
                     uncloseOrdersA2d.push(newUncloseOrderLine) ;
                 }
                 if (ingOrderData.ing_buysell === order_SELL) {
@@ -465,7 +465,7 @@ export async function HandleTV(raw_tvData) {
                 w_toClearRangeSet.add(toGCPData.ingOrderLine) ;
                 w_toClearRangeSet.add(toGCPData.uncloseOrdersRange) ;
 
-                const newTradeHistoryA = tradeHistoryTitleA.map(v => {res_broker['ing_'+v] || NA}) ;
+                const newTradeHistoryA = tradeHistoryTitleA.map(v => res_broker['ing_'+v] || NA) ;
                 w_toAppendTradeHistory.toAppend = true                          ;
                 w_toAppendTradeHistory.range    = toGCPData.tradeHistoryRange   ;
                 w_toAppendTradeHistory.values   = [newTradeHistoryA]            ;
@@ -866,7 +866,7 @@ export async function HandleTV(raw_tvData) {
                 const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
                 // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
 
-                const new_ingOrderLineA = ingOrderTitleA.map(v => {returnS[v] || NA}) ;
+                const new_ingOrderLineA = ingOrderTitleA.map(v => returnS[v] || NA) ;
 
                 this.toUpdateRangeList.push({
                     range   : ingOrderLine          ,
@@ -921,7 +921,7 @@ export async function HandleTV(raw_tvData) {
                 const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
                 // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
 
-                const new_ingOrderLineA = ingOrderTitleA.map(v => {returnS[v] || NA}) ;
+                const new_ingOrderLineA = ingOrderTitleA.map(v => returnS[v] || NA) ;
 
                 this.toUpdateRangeList.push({
                     range   : ingOrderLine          ,
@@ -966,7 +966,7 @@ export async function HandleTV(raw_tvData) {
             const TG_TOKEN = process.env.TG_TOKEN;
             const TG_CHAT_ID = process.env.TG_CHAT_ID;
 
-            const subject = this.botNumber + '_' + + GetTimeStringWithOffset(8, this.timestamp) + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime) ;
+            const subject = this.botNumber + '_' + + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime) ;
 
             await SendSplitTGMessages(TG_TOKEN, TG_CHAT_ID, subject, messageString) ;
         } ,
@@ -977,7 +977,7 @@ export async function HandleTV(raw_tvData) {
         async SendToEmail(toEmailRange) {
             const rawMessagesA2d = (await GetGS(this.sheets, this.spreadsheetID, toEmailRange, 'read')).map(v => CleanArrayToNumStrBool(v)) ;
             const messageHTML    =  ConvertRowsToHtmlTable(rawMessagesA2d) ;
-            const mail_subject   = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime) ;
+            const mail_subject   = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime) ;
             await SendEmail(mail_subject, messageHTML) ;
         } ,
 
