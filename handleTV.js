@@ -211,6 +211,7 @@ export async function HandleTV(raw_tvData) {
          */
         async SetLockToGS(tv_timestamp, cantSetAfter = 30000) {
             if (!isStrictString(this.lockName) || !this.lockName.startsWith('T')) {return 'SetLockToGS Error: this.lockName 未设置或设置错误'}
+            if (!isStrictNumber(tv_timestamp)  || !isStrictNumber(cantSetAfter) ) {return 'SetLockToGS Error: input @param 错误'}
 
             while (Date.now() < tv_timestamp + cantSetAfter) {
                 const toGCPData     = await this.Get_toGCPData() ;
@@ -232,7 +233,7 @@ export async function HandleTV(raw_tvData) {
                 await Sleep(1000) ;
             }
 
-            return 'SetLockToGS Error: 已错过抢锁时机' ;
+            return 'SetLockToGS Error: 已错过抢锁时机, ' + 'Date.now(): ' + String(Date.now())  + 'tv_timestamp: ' + String(tv_timestamp);
         } ,
 
         /**
