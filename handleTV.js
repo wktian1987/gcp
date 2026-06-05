@@ -401,7 +401,7 @@ const D = {
 
         await AppendGS(this.sheets, this.spreadsheetID, tradeHistoryRange, [newFundHistoryA]) ;
 
-        this.AddAlertMessage(this.alertMessageSet, "New fund fee: " + String(returnS.fund_fundFee)) ;
+        this.AddAlertMessage(this.alertMessageSet, 'test ' + String(this.lockName) + "New fund fee: " + String(returnS.fund_fundFee)) ;
 
         return true ;
 
