@@ -297,9 +297,9 @@ export async function HandleTV(raw_tvData) {
             const raw_mainData  = valuesArray[0];
             if (!Array.isArray(raw_mainData) || !Array.isArray(raw_mainData[0]) ) {return 'Get_gsData Error: didnt get available data, 1'}
             const mainData  = CleanObjToNumBoolStr(A2dToObj(raw_mainData), 'notAvailableValue') ;
-            if (    !Object.hasOwn(mainData, 'dataSource')  ||
-                    !isStrictString(mainData.dataSource)    ||
-                    mainData.dataSource !== 'GoogleSheets'  )   { 
+            if (    !Object.hasOwn(mainData, 'LOCK')    ||
+                    !isStrictString(mainData.LOCK)      ||
+                    mainData.LOCK !== this.lockName     )   { 
                 return 'Get_gsData Error: didnt get available data, 2' ;
             }
 
@@ -986,7 +986,8 @@ export async function HandleTV(raw_tvData) {
             if (!isStrictTrue(mainData.runningWell)) {this.AddAlertMessage(this.runningWellSet, "Passed runningWell error: " + mainData.runningWell) }
             console.log('tvBot: ' + 'Get_gsData() end') 
 
-            if (mainData.timestamp > tvData.timestamp) { throw new Error('tvBot Error: after Get_gsData() time passed tvData.timestamp') }
+            if (mainData.timestamp > tvData.timestamp) { throw new Error('tvBot Error: after Get_gsData(), time passed tvData.timestamp') }
+            if (mainData.TradingSymbol !== tvData.TradingSymbol) {throw new Error('tvBot Error: after Get_gsData(), mainData.TradingSymbol !== tvData.TradingSymbol')}
 
             // 检查是否已经初始化，如果没有初始化的话则去初始化
             if (this.isRunningWell() ) {
@@ -1088,12 +1089,8 @@ export async function HandleTV(raw_tvData) {
         }
     }   ;
 
-    try {
-        await D.Start(raw_tvData) ;
-    } catch(e) {
-        if (isStrictTrue(D.getLOCK)) {await D.ReleaseLockOfGS()}
-        throw e ;
-    }
+    await D.Start(raw_tvData) ;
+
 }
 
 
