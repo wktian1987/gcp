@@ -212,6 +212,7 @@ export async function HandleTV(raw_tvData) {
         async SetLockToGS(tv_timestamp, cantSetAfter = 30000) {
             if (!isStrictString(this.lockName) || !this.lockName.startsWith('T')) {return 'SetLockToGS Error: this.lockName 未设置或设置错误'}
             if (!isStrictNumber(tv_timestamp)  || !isStrictNumber(cantSetAfter) ) {return 'SetLockToGS Error: input @param 错误'}
+            // 但是 这里做了格式检查
 
             while (Date.now() < tv_timestamp + cantSetAfter) {
                 const toGCPData     = await this.Get_toGCPData() ;
@@ -231,9 +232,10 @@ export async function HandleTV(raw_tvData) {
 
                 }
                 await Sleep(1000) ;
-            }
+            } // 为什么 这个 while 永远不会 运行 ？？？
 
-            return 'SetLockToGS Error: 已错过抢锁时机, ' + 'Date.now(): ' + String(Date.now())  + 'tv_timestamp: ' + String(tv_timestamp);
+            return 'SetLockToGS Error: 已错过抢锁时机, ' + 'Date.now(): ' + String(Date.now())  + ' tv_timestamp: ' + String(tv_timestamp);
+            // 运行到这里的时候，我检查了 Date.now() < tv_timestamp + cantSetAfter 成立
         } ,
 
         /**
@@ -969,7 +971,7 @@ export async function HandleTV(raw_tvData) {
             this.Set_lockName(tvData.timestamp)  ;
             console.log('tvBot: ' + 'Set_lockName() end') ;
 
-            const r_SetLockToGS = await this.SetLockToGS(tvData.timestamp, 30) ;
+            const r_SetLockToGS = await this.SetLockToGS(tvData.timestamp, 30000) ;
             if (isStrictString(r_SetLockToGS)) {throw new Error(r_SetLockToGS.trim())}
             console.log('tvBot: ' + 'SetLockToGS() end') ;
             // 当获得lock后就可以不主动抛出错误了
