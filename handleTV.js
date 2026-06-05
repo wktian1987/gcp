@@ -935,9 +935,9 @@ export async function HandleTV(raw_tvData) {
 
         /**
          * 将this大对象中的数据写入GS
-         * @returns true表示写入成功，false表示写入失败
+         * @returns true表示写入成功
          */
-        async WriteToGS(toWriteMainRange, mainRange) {
+        async WriteToGS(toGCPData) {
             await BatchClearGS(this.sheets, this.spreadsheetID, Array.from(this.toClearRangeSet));
 
             if (this.runningWellSet .size === 0 ) { this.runningWell  = true } 
@@ -946,9 +946,25 @@ export async function HandleTV(raw_tvData) {
 
             this.gcpWriteTime = Date.now();
 
+            if (isStrictTrue(this.toWriteHghLow)) {
+                const newHghLowV    = [ [this.initiated   ]    ,
+                                        [this.initiateTime]    ,
+                                        [this.initialFund ]    ,
+                                        [this.hghestFund  ]    ,
+                                        [this.lowestFund  ]    ,
+                                        [this.initialCoin ]    ,
+                                        [this.hghestCoin  ]    ,
+                                        [this.lowestCoin  ]    ]   ;
+
+                this.toUpdateRangeList.push(  {
+                    range   : toGCPData.HghLowRange     ,
+                    values  : newHghLowV                } ) ;
+            }
+
             this.toUpdateRangeList.push(    {
-                range   : toWriteMainRange          ,
-                values  : ObjToA2dNumBoolStr(this)  }  )  ;
+                range   : toGCPData.toWriteMainRange    ,
+                values  : ObjToA2dNumBoolStr(this)      }  )  ;
+
             await BatchClearUpdateGS(this.sheets, this.spreadsheetID, this.toUpdateRangeList);
 
             return true ;
