@@ -403,7 +403,7 @@ export async function HandleTV(raw_tvData) {
 
             await AppendGS(this.sheets, this.spreadsheetID, tradeHistoryRange, [newFundHistoryA]) ;
 
-            this.AddAlertMessage(this.alertMessageSet, 'test ' + String(this.lockName) + "New fund fee: " + String(returnS.fund_fundFee)) ;
+            this.AddAlertMessage(this.alertMessageSet, "New fund fee: " + String(returnS.fund_fundFee)) ;
 
             return true ;
 
@@ -748,6 +748,9 @@ export async function HandleTV(raw_tvData) {
 
             this.AddAlertMessage(this.alertMessageSet, this.cantBuyReason ) ;
             this.AddAlertMessage(this.alertMessageSet, this.cantSellReason) ;
+
+            delete this.cantBuyReason   ;
+            delete this.cantSellReason  ;
         } ,
 
         /**
@@ -838,7 +841,7 @@ export async function HandleTV(raw_tvData) {
                 this.AddAlertMessage(this.alertMessageSet, "New sell order, waiting confirmed")  ;
                 
                 this.canBuy            =   false ;
-                this.cantBuyReason     =   AddMessage(this.cantBuyReason, 'cant buy: '  + 'just a new sellOrder sent' )    ;
+                this.AddAlertMessage(this.alertMessageSet, 'cant buy: just a new sellOrder sent') ;
 
                 return true ;
             }
@@ -926,7 +929,7 @@ export async function HandleTV(raw_tvData) {
             const TG_TOKEN = process.env.TG_TOKEN;
             const TG_CHAT_ID = process.env.TG_CHAT_ID;
 
-            const subject = this.botNumber + '_' + this.TradingSymbol + '_' + String(this.realTradeTime) ;;
+            const subject = this.botNumber + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime) ;
 
             await SendSplitTGMessages(TG_TOKEN, TG_CHAT_ID, subject, messageString) ;
         } ,
@@ -937,7 +940,7 @@ export async function HandleTV(raw_tvData) {
         async SendToEmail(toEmailRange) {
             const rawMessagesA2d = (await GetGS(this.sheets, this.spreadsheetID, toEmailRange, 'read')).map(v => CleanArrayToNumStrBool(v)) ;
             const messageHTML    =  ConvertRowsToHtmlTable(rawMessagesA2d) ;
-            const mail_subject   = this.botNumber + '_' + this.TradingSymbol + '_' + String(this.realTradeTime) ;
+            const mail_subject   = this.botNumber + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime) ;
             await SendEmail(mail_subject, messageHTML) ;
         } ,
 
@@ -1069,8 +1072,6 @@ export async function HandleTV(raw_tvData) {
 
         }
     }   ;
-
-
 
     await D.Start(raw_tvData) ;
 }
