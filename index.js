@@ -39,7 +39,7 @@ app.post('/tradingview', json(), async (req, res) => {
     console.log("✔ 收到/tradingview连接");
     const { body } = req;
     if (body.fromTVcheck === process.env.fromTVcheck) {
-        console.log("✔ 收到TradingView webhook Message");
+        console.log("✔ 收到TradingView webhook Message, botNumber: " + body.botNumber);
         res.status(200).json({ status: 'success' });
     } else {
         console.log("？ 收到未校验的TradingView Webhook Message:" ); 
