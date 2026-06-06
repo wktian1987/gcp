@@ -331,14 +331,16 @@ export async function HandleTV(raw_tvData) {
             // 系统处于未初始化状态
             const iD = {} ;
 
-            iD.initiated        =   true                                                        ;
-            iD.initiateTime     =   tvData.timestamp                                            ;
-            iD.initialFund      =   mainData.inFund + mainData.inCoin * tvData.BaseCoinPrice    ;
-            iD.hghestFund       =   iD.initialFund                                              ;
-            iD.lowestFund       =   iD.initialFund                                              ;
-            iD.initialCoin      =   iD.initialFund / tvData.BaseCoinPrice                       ;
-            iD.hghestCoin       =   iD.initialCoin                                              ;
-            iD.lowestCoin       =   iD.initialCoin                                              ;
+            iD.initiated            =   true                                                        ;
+            iD.initiateTime         =   tvData.timestamp                                            ;
+            iD.inTradingSymbolPrice =   tvData.TradingSymbolPrice                                   ;
+            iD.inBaseCoinPrice      =   tvData.BaseCoinPrice                                        ;
+            iD.initialFund          =   mainData.inFund + mainData.inCoin * tvData.BaseCoinPrice    ;
+            iD.hghestFund           =   iD.initialFund                                              ;
+            iD.lowestFund           =   iD.initialFund                                              ;
+            iD.initialCoin          =   iD.initialFund / tvData.BaseCoinPrice                       ;
+            iD.hghestCoin           =   iD.initialCoin                                              ;
+            iD.lowestCoin           =   iD.initialCoin                                              ;
 
             const i_toClearRangeSet     =  new Set()    ;
             const i_toUpdateRangeList   =  []           ;
@@ -350,14 +352,16 @@ export async function HandleTV(raw_tvData) {
             i_toClearRangeSet.add( toGCPData.BrokerRange        )  ;
             i_toClearRangeSet.add( toGCPData.toWriteMainRange   )  ;
 
-            const newHghLowV    = [ [iD.initiated   ]    ,
-                                    [iD.initiateTime]    ,
-                                    [iD.initialFund ]    ,
-                                    [iD.hghestFund  ]    ,
-                                    [iD.lowestFund  ]    ,
-                                    [iD.initialCoin ]    ,
-                                    [iD.hghestCoin  ]    ,
-                                    [iD.lowestCoin  ]    ]   ;
+            const newHghLowV    = [ [iD.initiated           ]    ,
+                                    [iD.initiateTime        ]    ,
+                                    [iD.inTradingSymbolPrice]    ,
+                                    [iD.inBaseCoinPrice     ]    ,
+                                    [iD.initialFund         ]    ,
+                                    [iD.hghestFund          ]    ,
+                                    [iD.lowestFund          ]    ,
+                                    [iD.initialCoin         ]    ,
+                                    [iD.hghestCoin          ]    ,
+                                    [iD.lowestCoin          ]    ]   ;
 
             i_toUpdateRangeList.push(    {
                 range   : toGCPData.HghLowRange     ,
@@ -947,14 +951,16 @@ export async function HandleTV(raw_tvData) {
             this.gcpWriteTime = Date.now();
 
             if (isStrictTrue(this.toWriteHghLow)) {
-                const newHghLowV    = [ [this.initiated   ]    ,
-                                        [this.initiateTime]    ,
-                                        [this.initialFund ]    ,
-                                        [this.hghestFund  ]    ,
-                                        [this.lowestFund  ]    ,
-                                        [this.initialCoin ]    ,
-                                        [this.hghestCoin  ]    ,
-                                        [this.lowestCoin  ]    ]   ;
+                const newHghLowV    = [ [this.initiated             ]    ,
+                                        [this.initiateTime          ]    ,
+                                        [this.inTradingSymbolPrice  ]    ,
+                                        [this.inBaseCoinPrice       ]    ,
+                                        [this.initialFund           ]    ,
+                                        [this.hghestFund            ]    ,
+                                        [this.lowestFund            ]    ,
+                                        [this.initialCoin           ]    ,
+                                        [this.hghestCoin            ]    ,
+                                        [this.lowestCoin            ]    ]   ;
 
                 this.toUpdateRangeList.push(  {
                     range   : toGCPData.HghLowRange     ,

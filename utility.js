@@ -5,6 +5,9 @@ export function isStrictFalse   (val) { return isStrictBoolean(val) && !val     
 export function isStrictString  (val) { return typeof val === "string" && val.trim() !== ""             }
 export function isStrictSet     (val) { return Object.prototype.toString.call(val) === '[object Set]'   }
 
+/**
+ * 只有number boolean string 类型会返回true
+ */
 export function isStrictNumBoolStr(val) {
     if (isStrictTrue(isStrictNumber (val))) {return true}
     if (isStrictTrue(isStrictBoolean(val))) {return true}
@@ -13,28 +16,51 @@ export function isStrictNumBoolStr(val) {
 }
 
 export function isPlainObject(val) {
-    if (typeof val !== 'object' || val === null) return false;
+    if (typeof val !== 'object' || val === null) {return false}
     const proto = Object.getPrototypeOf(val);
-    // 支持 Object.create(null) 创建的纯干净对象，或者原型直指 Object 的对象
     return proto === null || proto === Object.prototype;
 }
 
 /**
- * 将新的信息行添加到旧信息后面 
- * @param {string} theOld 
+ * 👑 工业级高阶万能字符串确权器（完全体）
+ * 100% 免疫任何反人类崩溃，绝不吐出 [object Object]，保留对象与数组的真实业务肉身
+ */
+export function ToStrictString(val, notAvailableValueTo) {
+    const notAvailableValue = isStrictString(notAvailableValueTo) ? notAvailableValueTo.trim() : 'notAvailableValue';
+
+    // 🛡️ 1. 前置安全确权：null 和 undefined 直接原位安全串化，免去后续探测开销
+    if (val === null) return 'null';
+    if (val === undefined) return 'undefined';
+
+    try {
+        // 🌟 核心增益：如果是一个对象（不管是普通对象还是数组矩阵）
+        // 绝对不要用无情的 String()，而是用 JSON.stringify 完美锁死、保留它的数据资产！
+        if (typeof val === 'object') {
+            return JSON.stringify(val);
+        }
+
+        // 🚀 剩下的原生基础类型 (number, string, boolean, 还有合法的 Symbol)
+        // 直接由最安全的显式 String() 畅通无阻地转化输出
+        return String(val);
+        
+    } catch {
+        // 🛡️ 终极防空壕：一旦遭遇循环引用、爆栈死循环、或者 Object.create(null) 孤儿对象抛错
+        // 绝不砸盘，由你亲手指定的保底占位符完成最后的荣誉兜底
+        return notAvailableValue;
+    }
+}
+
+/**
+ * 将新的信息行添加到旧信息后面 ; 
+ * 注意：本函数不会对重复信息进行处理, 也就是说如果传入重复的信息, 新的信息永远会加在旧信息后面, 这回导致重复 ; 
+ * 如果需要保证新添加的信息不会与就信息重复, 请使用Set的功能
+ * @param {string} theOld 如果输入的数据不是string类型, 则原数据将被无情抛弃
  * @param {string} theNew 
  * @returns 
  */
 export function AddMessage (theOld, theNew) {
-    const   newMessage  =   isStrictString(theNew)  ?  theNew.trim()  :  "not available new message"    ;
-    if (isStrictString(theOld)) {
-        const   oldMessage  =   theOld.trim()  ;
-        return  oldMessage.includes(newMessage)      ?
-                    oldMessage                       :
-                    oldMessage + "\n" + newMessage      ;
-    } else {
-        return  newMessage  ;
-    }
+    const   newMessage  =   isStrictString(theNew)  ?  theNew.trim()  :  ToStrictString(theNew, 'A Value that cant tranfer to string Go to AddMessage()' )  ;
+    return isStrictString(theOld) ? theOld.trim() + "\n" + newMessage : newMessage ;
 }
 
 /**
@@ -67,35 +93,6 @@ export function ToStrictNumber(val, NA0) {
     const valNumber = Number(cleanVal.replaceAll(',', ''));
     if (isStrictNumber(valNumber)) { return valNumber; }
     return NA0Val  ;
-}
-
-/**
- * 👑 工业级高阶万能字符串确权器（完全体）
- * 100% 免疫任何反人类崩溃，绝不吐出 [object Object]，保留对象与数组的真实业务肉身
- */
-export function ToStrictString(val, notAvailableValueTo) {
-    const notAvailableValue = isStrictString(notAvailableValueTo) ? notAvailableValueTo.trim() : 'notAvailableValue';
-
-    // 🛡️ 1. 前置安全确权：null 和 undefined 直接原位安全串化，免去后续探测开销
-    if (val === null) return 'null';
-    if (val === undefined) return 'undefined';
-
-    try {
-        // 🌟 核心增益：如果是一个对象（不管是普通对象还是数组矩阵）
-        // 绝对不要用无情的 String()，而是用 JSON.stringify 完美锁死、保留它的数据资产！
-        if (typeof val === 'object') {
-            return JSON.stringify(val);
-        }
-
-        // 🚀 剩下的原生基础类型 (number, string, boolean, 还有合法的 Symbol)
-        // 直接由最安全的显式 String() 畅通无阻地转化输出
-        return String(val);
-        
-    } catch {
-        // 🛡️ 终极防空壕：一旦遭遇循环引用、爆栈死循环、或者 Object.create(null) 孤儿对象抛错
-        // 绝不砸盘，由你亲手指定的保底占位符完成最后的荣誉兜底
-        return notAvailableValue;
-    }
 }
 
 export function ToStrictNumBoolStr(val, notAvailableValueTo) {
