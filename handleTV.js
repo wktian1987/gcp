@@ -954,7 +954,7 @@ export async function HandleTV(raw_tvData) {
 
             // test 
             this.testQty = 0;
-            this.testQty = this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin*this.leverage/this.ing_orderPrice/this.minEnExPosition/(this.MaxGrid - this.gridNum)) )  ;
+            this.testQty = this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin*this.leverage/this.TradingSymbolPrice/this.minEnExPosition/(this.MaxGrid - this.gridNum)) )  ;
 
 
 
