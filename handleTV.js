@@ -951,6 +951,13 @@ export async function HandleTV(raw_tvData) {
          * @returns true表示写入成功
          */
         async WriteToGS(toGCPData) {
+
+            // test 
+            this.testQty = this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin*this.leverage/this.ing_orderPrice/this.minEnExPosition/(this.MaxGrid - this.gridNum)) )  ;
+
+
+
+
             await BatchClearGS(this.sheets, this.spreadsheetID, Array.from(this.toClearRangeSet));
 
             if (this.runningWellSet .size === 0 ) { this.runningWell  = true } 
