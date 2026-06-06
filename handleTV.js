@@ -895,7 +895,14 @@ export async function HandleTV(raw_tvData) {
          * @returns false: 经判断不能买入, 没有信号发生
          */
         async ToBuy(ingOrderTitleA, ingOrderLine) {
-            if (!isStrictTrue(this.canBuy)) {return false}
+            // 重写 测试
+
+
+
+
+
+
+            // if (!isStrictTrue(this.canBuy)) {return false}
 
             let toBuy = false ;
             const S = {};
@@ -908,7 +915,9 @@ export async function HandleTV(raw_tvData) {
 
             // 目前对于买入信号的判断, 只有一个判断: touchTargetLow
 
-            if ( isStrictFalse(toBuy) ) {return false}
+            // if ( isStrictFalse(toBuy) ) {return false}
+
+            toBuy = true ; // 要删除这行
 
             if ( isStrictTrue(toBuy) ) {
                 S.ing_orderID           =  'B-' + GetTimeStringWithOffset(8, this.timestamp)                                                                                                            ;
