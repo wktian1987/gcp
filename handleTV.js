@@ -408,7 +408,7 @@ export async function HandleTV(raw_tvData) {
 
             const returnS = await CheckFundFee(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
 
-            const newFundHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(returnS['fund_'+v]) ? returnS['fund_'+v] : (returnS['fund_'+v] || NA) )
+            const newFundHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(returnS['fund_'+v]) ? returnS['fund_'+v] : (returnS['fund_'+v] || NA) ) ;
 
             await AppendGS(this.sheets, this.spreadsheetID, tradeHistoryRange, [newFundHistoryA]) ;
 
@@ -454,7 +454,7 @@ export async function HandleTV(raw_tvData) {
                 (res_broker.ing_orderStatus === order_cancel  && res_broker.ing_partial > 0 )   )   {
 
                 if (ingOrderData.ing_buysell === order_BUY) {
-                    const newUncloseOrderLine = uncloseOrdersTitleA.map(v => res_broker['ing_'+v] || NA) ;
+                    const newUncloseOrderLine = uncloseOrdersTitleA.map(v => isStrictNumber(returnS['fund_'+v]) ? returnS['fund_'+v] : (returnS['fund_'+v] || NA) ) ;
                     uncloseOrdersA2d.push(newUncloseOrderLine) ;
                 }
                 if (ingOrderData.ing_buysell === order_SELL) {
@@ -465,7 +465,7 @@ export async function HandleTV(raw_tvData) {
                 w_toClearRangeSet.add(toGCPData.ingOrderLine) ;
                 w_toClearRangeSet.add(toGCPData.uncloseOrdersRange) ;
 
-                const newTradeHistoryA = tradeHistoryTitleA.map(v => res_broker['ing_'+v] || NA) ;
+                const newTradeHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(returnS['fund_'+v]) ? returnS['fund_'+v] : (returnS['fund_'+v] || NA) ) ;
                 w_toAppendTradeHistory.toAppend = true                          ;
                 w_toAppendTradeHistory.range    = toGCPData.tradeHistoryRange   ;
                 w_toAppendTradeHistory.values   = [newTradeHistoryA]            ;
@@ -866,7 +866,7 @@ export async function HandleTV(raw_tvData) {
                 const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
                 // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
 
-                const new_ingOrderLineA = ingOrderTitleA.map(v => returnS[v] || NA) ;
+                const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(returnS['fund_'+v]) ? returnS['fund_'+v] : (returnS['fund_'+v] || NA) ) ;
 
                 this.toUpdateRangeList.push({
                     range   : ingOrderLine          ,
@@ -921,7 +921,7 @@ export async function HandleTV(raw_tvData) {
                 const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
                 // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
 
-                const new_ingOrderLineA = ingOrderTitleA.map(v => returnS[v] || NA) ;
+                const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(returnS['fund_'+v]) ? returnS['fund_'+v] : (returnS['fund_'+v] || NA) ) ;
 
                 this.toUpdateRangeList.push({
                     range   : ingOrderLine          ,
