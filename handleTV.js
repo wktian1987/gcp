@@ -408,7 +408,7 @@ export async function HandleTV(raw_tvData) {
 
             const returnS = await CheckFundFee(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
 
-            const newFundHistoryA = tradeHistoryTitleA.map(v => returnS['fund_'+v] || NA)
+            const newFundHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(returnS['fund_'+v]) ? returnS['fund_'+v] : (returnS['fund_'+v] || NA) )
 
             await AppendGS(this.sheets, this.spreadsheetID, tradeHistoryRange, [newFundHistoryA]) ;
 

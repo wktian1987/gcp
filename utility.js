@@ -172,7 +172,7 @@ export function A2LinesToObj(a2lines, notAvailableValueTo) {
 }
 
 /**
- * 标准对象转二维数组矩阵确权器
+ * 标准对象转二维数组矩阵
  * 并将字符串形式的FALSE, '12'等转换为false, 12
  */
 export function ObjToA2dNumBoolStr(obj) {
