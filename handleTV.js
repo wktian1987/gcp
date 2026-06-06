@@ -1004,23 +1004,25 @@ export async function HandleTV(raw_tvData) {
         } ,
 
         async Start(raw_tvData) {
+            const cosoleLogHead = this.botNumber ;
+
             let gcpGetTime = Date.now() ; 
 
             const tvData = this.Get_tvData(raw_tvData) ;
             if (isStrictString(tvData)) {throw new Error(tvData)}
-            console.log('tvBot: ' + 'Get_tvData() end') ;
+            console.log(cosoleLogHead + 'Get_tvData() end') ;
 
             const r_Set_spreadsheetID = await this.Set_spreadsheetID(tvData.botNumber)  ;
             if (isStrictString(r_Set_spreadsheetID)) {throw new Error(r_Set_spreadsheetID)}
-            console.log('tvBot: ' + 'Set_spreadsheetID() end') ;
+            console.log(cosoleLogHead + 'Set_spreadsheetID() end') ;
 
             this.Set_lockName(tvData.timestamp)  ;
-            console.log('tvBot: ' + 'Set_lockName() end') ;
+            console.log(cosoleLogHead + 'Set_lockName() end') ;
 
             const r_SetLockToGS = await this.SetLockToGS(tvData.timestamp, 30000) ;
             if (isStrictTrue(r_SetLockToGS)) {this.getLOCK = true}
             if (isStrictString(r_SetLockToGS)) {throw new Error(r_SetLockToGS.trim())}
-            console.log('tvBot: ' + 'SetLockToGS() end') ;
+            console.log(cosoleLogHead + 'SetLockToGS() end') ;
             // 当获得lock后就可以不主动抛出错误了
             // 因为拿到了lock就可以往GS写入数据了
             // 可以将错误信息 写入 runningWellSet
@@ -1032,7 +1034,7 @@ export async function HandleTV(raw_tvData) {
                 [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA] = r_Get_gsData ;
             } else {throw new Error(r_Get_gsData)}
             if (!isStrictTrue(mainData.runningWell)) {this.AddAlertMessage(this.runningWellSet, mainData.runningWell) }
-            console.log('tvBot: ' + 'Get_gsData() end') 
+            console.log(cosoleLogHead + 'Get_gsData() end') 
 
             if (mainData.timestamp > tvData.timestamp) { throw new Error('tvBot Error: after Get_gsData(), time passed tvData.timestamp') }
             if (mainData.TradingSymbol !== tvData.TradingSymbol) {throw new Error('tvBot Error: after Get_gsData(), mainData.TradingSymbol !== tvData.TradingSymbol')}
@@ -1049,7 +1051,7 @@ export async function HandleTV(raw_tvData) {
                     } else { this.AddAlertMessage(this.runningWellSet, "after ToCheckInitiate() error: " + r_Get_gsData) }
                 }
             }
-            console.log('tvBot: ' + 'ToCheckInitiate() end') ;
+            console.log(cosoleLogHead + 'ToCheckInitiate() end') ;
 
             // 检查是否需要fund fee 查看
             if (this.isRunningWell()) {
@@ -1063,7 +1065,7 @@ export async function HandleTV(raw_tvData) {
                     } else { this.AddAlertMessage(this.runningWellSet, "after ToCheckFundFee() error: " + r_Get_gsData) }
                 }
             }
-            console.log('tvBot: ' + 'ToCheckFundFee() end') ;
+            console.log(cosoleLogHead + 'ToCheckFundFee() end') ;
 
             // 检查当前waiting order 状态
             if (this.isRunningWell()) {
@@ -1085,7 +1087,7 @@ export async function HandleTV(raw_tvData) {
                 }
 
             }
-            console.log('tvBot: ' + 'ToCheckWaitingOrder() end') ;
+            console.log(cosoleLogHead + 'ToCheckWaitingOrder() end') ;
 
             // 至此，不再需要更新mainData中的状态
             // 可以进行挂单
@@ -1098,7 +1100,7 @@ export async function HandleTV(raw_tvData) {
             const r_Update_tvData      = this.UpdateDataToThis(tvData) ;
             if (isStrictString(r_Update_tvData)) {this.AddAlertMessage(this.runningWellSet, r_Update_tvData.trim())}
 
-            console.log('tvBot: ' + 'UpdateDataToThis() end') ;
+            console.log(cosoleLogHead + 'UpdateDataToThis() end') ;
 
             this.ReNew() ;
 
@@ -1106,22 +1108,22 @@ export async function HandleTV(raw_tvData) {
             // 先 检查是否可以挂卖单
             // 再 检查是否可以挂买单
             if (this.isRunningWell()) { await this.ToSell(uncloseOrdersA2d, uncloseOrdersTitleA, ingOrderTitleA, toGCPData.ingOrderLine) }
-            console.log('tvBot: ' + 'ToSell() end') ;
+            console.log(cosoleLogHead + 'ToSell() end') ;
             if (this.isRunningWell()) { await this.ToBuy(ingOrderTitleA, toGCPData.ingOrderLine) }
-            console.log('tvBot: ' + 'ToBuy() end') ;
+            console.log(cosoleLogHead + 'ToBuy() end') ;
 
             this.gcpGetTime = gcpGetTime ;
             await this.WriteToGS(toGCPData) ;
-            console.log('tvBot: ' + 'WriteToGS() end') ;
+            console.log(cosoleLogHead + 'WriteToGS() end') ;
 
             const task_SendToTG     = this.SendToTG(toGCPData.toReadRange) ;
             const task_SendtoEmail  = this.SendToEmail(toGCPData.toEmailRange) ;
             await Promise.allSettled([task_SendToTG, task_SendtoEmail]);
-            console.log('tvBot: ' + 'SendToTG() and SendToEmail() end') ;
+            console.log(cosoleLogHead + 'SendToTG() and SendToEmail() end') ;
 
             const r_ReleaseLockOfGS = await this.ReleaseLockOfGS() ;
             if (isStrictTrue(r_ReleaseLockOfGS)) {
-                console.log('tvBot: ' + 'ReleaseLockOfGS() success') ;
+                console.log(cosoleLogHead + 'ReleaseLockOfGS() success') ;
             } else {
                 // 锁释放失败, 尝试将失败信息写入GS
                 this.runningWell =  isStrictString(r_ReleaseLockOfGS)                                       ?
