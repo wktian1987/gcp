@@ -1010,7 +1010,7 @@ export async function HandleTV(raw_tvData) {
             const tvData = this.Get_tvData(raw_tvData) ;
             if (isStrictString(tvData)) {throw new Error(tvData)}
 
-            const cosoleLogHead = tvData.botNumber ;
+            const cosoleLogHead = tvData.botNumber + ": ";
             console.log(cosoleLogHead + 'Get_tvData() end') ;
 
             const r_Set_spreadsheetID = await this.Set_spreadsheetID(tvData.botNumber)  ;
@@ -1021,7 +1021,6 @@ export async function HandleTV(raw_tvData) {
             console.log(cosoleLogHead + 'Set_lockName() end') ;
 
             const r_SetLockToGS = await this.SetLockToGS(tvData.timestamp, 30000) ;
-            if (isStrictTrue(r_SetLockToGS)) {this.getLOCK = true}
             if (isStrictString(r_SetLockToGS)) {throw new Error(r_SetLockToGS.trim())}
             console.log(cosoleLogHead + 'SetLockToGS() end') ;
             // 当获得lock后就可以不主动抛出错误了

@@ -50,9 +50,9 @@ app.post('/tradingview', json(), async (req, res) => {
     try {
         const { HandleTV } = await import("./handleTV.js");
         await HandleTV(body);
-        console.log("✔ HandleTV处理成功");
+        console.log(`✔ {$body.botNumber}: HandleTV处理成功`);
     } catch (e) {
-        console.error("✘ HandleTV处理失败: ", e.message);
+        console.error(`✘ {$body.botNumber}: HandleTV处理失败: ` + e.message);
     }
 }
 );
