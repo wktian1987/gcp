@@ -871,7 +871,7 @@ export async function HandleTV(raw_tvData) {
                 const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
                 // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
 
-                const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(returnS['ing_'+v]) ? returnS['ing_'+v] : (returnS['ing_'+v] || NA) ) ;
+                const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(returnS[v]) ? returnS[v] : (returnS[v] || NA) ) ;
 
                 this.toUpdateRangeList.push({
                     range   : ingOrderLine          ,
