@@ -1025,7 +1025,7 @@ export async function HandleTV(raw_tvData) {
             if (Array.isArray(r_Get_gsData)) {
                 [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA] = r_Get_gsData ;
             } else {throw new Error(r_Get_gsData)}
-            if (!isStrictTrue(mainData.runningWell)) {this.AddAlertMessage(this.runningWellSet, "Passed runningWell error: " + mainData.runningWell) }
+            if (!isStrictTrue(mainData.runningWell)) {this.AddAlertMessage(this.runningWellSet, mainData.runningWell) }
             console.log('tvBot: ' + 'Get_gsData() end') 
 
             if (mainData.timestamp > tvData.timestamp) { throw new Error('tvBot Error: after Get_gsData(), time passed tvData.timestamp') }
