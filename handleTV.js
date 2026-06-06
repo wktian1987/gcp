@@ -1004,12 +1004,13 @@ export async function HandleTV(raw_tvData) {
         } ,
 
         async Start(raw_tvData) {
-            const cosoleLogHead = this.botNumber ;
 
             let gcpGetTime = Date.now() ; 
 
             const tvData = this.Get_tvData(raw_tvData) ;
             if (isStrictString(tvData)) {throw new Error(tvData)}
+
+            const cosoleLogHead = tvData.botNumber ;
             console.log(cosoleLogHead + 'Get_tvData() end') ;
 
             const r_Set_spreadsheetID = await this.Set_spreadsheetID(tvData.botNumber)  ;
