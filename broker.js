@@ -39,10 +39,10 @@ export async function CheckOrderConfirm(ing_orderID, ifWaitingThenCancel, isReal
         S.ing_getProfit		    = res.getProfit                     ;
         S.ing_avgBuyPrice		= res.avgBuyPrice                   ;
         S.ing_tradeFee		    = res.tradeFee                      ;
-        S.ing_fundFee           = "NA"                              ;
         S.ing_allFund		    = res.allFund + S.ing_tradeFee      ;
         S.ing_allCoin		    = S.ing_allFund / res.BaseCoinPrice ;
         S.ing_orderStatus		= res.orderStatus                   ;
+        S.ing_pXq               = S.ing_confirmPrice * S.ing_qty    ;
 
         await sheets.spreadsheets.values.clear( {
             spreadsheetId                       ,

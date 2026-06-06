@@ -895,14 +895,7 @@ export async function HandleTV(raw_tvData) {
          * @returns false: 经判断不能买入, 没有信号发生
          */
         async ToBuy(ingOrderTitleA, ingOrderLine) {
-            // 重写 测试
-
-
-
-
-
-
-            // if (!isStrictTrue(this.canBuy)) {return false}
+            if (!isStrictTrue(this.canBuy)) {return false}
 
             let toBuy = false ;
             const S = {};
@@ -913,11 +906,7 @@ export async function HandleTV(raw_tvData) {
                 S.ing_reason = 'touchTargetLow' ;
             }
 
-            // 目前对于买入信号的判断, 只有一个判断: touchTargetLow
-
-            // if ( isStrictFalse(toBuy) ) {return false}
-
-            toBuy = true ; // 要删除这行
+            if ( isStrictFalse(toBuy) ) {return false}
 
             if ( isStrictTrue(toBuy) ) {
                 S.ing_orderID           =  'B-' + GetTimeStringWithOffset(8, this.timestamp)                                                                                                            ;
@@ -928,7 +917,7 @@ export async function HandleTV(raw_tvData) {
                 S.ing_triggerPrice      =  this.TradingSymbolPrice                                                                                                                                      ;
                 S.ing_orderType         =  order_T_LMT                                                                                                                                                  ;
                 S.ing_orderPrice        =  S.ing_orderPrice || S.ing_triggerPrice                                                                                                                       ;
-                S.ing_qty               =  this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin*this.leverage/this.ing_orderPrice/this.minEnExPosition/(this.MaxGrid - this.gridNum)) )        ;
+                S.ing_qty               =  this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin*this.leverage/S.ing_orderPrice/this.minEnExPosition/(this.MaxGrid - this.gridNum)) )        ;
                 S.ing_orderStatus       =  order_pending                                                                                                                                                ;
 
                 const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
@@ -951,13 +940,6 @@ export async function HandleTV(raw_tvData) {
          * @returns true表示写入成功
          */
         async WriteToGS(toGCPData) {
-
-            // test 
-            this.testQty = 0;
-            this.testQty = this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin*this.leverage/this.TradingSymbolPrice/this.minEnExPosition/(this.MaxGrid - this.gridNum)) )  ;
-
-
-
 
             await BatchClearGS(this.sheets, this.spreadsheetID, Array.from(this.toClearRangeSet));
 
