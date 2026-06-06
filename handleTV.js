@@ -635,6 +635,7 @@ export async function HandleTV(raw_tvData) {
          */
         ReNew() {
             this.openProfit =  isStrictTrue(this.therePosition) ?  this.allPosition * (this.TradingSymbolPrice - this.avgBuyPrice)  :  NA    ;
+            this.allProfit  =  ToStrictNumber(this.netProfit, 0) + ToStrictNumber(this.openProfit, 0)                                        ;
             this.usedMargin =  isStrictTrue(this.therePosition) ?  this.allPosition * this.TradingSymbolPrice / this.leverage       :  NA    ;
             this.crtFund    =  this.inFund + ToStrictNumber(this.netProfit, 0) + ToStrictNumber(this.openProfit, 0)                          ;
             this.crtCoin    =  this.inCoin                                                                                                   ;
@@ -981,7 +982,7 @@ export async function HandleTV(raw_tvData) {
          * @param {String} toReadRange 
          */
         async SendToTG(toReadRange) {
-            const rawMessagesA2d = (await GetGS(this.sheets, this.spreadsheetID, toReadRange, 'read')).map(v => CleanArrayToNumStrBool(v)) ;
+            const rawMessagesA2d = (await GetGS(this.sheets, this.spreadsheetID, toReadRange, 'X')).map(v => CleanArrayToNumStrBool(v)) ;
             const messageString  = FormatMatrixToString(rawMessagesA2d) ;
 
             const TG_TOKEN = process.env.TG_TOKEN;
@@ -996,7 +997,7 @@ export async function HandleTV(raw_tvData) {
          * @param {String} toEmailRange 
          */
         async SendToEmail(toEmailRange) {
-            const rawMessagesA2d = (await GetGS(this.sheets, this.spreadsheetID, toEmailRange, 'read')).map(v => CleanArrayToNumStrBool(v)) ;
+            const rawMessagesA2d = (await GetGS(this.sheets, this.spreadsheetID, toEmailRange, 'X')).map(v => CleanArrayToNumStrBool(v)) ;
             const messageHTML    =  ConvertRowsToHtmlTable(rawMessagesA2d) ;
             const mail_subject   = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime) ;
             await SendEmail(mail_subject, messageHTML) ;
