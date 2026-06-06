@@ -439,7 +439,7 @@ export async function HandleTV(raw_tvData) {
 
             // 去交易所查看成交情况
             // 此时获得的数据已经是clean
-            const res_broker = await CheckOrderConfirm(ingOrderData.ing_orderID, ifWaitingThenCancel, this.isReal, tvData.TradingSymbol, this.sheets, this.spreadsheetID);
+            const returnS = await CheckOrderConfirm(ingOrderData.ing_orderID, ifWaitingThenCancel, this.isReal, tvData.TradingSymbol, this.sheets, this.spreadsheetID);
 
             const w_toUpdateRangeList       = []        ;
             const w_toClearRangeSet         = new Set() ;
@@ -450,22 +450,22 @@ export async function HandleTV(raw_tvData) {
             // 对于部分成交的情况,
             // 如果ifWaitingThenCancel = false,  只修改ing_orderStatus一个变量
             // 如果ifWaitingThenCancel = true ,  当做confirm来判断
-            if  (res_broker.ing_orderStatus === order_confirm                                   || 
-                (res_broker.ing_orderStatus === order_cancel  && res_broker.ing_partial > 0 )   )   {
+            if  (returnS.ing_orderStatus === order_confirm                                   || 
+                (returnS.ing_orderStatus === order_cancel  && returnS.ing_partial > 0 )   )   {
 
                 if (ingOrderData.ing_buysell === order_BUY) {
-                    const newUncloseOrderLine = uncloseOrdersTitleA.map(v => isStrictNumber(returnS['fund_'+v]) ? returnS['fund_'+v] : (returnS['fund_'+v] || NA) ) ;
+                    const newUncloseOrderLine = uncloseOrdersTitleA.map(v => isStrictNumber(returnS['ing_'+v]) ? returnS['ing_'+v] : (returnS['ing_'+v] || NA) ) ;
                     uncloseOrdersA2d.push(newUncloseOrderLine) ;
                 }
                 if (ingOrderData.ing_buysell === order_SELL) {
                     const indexOfSerial = uncloseOrdersTitleA.indexOf('serial') ;
-                    if (indexOfSerial > -1) {uncloseOrdersA2d = uncloseOrdersA2d.filter(row => String(row[indexOfSerial]) !== String(Math.abs(res_broker.ing_serial))) }
+                    if (indexOfSerial > -1) {uncloseOrdersA2d = uncloseOrdersA2d.filter(row => String(row[indexOfSerial]) !== String(Math.abs(returnS.ing_serial))) }
                 }
 
                 w_toClearRangeSet.add(toGCPData.ingOrderLine) ;
                 w_toClearRangeSet.add(toGCPData.uncloseOrdersRange) ;
 
-                const newTradeHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(returnS['fund_'+v]) ? returnS['fund_'+v] : (returnS['fund_'+v] || NA) ) ;
+                const newTradeHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(returnS['ing_'+v]) ? returnS['ing_'+v] : (returnS['ing_'+v] || NA) ) ;
                 w_toAppendTradeHistory.toAppend = true                          ;
                 w_toAppendTradeHistory.range    = toGCPData.tradeHistoryRange   ;
                 w_toAppendTradeHistory.values   = [newTradeHistoryA]            ;
@@ -476,7 +476,7 @@ export async function HandleTV(raw_tvData) {
                         values  : uncloseOrdersA2d                 } ) ;
                 }
 
-                const thisMessage = res_broker.ing_orderStatus === order_confirm                                ?
+                const thisMessage = returnS.ing_orderStatus === order_confirm                                ?
                     (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order confirmed"               :
                     (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order partially confirmed"           ;
 
@@ -485,8 +485,8 @@ export async function HandleTV(raw_tvData) {
                 ingOrderStatusChange = true ;
             }
 
-            if (res_broker.ing_orderStatus === order_waiting && res_broker.ing_partial > 0 && res_broker.ing_partial > ingOrderData.ing_partial) {
-                ingOrderData.ing_partial = res_broker.ing_partial ;
+            if (returnS.ing_orderStatus === order_waiting && returnS.ing_partial > 0 && returnS.ing_partial > ingOrderData.ing_partial) {
+                ingOrderData.ing_partial = returnS.ing_partial ;
                 const new_ingOrderLineA = ingOrderTitleA.map(v => {ingOrderData[v] || NA}) ;
                 w_toUpdateRangeList.push({
                     range   : toGCPData.ingOrderLine    , 
@@ -496,7 +496,7 @@ export async function HandleTV(raw_tvData) {
                 ingOrderStatusChange = true ;
             }
 
-            if (res_broker.ing_orderStatus === order_cancel) {
+            if (returnS.ing_orderStatus === order_cancel) {
                 w_toClearRangeSet.add(toGCPData.ingOrderLine) ;
                 this.AddAlertMessage(this.alertMessageSet, (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order canceled") ;
 
@@ -866,7 +866,7 @@ export async function HandleTV(raw_tvData) {
                 const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
                 // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
 
-                const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(returnS['fund_'+v]) ? returnS['fund_'+v] : (returnS['fund_'+v] || NA) ) ;
+                const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(returnS['ing_'+v]) ? returnS['ing_'+v] : (returnS['ing_'+v] || NA) ) ;
 
                 this.toUpdateRangeList.push({
                     range   : ingOrderLine          ,
@@ -921,7 +921,7 @@ export async function HandleTV(raw_tvData) {
                 const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
                 // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
 
-                const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(returnS['fund_'+v]) ? returnS['fund_'+v] : (returnS['fund_'+v] || NA) ) ;
+                const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(returnS[v]) ? returnS[v] : (returnS[v] || NA) ) ;
 
                 this.toUpdateRangeList.push({
                     range   : ingOrderLine          ,
