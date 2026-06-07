@@ -1142,5 +1142,10 @@ export async function HandleTradeBot(raw_tvData) {
 
 }
 
-
+export async function HandleAllPrice(raw_tvData) {
+    const tvData        = CleanObjToNumBoolStr(raw_tvData)  ;
+    const spreadsheetID = process.env.SHEET_ID              ;
+    const toWriteArray  = ObjToA2dNumBoolStr(tvData)        ;
+    await UpdateGS(sheets, spreadsheetID, "AllPricesFromTV!A1:Z") ;
+}
 

@@ -57,6 +57,17 @@ app.post('/tradingview', json(), async (req, res) => {
         }
     }
 
+    if (body.botGate === "AllPrice") {
+        try {
+            const { HandleAllPrice} = await import("./handleTV.js");
+            await HandleAllPrice(body);
+            console.log(`HandleAllPrice()处理成功`);
+        } catch (e) {
+            console.error(`✘ HandleAllPrice()处理失败: ` + e.message);
+        }
+    }
+
+
 
 }  )  ;
 
