@@ -51,9 +51,9 @@ app.post('/tradingview', json(), async (req, res) => {
         try {
             const { HandleTradeBot} = await import("./handleTV.js");
             await HandleTradeBot(body);
-            console.log(`${body.botNumber}: HandleTV处理成功`);
+            console.log(`${body.botNumber}: HandleTradeBot()处理成功`);
         } catch (e) {
-            console.error(`✘ ${body.botNumber}: HandleTV处理失败: ` + e.message);
+            console.error(`✘ ${body.botNumber}: HandleTradeBot()处理失败: ` + e.message);
         }
     }
 
