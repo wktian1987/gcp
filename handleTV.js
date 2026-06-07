@@ -40,62 +40,22 @@ const auth = new google.auth.GoogleAuth({
 const sheets = google.sheets({ version: 'v4', auth });
 
 
-const   accStatus_liquidated                =  "liquidated"     ;
-const   accStatus_stopC                     =  "stopC"          ;
-const   accStatus_stopF                     =  "stopF"          ;
-const   accStatus_stopCF                    =  "stopCF"         ;
-
-const   BuyReason_belowTarget               =  "below targetLow"                            ;
-
-const   SellReason_aboveTarget              =  "above targetHigh"                           ;
-const   SellReason_enoughProfit             =  "get enough profit"                          ;
-const   SellReason_stop4C                   =  "stop loss below highestCoin too much"       ;
-const   SellReason_stop4F                   =  "stop loss below highestFund too much"       ;
-const   SellReason_liquidate                =  "liquidation sell"                           ;
-const   SellReason_cutBfLiquid              =  "cut before liquidation"                     ;
-const   SellReason_cutHighBuyOrder          =  "cut order with too high buyPrice"           ;
-
-const   NotBuySellReason_notInCanTrdTime    =  "not in can trading time"                    ;
-const   NotBuySellReason_waitLast           =  "wait for last trading end"                  ;
-const   NotBuySellReason_justTrade          =  "just a trade executed and need wait"        ;
-const   NotBuySellReason_liquidate          =  "already liquidated"                         ;
-
-const   NotBuyReason_notBuySell             =  "cant buy sell "                             ;
-const   NotBuyReason_aboveLastUnclose       =  "above lastUncloseOrder.buyPrice"            ;
-const   NotBuyReason_sellthisTime           =  "this time has sell/liquid order"            ;
-const   NotBuyReason_difctyLimit            =  "cant buy due to gridDifficulty"             ;
-const   NotBuyReason_aboveHighToBuy         =  "above highestToBuyPrice"                    ;
-const   NotBuyReason_belowLowToBuy          =  "below lowestToBuyPrice"                     ;
-const   NotBuyReason_closeToRndHigh         =  "close to roundHigh"                         ;
-const   NotBuyReason_closeToRndLow          =  "close to roundLow"                          ;
-const   NotBuyReason_noAdqtFund             =  "no adequate fund to buy"                    ;
-const   NotBuyReason_maxEnExTooSmall        =  "after calculate maxEnExPosition too small"  ;
-const   NotBuyReason_overMaxGridN           =  "account.gridNum over maxGridNumber"         ;
-const   NotBuyReason_stopTriggered          =  "stop loss triggered"                        ;
-const   NotBuyReason_closeToliquidWarn      =  "close to liquidation warning"               ;
-const   NotBuyReason_closeToStop            =  "close to stopF or stopC"                    ;
-
-const   NotSellReason_notBuySell            =  "cant buy sell "                             ;
-const   NotSellReason_noPosition            =  "no positions"                               ;
-const   NotSellReason_belowLowToSell        =  "below lowestToSellPrice"                    ;
-const   NotSellReason_cantProfit            =  "cant get enough Profit"                     ;
-
-const   noLOCK          =  "noLOCK"         ;
-const   NA              =  "NA"             ;
-const   toGCPRanges     =  "toGCP!A:B"      ;
-const   HuanHang        =  "__HuangHang__"  ;
-const   order_T_LMT     =  "LMT"            ;
-const   order_T_MKT     =  "MKT"            ; 
-const   order_BUY       =  "B"              ;
-const   order_SELL      =  "S"              ;
-const   order_FUND      =  "F"              ;
-const   order_pending   =  "pending"        ;
-const   order_waiting   =  "waiting"        ;
-const   order_confirm   =  "confirm"        ;
-const   order_partial   =  'partial'        ;
-const   order_cancel    =  "cancel"         ;
-
 export async function HandleTradeBot(raw_tvData) {
+    const   noLOCK          =  "noLOCK"         ;
+    const   NA              =  "NA"             ;
+    const   toGCPRanges     =  "toGCP!A:B"      ;
+    const   HuanHang        =  "__HuangHang__"  ;
+    const   order_T_LMT     =  "LMT"            ;
+    const   order_T_MKT     =  "MKT"            ; 
+    const   order_BUY       =  "B"              ;
+    const   order_SELL      =  "S"              ;
+    const   order_FUND      =  "F"              ;
+    const   order_pending   =  "pending"        ;
+    const   order_waiting   =  "waiting"        ;
+    const   order_confirm   =  "confirm"        ;
+    const   order_partial   =  'partial'        ;
+    const   order_cancel    =  "cancel"         ;
+
 
     const D = {
         sheets                  : sheets        ,
@@ -676,21 +636,26 @@ export async function HandleTradeBot(raw_tvData) {
 
             this.ifOrderWaiting  =  this.ing_orderStatus === order_waiting  ;
 
+
             // 账户状态判断
             this.accStatus =  'Normal' ; 
             if (this.TradingSymbolPrice < this.liquidatePrice) {
+                const accStatus_liquidated = "liquidated";
                 this.accStatus         =  accStatus_liquidated                                                  ;
                 this.thisAlertMessage  =  this.AddAlertMessage(this.alertMessageSet, accStatus_liquidated)      ;
             }
             if (this.TradingSymbolPrice < this.stopPriceC    ) {
+                const accStatus_stopC  = "stopC";
                 this.accStatus         =  accStatus_stopC                                                       ;
                 this.thisAlertMessage  =  this.AddAlertMessage(this.alertMessageSet, accStatus_stopC)           ;
             } 
             if (this.TradingSymbolPrice < this.stopPriceF    ) {
+                const accStatus_stopF  = "stopF";
                 this.accStatus         =  accStatus_stopF                                                       ;
                 this.thisAlertMessage  =  this.AddAlertMessage(this.alertMessageSet, accStatus_stopF)           ;
             }
             if (this.TradingSymbolPrice < this.stopPriceC  &&  this.TradingSymbolPrice < this.stopPriceF ) {
+                const accStatus_stopCF = "stopCF";
                 this.accStatus         =  accStatus_stopCF                                                      ;
                 this.thisAlertMessage  =  this.AddAlertMessage(this.alertMessageSet, accStatus_stopCF)          ;
             }
@@ -1146,6 +1111,6 @@ export async function HandleAllPrice(raw_tvData) {
     const tvData        = CleanObjToNumBoolStr(raw_tvData)  ;
     const spreadsheetID = process.env.SHEET_ID              ;
     const toWriteArray  = ObjToA2dNumBoolStr(tvData)        ;
-    await UpdateGS(sheets, spreadsheetID, "AllPricesFromTV!A1:Z") ;
+    await UpdateGS(sheets, spreadsheetID, "AllPricesFromTV!A1:B", toWriteArray) ;
 }
 
