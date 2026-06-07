@@ -6,11 +6,8 @@ app.listen(process.env.PORT || 8080, () => {
     console.log(`✔ 服务开始监听端口 ${process.env.PORT || 8080}，运行...`);
 });
 
-// 暂时修改这个 
-// 暂时先不处理邮件
-app.post('/schedule', json(), async (req, res) => {
-    return ; // 直接返回，啥也不做
 
+app.post('/schedule', json(), async (req, res) => {
     console.log("✔ 收到/schedule连接");
     const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
     await HandleUnreadGmails(req, res);
@@ -36,7 +33,7 @@ app.post('/tgBot', json(), async (req, res) => {
 );
 
 app.post('/tradingview', json(), async (req, res) => {
-    console.log("✔ 收到/tradingview连接");
+    console.log("收到/tradingview连接");
     const { body } = req;
     if (body.fromTVcheck === process.env.fromTVcheck) {
         console.log("收到TradingView webhook Message, botGate: " + body.botGate);
@@ -51,7 +48,7 @@ app.post('/tradingview', json(), async (req, res) => {
         try {
             const { HandleTradeBot} = await import("./handleTV.js");
             await HandleTradeBot(body);
-            console.log(`${body.botNumber}: HandleTradeBot()处理成功`);
+            console.log(`✔ ${body.botNumber}: HandleTradeBot()处理成功`);
         } catch (e) {
             console.error(`✘ ${body.botNumber}: HandleTradeBot()处理失败: ` + e.message);
         }
@@ -61,7 +58,7 @@ app.post('/tradingview', json(), async (req, res) => {
         try {
             const { HandleAllPrice} = await import("./handleTV.js");
             await HandleAllPrice(body);
-            console.log(`HandleAllPrice()处理成功`);
+            console.log(`✔ HandleAllPrice()处理成功`);
         } catch (e) {
             console.error(`✘ HandleAllPrice()处理失败: ` + e.message);
         }
