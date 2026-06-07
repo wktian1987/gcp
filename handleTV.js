@@ -95,8 +95,7 @@ const   order_confirm   =  "confirm"        ;
 const   order_partial   =  'partial'        ;
 const   order_cancel    =  "cancel"         ;
 
-
-export async function HandleTV(raw_tvData) {
+export async function HandleTradeBot(raw_tvData) {
 
     const D = {
         sheets                  : sheets        ,

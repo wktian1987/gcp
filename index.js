@@ -39,7 +39,7 @@ app.post('/tradingview', json(), async (req, res) => {
     console.log("✔ 收到/tradingview连接");
     const { body } = req;
     if (body.fromTVcheck === process.env.fromTVcheck) {
-        console.log("✔ 收到TradingView webhook Message, botNumber: " + body.botNumber);
+        console.log("收到TradingView webhook Message, botGate: " + body.botGate);
         res.status(200).json({ status: 'success' });
     } else {
         console.log("✘ 收到未校验的TradingView Webhook Message:" ); 
@@ -47,15 +47,18 @@ app.post('/tradingview', json(), async (req, res) => {
         return res.status(200).json({ status: 'success' });
     }
 
-    try {
-        const { HandleTV } = await import("./handleTV.js");
-        await HandleTV(body);
-        console.log(`✔ ${body.botNumber}: HandleTV处理成功`);
-    } catch (e) {
-        console.error(`✘ ${body.botNumber}: HandleTV处理失败: ` + e.message);
+    if (body.botGate === "TradeBot") {
+        try {
+            const { HandleTradeBot} = await import("./handleTV.js");
+            await HandleTradeBot(body);
+            console.log(`${body.botNumber}: HandleTV处理成功`);
+        } catch (e) {
+            console.error(`✘ ${body.botNumber}: HandleTV处理失败: ` + e.message);
+        }
     }
-}
-);
+
+
+}  )  ;
 
 app.use((err, req, res, next) => {
     console.error('✘ 全局捕获错误:', err.stack);
