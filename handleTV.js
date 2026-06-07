@@ -206,7 +206,7 @@ export async function HandleTradeBot(raw_tvData) {
             const hasRight      =  currentLock === this.lockName ;
             if (isStrictFalse(hasRight)) { return 'ReleaseLockOfGS Error: 当前锁状态出错，并不是正在处理轮的锁，出现系统错误' }
 
-            const MAX_Attempts  = 5 ;
+            const MAX_Attempts  = 99 ;
             let   attempt       = 1  ;
             while (attempt <= MAX_Attempts) {
                 try {
