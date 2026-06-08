@@ -1111,7 +1111,7 @@ export async function HandleAllPrice(raw_tvData) {
     const HuanHang = "__HuangHang__";
 
     const tvData        = CleanObjToNumBoolStr(raw_tvData)  ;
-    Object.keys(tvData).forEach(key => { if (isStrictString(tvData[key])) {tvData[key].replaceAll(HuanHang, "\n").trim() } } ) ;
+    Object.keys(tvData).forEach(key => { if (isStrictString(tvData[key])) {tvData[key] = tvData[key].replaceAll(HuanHang, "\n").trim() } } ) ;
 
     const spreadsheetID = process.env.SHEET_ID              ;
     const toWriteArray  = ObjToA2dNumBoolStr(tvData)        ;
