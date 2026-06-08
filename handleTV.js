@@ -1108,6 +1108,8 @@ export async function HandleTradeBot(raw_tvData) {
 }
 
 export async function HandleAllPrice(raw_tvData) {
+    const HuanHang = "__HuangHang__";
+
     const tvData        = CleanObjToNumBoolStr(raw_tvData)  ;
     Object.keys(tvData).forEach(key => { if (isStrictString(tvData[key])) {tvData[key].replaceAll(HuanHang, "\n").trim() } } ) ;
 
