@@ -352,8 +352,8 @@ async function GATE_CheckFundFee(isReal, S, TradingSymbol) {
     S.fund_fundFee           =  ToStrictNumber(data_position.pnl_fund, 0) -  S.fund_lst_allFundFee  ;
     S.fund_confirmTimestamp  =  Date.now()                                                          ;
     S.fund_confirmDate       =  GetTimeStringWithOffset(8, S.fund_confirmTimestamp)                 ;
-    S.ing_allFund	         =  S.inFund + ToStrictNumber(data_position.unrealised_pnl, 0) + ToStrictNumber(data_position.realised_pnl, 0) + S.inCoin * S.BaseCoinPrice ;
-    S.ing_allCoin	         =  S.ing_allFund / S.BaseCoinPrice                                                                    ;
+    S.fund_allFund	         =  S.fund_inFund + ToStrictNumber(data_position.unrealised_pnl, 0) + ToStrictNumber(data_position.realised_pnl, 0) + S.fund_inCoin * S.fund_BaseCoinPrice ;
+    S.fund_allCoin	         =  S.fund_allFund / S.fund_BaseCoinPrice                               ;
 
     return S  ;
 }

@@ -380,9 +380,9 @@ export async function HandleTradeBot(raw_tvData) {
             S.fund_reason           = "FundFee"                                                                             ;
             S.fund_orderStatus      = order_pending                                                                         ;
             S.fund_lst_allFundFee   = ToStrictNumber(mainData.allFundFee, 0)                                                ;
-            S.inCoin                = ToStrictNumber(mainData.inCoin           , 0                         )  ;
-            S.inFund                = ToStrictNumber(mainData.inFund           , 0                         )  ;
-            S.BaseCoinPrice         = ToStrictNumber(mainData.BaseCoinPrice    , mainData.inBaseCoinPrice  )  ;
+            S.fund_inCoin           = ToStrictNumber(mainData.inCoin           , 0                         )  ;
+            S.fund_inFund           = ToStrictNumber(mainData.inFund           , 0                         )  ;
+            S.fund_BaseCoinPrice    = ToStrictNumber(mainData.BaseCoinPrice    , mainData.inBaseCoinPrice  )  ;
 
             const returnS = await CheckFundFee(S, mainData.isReal, tvData.TradingSymbol, this.sheets, this.spreadsheetID) ;
 
