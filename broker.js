@@ -142,7 +142,8 @@ export async function CheckFundFee(S, isReal, TradingSymbol, sheets, spreadsheet
  * @param {Object|null} body - 传给交易所的 JSON 参数对象 (GET 请求传 null)
  */
 async function GATE_Fetch(isReal, method, path, body = null) {
-    const { crypto } = await import('node:crypto');
+    // const { crypto } = await import('node:crypto');
+    const crypto = (await import('node:crypto')).default || await import('node:crypto');
 
     const GATE_PATH_version     = '/api/v4'                                     ;
     const GATE_simulate_Key     =  process.env.GATE_simulate_Key                ; 
