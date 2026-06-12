@@ -384,7 +384,7 @@ export async function HandleTradeBot(raw_tvData) {
             S.inFund                = ToStrictNumber(mainData.inFund           , 0                         )  ;
             S.BaseCoinPrice         = ToStrictNumber(mainData.BaseCoinPrice    , mainData.inBaseCoinPrice  )  ;
 
-            const returnS = await CheckFundFee(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
+            const returnS = await CheckFundFee(S, mainData.isReal, tvData.TradingSymbol, this.sheets, this.spreadsheetID) ;
 
             const newFundHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(returnS['fund_'+v]) ? returnS['fund_'+v] : (returnS['fund_'+v] || NA) ) ;
 
