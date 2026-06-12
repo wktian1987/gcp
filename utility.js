@@ -134,7 +134,7 @@ export function ToStrictNumBoolStr(val, notAvailableValueTo) {
  * @param {String} notAvailableValueTo , 将不合法的数据全部转换为此
  * @returns obj
  */
-export function A2dToObj(a2d, notAvailableValueTo) {
+export function A2dToCleanObj(a2d, notAvailableValueTo) {
     const notAvailableValue = isStrictString(notAvailableValueTo) ? notAvailableValueTo.trim() : "notAvailableValue" ;
     if (!Array.isArray(a2d) || a2d.length === 0) {return false}
     const clean_a2d = a2d.map(val => {
@@ -152,7 +152,7 @@ export function A2dToObj(a2d, notAvailableValueTo) {
 /**
  * 将两行数组, 转换为Obj
  */
-export function A2LinesToObj(a2lines, notAvailableValueTo) {
+export function A2LinesToCleanObj(a2lines, notAvailableValueTo) {
     const notAvailableValue = isStrictString(notAvailableValueTo) ? notAvailableValueTo.trim() : "notAvailableValue" ;
     if( !Array.isArray(a2lines)                 ||
         a2lines.length !== 2                    ||
@@ -165,7 +165,7 @@ export function A2LinesToObj(a2lines, notAvailableValueTo) {
 
     const entries = keys.map((key, i) => { return [key, values[i]] });
 
-    return A2dToObj(entries, notAvailableValue);
+    return A2dToCleanObj(entries, notAvailableValue);
 }
 
 /**

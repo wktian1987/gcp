@@ -10,8 +10,8 @@ import {    isStrictNumber                  ,
             ToStrictNumBoolStr              , 
             CleanObjToNumBoolStr            ,
             CleanArrayToNumStrBool          ,
-            A2dToObj                        ,
-            A2LinesToObj                    ,
+            A2dToCleanObj                        ,
+            A2LinesToCleanObj                    ,
             ObjToA2dNumBoolStr              ,
             AddMessage                      ,
             GetTimeStringWithOffset         , 
@@ -39,7 +39,7 @@ const auth = new google.auth.GoogleAuth({
 });
 const sheets = google.sheets({ version: 'v4', auth });
 
-
+const tvBotLocks = {} ;
 export async function HandleTradeBot(raw_tvData) {
     const   noLOCK          =  "noLOCK"         ;
     const   NA              =  "NA"             ;
@@ -55,6 +55,17 @@ export async function HandleTradeBot(raw_tvData) {
     const   order_confirm   =  "confirm"        ;
     const   order_partial   =  'partial'        ;
     const   order_cancel    =  "cancel"         ;
+
+    // 先行验锁
+    const thisLocTime  =  ToStrictNumber(raw_tvData.timestamp) ;
+    if (!Object.hasOwn(tvBotLocks, raw_tvData.botNumber)) {tvBotLocks[raw_tvData.botNumber] = thisLocTime}
+    if (tvBotLocks[raw_tvData.botNumber] > thisLocTime) {throw new Error('当前正在处理更新的信号, 本信号丢弃')}
+
+    // 这是最重要的判断, 如何判断当前正在处理的信号, 是真地正在处理, 还是遇到了问题, 
+    // 如果遇到了问题的话, 如何强行退出, 正在处理的信号
+    // 如果遇到问题的信号, 实际上已经退出了, 但是锁状态还是出错的锁, 如何强行解锁,
+    // 什么情况下可以强行解锁, 什么情况下必须要手动解锁???
+    // if (tvBotLocks[raw_tvData.botNumber] < thisLocTime) {tvBotLocks[raw_tvData.botNumber] = thisLocTime}
 
 
     const D = {
@@ -145,7 +156,7 @@ export async function HandleTradeBot(raw_tvData) {
          * @returns {Promise<Object>}
          */
         async Get_toGCPData() {
-            return A2dToObj(await GetGS(this.sheets, this.spreadsheetID, toGCPRanges)) ;
+            return A2dToCleanObj(await GetGS(this.sheets, this.spreadsheetID, toGCPRanges)) ;
         } ,
 
         /**
@@ -241,7 +252,7 @@ export async function HandleTradeBot(raw_tvData) {
                 !toGCPRanges.includes("!")              )   {
                     return "Get_gsData Error: GetGS() @param error"  ;
                 }
-            const toGCPData = CleanObjToNumBoolStr(A2dToObj(await GetGS(this.sheets, this.spreadsheetID, toGCPRanges )))  ;
+            const toGCPData = CleanObjToNumBoolStr(A2dToCleanObj(await GetGS(this.sheets, this.spreadsheetID, toGCPRanges )))  ;
             if(!Object.hasOwn(toGCPData, "LOCK") ) {return "Get_gsData Error: get toGCPData error" }
 
             const rangesList = [    toGCPData.mainRange                ,       // 0 
@@ -253,7 +264,7 @@ export async function HandleTradeBot(raw_tvData) {
             const valuesArray   = await BatchGetGS(this.sheets, this.spreadsheetID, rangesList);
             const raw_mainData  = valuesArray[0];
             if (!Array.isArray(raw_mainData) || !Array.isArray(raw_mainData[0]) ) {return 'Get_gsData Error: didnt get available data, 1'}
-            const mainData  = CleanObjToNumBoolStr(A2dToObj(raw_mainData), 'notAvailableValue') ;
+            const mainData  = CleanObjToNumBoolStr(A2dToCleanObj(raw_mainData), 'notAvailableValue') ;
             if (    !Object.hasOwn(mainData, 'LOCK')    ||
                     !isStrictString(mainData.LOCK)      ||
                     mainData.LOCK !== this.lockName     )   { 
@@ -264,7 +275,7 @@ export async function HandleTradeBot(raw_tvData) {
 
             const ingOrderLineA         = mainData.ing_orderStatus === order_waiting ? CleanArrayToNumStrBool(valuesArray[2][0]) : [] ;
             const ingOrderTitleA        = CleanArrayToNumStrBool(valuesArray[5][0]) ;
-            const ingOrderData          = mainData.ing_orderStatus === order_waiting ? A2LinesToObj([ingOrderTitleA, ingOrderLineA]) : null ;
+            const ingOrderData          = mainData.ing_orderStatus === order_waiting ? A2LinesToCleanObj([ingOrderTitleA, ingOrderLineA]) : null ;
 
             const uncloseOrdersTitleA   = CleanArrayToNumStrBool(valuesArray[4][0]) ;
 
@@ -368,6 +379,10 @@ export async function HandleTradeBot(raw_tvData) {
             S.fund_avgBuyPrice      = mainData.avgBuyPrice                                                                  ;
             S.fund_reason           = "FundFee"                                                                             ;
             S.fund_orderStatus      = order_pending                                                                         ;
+            S.fund_lst_allFundFee   = ToStrictNumber(mainData.allFundFee, 0)                                                ;
+            S.inCoin                = ToStrictNumber(mainData.inCoin           , 0                         )  ;
+            S.inFund                = ToStrictNumber(mainData.inFund           , 0                         )  ;
+            S.BaseCoinPrice         = ToStrictNumber(mainData.BaseCoinPrice    , mainData.inBaseCoinPrice  )  ;
 
             const returnS = await CheckFundFee(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
 
@@ -396,13 +411,19 @@ export async function HandleTradeBot(raw_tvData) {
         async ToCheckWaitingOrder(ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA, mainData, tvData, toGCPData) {
             if (!isStrictTrue(mainData.ifOrderWaiting)) {return false}
 
-            let ifWaitingThenCancel = true ;
-            if (ingOrderData.ing_buysell === order_BUY  && tvData.TradingSymbolPrice < ingOrderData.ing_orderPrice * (1 + tvData.waveUpChg)) { ifWaitingThenCancel = false }
-            if (ingOrderData.ing_buysell === order_SELL && tvData.TradingSymbolPrice > ingOrderData.ing_orderPrice * (1 + tvData.waveDnChg)) { ifWaitingThenCancel = false }
+            ingOrderData.lst_allGotProfit   =  ToStrictNumber(mainData.allGotProfit     , 0                         )  ;
+            ingOrderData.lst_allTradeFee    =  ToStrictNumber(mainData.allTradeFee      , 0                         )  ;
+            ingOrderData.inCoin             =  ToStrictNumber(mainData.inCoin           , 0                         )  ;
+            ingOrderData.inFund             =  ToStrictNumber(mainData.inFund           , 0                         )  ;
+            ingOrderData.BaseCoinPrice      =  ToStrictNumber(mainData.BaseCoinPrice    , mainData.inBaseCoinPrice  )  ;
+
+            ingOrderData.ifWaitingThenCancel = true ;
+            if (ingOrderData.ing_buysell === order_BUY  && tvData.TradingSymbolPrice < ingOrderData.ing_orderPrice * (1 + tvData.waveUpChg)) { ingOrderData.ifWaitingThenCancel = false }
+            if (ingOrderData.ing_buysell === order_SELL && tvData.TradingSymbolPrice > ingOrderData.ing_orderPrice * (1 + tvData.waveDnChg)) { ingOrderData.ifWaitingThenCancel = false }
 
             // 去交易所查看成交情况
             // 此时获得的数据已经是clean
-            const returnS = await CheckOrderConfirm(ingOrderData.ing_orderID, ifWaitingThenCancel, this.isReal, tvData.TradingSymbol, this.sheets, this.spreadsheetID);
+            const returnS = await CheckOrderConfirm(ingOrderData, this.isReal, tvData.TradingSymbol, this.sheets, this.spreadsheetID);
 
             const w_toUpdateRangeList       = []        ;
             const w_toClearRangeSet         = new Set() ;
@@ -450,7 +471,7 @@ export async function HandleTradeBot(raw_tvData) {
 
             if (returnS.ing_orderStatus === order_waiting && returnS.ing_partial > 0 && returnS.ing_partial > ingOrderData.ing_partial) {
                 ingOrderData.ing_partial = returnS.ing_partial ;
-                const new_ingOrderLineA = ingOrderTitleA.map(v => {ingOrderData[v] || NA}) ;
+                const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(ingOrderData[v]) ? ingOrderData[v] : ingOrderData[v] || NA ) ;
                 w_toUpdateRangeList.push({
                     range   : toGCPData.ingOrderLine    , 
                     values  : [new_ingOrderLineA]       } ) ;
@@ -952,7 +973,7 @@ export async function HandleTradeBot(raw_tvData) {
             const TG_TOKEN = process.env.TG_TOKEN;
             const TG_CHAT_ID = process.env.TG_CHAT_ID;
 
-            const subject = this.botNumber + '_' + + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime) ;
+            const subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime) ;
 
             await SendSplitTGMessages(TG_TOKEN, TG_CHAT_ID, subject, messageString) ;
         } ,
