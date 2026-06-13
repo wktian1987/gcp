@@ -83,17 +83,17 @@ export async function CheckOrderConfirm(ingOrderData, isReal, TradingSymbol, she
     // 在模拟交易中, 没有 部分成交 这种情况 
     const res   = CleanObjToNumBoolStr(Object.fromEntries(await GetGS(sheets, spreadsheetID, simRange_01 ))) ;
     if (res.orderStatus === "confirm")  {
-        ingOrderData.ing_orderID		    = res.orderID                       ;
-        ingOrderData.ing_confirmTimestamp   = res.confirmTimestamp              ;
-        ingOrderData.ing_confirmDate		= res.confirmDate                   ;
-        ingOrderData.ing_confirmPrice		= res.confirmPrice                  ;
-        ingOrderData.ing_getProfit		    = res.getProfit                     ;
-        ingOrderData.ing_avgBuyPrice		= res.avgBuyPrice                   ;
-        ingOrderData.ing_tradeFee		    = res.tradeFee                      ;
-        ingOrderData.ing_allFund		    = res.allFund + S.ing_tradeFee      ;
-        ingOrderData.ing_allCoin		    = S.ing_allFund / res.BaseCoinPrice ;
-        ingOrderData.ing_orderStatus		= res.orderStatus                   ;
-        ingOrderData.ing_pXq                = S.ing_confirmPrice * S.ing_qty    ;
+        ingOrderData.ing_orderID		    = res.orderID                                           ;
+        ingOrderData.ing_confirmTimestamp   = res.confirmTimestamp                                  ;
+        ingOrderData.ing_confirmDate		= res.confirmDate                                       ;
+        ingOrderData.ing_confirmPrice		= res.confirmPrice                                      ;
+        ingOrderData.ing_getProfit		    = res.getProfit                                         ;
+        ingOrderData.ing_avgBuyPrice		= res.avgBuyPrice                                       ;
+        ingOrderData.ing_tradeFee		    = res.tradeFee                                          ;
+        ingOrderData.ing_allFund		    = res.allFund + ingOrderData.ing_tradeFee               ;
+        ingOrderData.ing_allCoin		    = ingOrderData.ing_allFund / res.BaseCoinPrice          ;
+        ingOrderData.ing_orderStatus		= res.orderStatus                                       ;
+        ingOrderData.ing_pXq                = ingOrderData.ing_confirmPrice * ingOrderData.ing_qty  ;
 
         await ClearGS(sheets, spreadsheetID, simRange_00) ;
 
@@ -149,25 +149,20 @@ async function GATE_Fetch(isReal, method, path, body = null) {
     const GATE_simulate_Key     =  process.env.GATE_simulate_Key                ; 
     const GATE_simulate_Secret  =  process.env.GATE_simulate_Secret             ;
     const GATE_simulate_URL     =  'https://api-testnet.gateapi.io'             ;
-    const GATEreal_Key          =  process.env.GATEreal_Key                     ;
-    const GATEreal_Secret       =  process.env.GATEreal_Secret                  ;
-    const GATEreal_URL          =  'https://api.gateio.ws'                      ;
+    const GATE_real_Key         =  process.env.GATE_real_Key                    ;
+    const GATE_real_Secret      =  process.env.GATE_real_Secret                 ;
+    const GATE_real_URL         =  'https://api.gateio.ws'                      ;
 
+    const GATE_Key     =  isStrictTrue(isReal) ? GATE_real_Key    : GATE_simulate_Key     ;
+    const GATE_Secret  =  isStrictTrue(isReal) ? GATE_real_Secret : GATE_simulate_Secret  ;
+    const GATE_URL     =  isStrictTrue(isReal) ? GATE_real_URL    : GATE_simulate_URL     ;
 
-    const GATE_Key     =  isStrictTrue(isReal) ? GATEreal_Key    : GATE_simulate_Key     ;
-    const GATE_Secret  =  isStrictTrue(isReal) ? GATEreal_Secret : GATE_simulate_Secret  ;
-    const GATE_URL     =  isStrictTrue(isReal) ? GATEreal_URL    : GATE_simulate_URL     ;
-
-    const timestamp = Math.floor(Date.now() / 1000).toString(); // 🕒 秒级物理时空戳
+    const timestamp = Math.floor(Date.now() / 1000).toString(); // 秒级物理时空戳
 
     const fullPath  = GATE_PATH_version + path ;
     const url       = GATE_URL + fullPath ;
 
-    // 1. 刚性处理 Body 序列化
-    let bodyString = '';
-    if (body && method !== 'GET') { bodyString = JSON.stringify(body) }
-
-    // ==================== ️ 签名处理（全项目唯一的一处加密逻辑） ====================
+    // 签名处理（全项目唯一的一处加密逻辑）
     // APIv4 中签名字符串按照如下方式拼接生成：
     //      Request Method + "\n" + Request URL + "\n" + Query String + "\n" + HexEncode(SHA512(Request Payload)) + "\n" + Timestamp
     // Request Method
@@ -181,11 +176,14 @@ async function GATE_Fetch(isReal, method, path, body = null) {
     // Timestamp
     //      设置在请求头部 Timestamp 里的值
     // 下面是过程:
-    // A. 算出 Body 的 SHA512 哈希（GET 请求的 bodyString 为空，符合官方规范）
+
+    // 刚性处理 Body 序列化
+    const bodyString = body && method !== 'GET' ? JSON.stringify(body) : '' ;
+    // 算出 Body 的 SHA512 哈希（GET 请求的 bodyString 为空，符合官方规范）
     const hashedBody = crypto.createHash('sha512').update(bodyString).digest('hex');
-    // B. 刚性合拢 Gate 官方签名原文公式 (Method + "\n" + Path + "\n" + QueryString + "\n" + HashedBody + "\n" + Timestamp)
+    // 刚性合拢 Gate 官方签名原文公式 (Method + "\n" + Path + "\n" + QueryString + "\n" + HashedBody + "\n" + Timestamp)
     const signString = `${method}\n${fullPath}\n\n${hashedBody}\n${timestamp}`;
-    // C. 动用藏在 GCP 内存里的主权私钥进行 HMAC-SHA512 深度锻造
+    // 动用藏在 GCP 内存里的主权私钥进行 HMAC-SHA512 深度锻造
     const signature = crypto.createHmac('sha512', GATE_Secret).update(signString).digest('hex');
     // ==============================================================================
 
@@ -221,14 +219,12 @@ async function GATE_SendOrderToBroker(isReal, S, TradingSymbol) {
     const brokerSymbol  =  tvSymbol_TO_brokerSymbol(TradingSymbol) ;
     const contract      =  brokerSymbol.basecurrency + '_' + brokerSymbol.currency ;
 
-    const path_         =  '/futures/' + brokerSymbol.settle ;
-   
     // Get quanto_multiplier = 0.01
-    const path_contract_info        = path_ + '/contracts/' + contract ;
-    const res_contract_info         = await GATE_Fetch (isReal, 'GET', path_contract_info) ;
-    const res_contract_info_data    = await res_contract_info.json() ;
-    const quanto_multiplier         = ToStrictNumber(res_contract_info_data.quanto_multiplier) ;
-    const order_price_round         = ToStrictNumber(res_contract_info_data.order_price_round) ;
+    const path_contract     = '/futures/' + brokerSymbol.settle + '/contracts/' + contract ;
+    const resp_contract     = await GATE_Fetch (isReal, 'GET', path_contract) ;
+    const data_contract     = await resp_contract.json() ;
+    const quanto_multiplier   = ToStrictNumber(data_contract.quanto_multiplier) ;
+    const order_price_round   = ToStrictNumber(data_contract.order_price_round) ;
     if (!isStrictNumber(quanto_multiplier) || quanto_multiplier <= 0) { throw new Error('did not get right quanto_multiplier')}
     const sizeNumber = Math.floor(S.ing_qty / quanto_multiplier) ;
     S.ing_qty   =  sizeNumber * quanto_multiplier ;
@@ -251,10 +247,12 @@ async function GATE_SendOrderToBroker(isReal, S, TradingSymbol) {
     if (S.ing_orderType === order_T_MKT) {orderBody.tif = 'ioc'}
     orderBody.text      =  orderID      ;
 
-    const path_order  =  path_ + '/orders'  ;
+    // 合约交易下单:
+    // POST /futures/{settle}/orders
+    const path_order  =  '/futures/' + brokerSymbol.settle + '/orders'  ;
     const resp_order  =  await GATE_Fetch('POST', path_order, orderBody)  ;
     const data_order  =  CleanObjToNumBoolStr(await resp_order.json() )    ; //这里必须需要await
-    if (resp_order.status !== 201) {throw new Error(`order ${orderID} 下单失败 1`)}
+    if (resp_order.status !== 201)   {throw new Error(`order ${orderID} 下单失败 1`)}
     if (data_order.text !== orderID) {throw new Error(`order ${orderID} 下单失败 2`)}
 
     S.ing_orderID		    = data_order.text               ;
