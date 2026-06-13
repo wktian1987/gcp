@@ -895,16 +895,16 @@ export async function HandleTradeBot(raw_tvData) {
             if ( isStrictFalse(toBuy) ) {return false}
 
             if ( isStrictTrue(toBuy) ) {
-                S.ing_orderID           =  'B-' + GetTimeStringWithOffset(8, this.timestamp)                                                                                                            ;
-                S.ing_orderTimestamp    =  Date.now()                                                                                                                                                   ;
-                S.ing_orderDate         =  GetTimeStringWithOffset(8, S.ing_orderTimestamp)                                                                                                             ;
-                S.ing_serial            =  ToStrictNumber(this.lstBuySerial, 0) + 1                                                                                                                     ;
-                S.ing_buysell           =  order_BUY                                                                                                                                                    ;
-                S.ing_triggerPrice      =  this.TradingSymbolPrice                                                                                                                                      ;
-                S.ing_orderType         =  order_T_LMT                                                                                                                                                  ;
-                S.ing_orderPrice        =  S.ing_orderPrice || S.ing_triggerPrice                                                                                                                       ;
-                S.ing_qty               =  this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin*this.leverage/S.ing_orderPrice/this.minEnExPosition/(this.MaxGrid - this.gridNum)) )        ;
-                S.ing_orderStatus       =  order_pending                                                                                                                                                ;
+                S.ing_orderID           =  'B-' + GetTimeStringWithOffset(8, this.timestamp)                                                                                                    ;
+                S.ing_orderTimestamp    =  Date.now()                                                                                                                                           ;
+                S.ing_orderDate         =  GetTimeStringWithOffset(8, S.ing_orderTimestamp)                                                                                                     ;
+                S.ing_serial            =  ToStrictNumber(this.lstBuySerial, 0) + 1                                                                                                             ;
+                S.ing_buysell           =  order_BUY                                                                                                                                            ;
+                S.ing_triggerPrice      =  this.TradingSymbolPrice                                                                                                                              ;
+                S.ing_orderType         =  order_T_LMT                                                                                                                                          ;
+                S.ing_orderPrice        =  S.ing_orderPrice || S.ing_triggerPrice                                                                                                               ;
+                S.ing_qty               =  this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin*this.leverage/S.ing_orderPrice/this.minEnExPosition/(this.MaxGrid - this.gridNum)) )   ;
+                S.ing_orderStatus       =  order_pending                                                                                                                                        ;
 
                 const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
                 // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式

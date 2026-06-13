@@ -228,7 +228,7 @@ async function GATE_SendOrderToBroker(isReal, S, TradingSymbol) {
     if (!isStrictNumber(quanto_multiplier) || quanto_multiplier <= 0) { throw new Error('did not get right quanto_multiplier')}
     const sizeNumber = Math.floor(S.ing_qty / quanto_multiplier) ;
     S.ing_qty   =  sizeNumber * quanto_multiplier ;
-    if (sizeNumber <= 0) {throw new Error('ing_qty is too small, cant trade')}
+    if (Math.abs(sizeNumber) <= 0) {throw new Error('ing_qty is too small, cant trade')}
     const size = ToStrictString(Math.floor(S.ing_qty / quanto_multiplier)) ;
     ///////////////
     ////这里应该要检查当前保证金余额
