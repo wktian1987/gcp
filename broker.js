@@ -258,7 +258,7 @@ async function GATE_SendOrderToBroker(isReal, S, TradingSymbol) {
     S.ing_orderID		    = data_order.text               ;
     S.ing_orderTimestamp    = Math.floor(data_order.create_time * 1000) ;
     S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp) ;    
-    S.ing_orderStatus		= data_order.order_waiting      ; // 按照现在的逻辑, 下单成功后, 暂时先不管交易所真实返回的订单状态, 一律按照waiting来记录
+    S.ing_orderStatus		= order_waiting      ; // 按照现在的逻辑, 下单成功后, 暂时先不管交易所真实返回的订单状态, 一律按照waiting来记录
     S.ing_partial           = 0  ;
 
     return S ;
