@@ -250,7 +250,7 @@ async function GATE_SendOrderToBroker(isReal, S, TradingSymbol) {
     // 合约交易下单:
     // POST /futures/{settle}/orders
     const path_order  =  '/futures/' + brokerSymbol.settle + '/orders'  ;
-    const resp_order  =  await GATE_Fetch('POST', path_order, orderBody)  ;
+    const resp_order  =  await GATE_Fetch(isReal, 'POST', path_order, orderBody)  ;
     const data_order  =  CleanObjToNumBoolStr(await resp_order.json() )    ; //这里必须需要await
     if (resp_order.status !== 201)   {throw new Error(`order ${orderID} 下单失败 1`)}
     if (data_order.text !== orderID) {throw new Error(`order ${orderID} 下单失败 2`)}
