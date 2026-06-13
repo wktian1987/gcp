@@ -1157,6 +1157,8 @@ const TradeBot = {
         this.runningWellSet      =  new Set()  ; // 每次有运行中的错误都写入这个Set, 所以可以根据isRunningWell()来判断是否有错误发生
     } ,
 
+    Set_toGCPRanges(toGCPRanges) { this.toGCPRanges = toGCPRanges } ,
+
     /**
      * 依据runningWellSet中是否有元素来判断是否有运行错误
      * @returns true: 运行中无错误
@@ -1191,67 +1193,59 @@ const TradeBot = {
      */
     async Set_spreadsheetID(botNumber) { this.spreadsheetID = await GetSpreadsheetID(botNumber, this.sheets) } ,
 
-        /**
-         * 设置this.lockName, 依据TV数据的时间戳
-         * @param {Number} tv_timestamp 
-         * @returns 无返回值, 默认不会出错, 因为这个函数运行的前提是调用它的函数前面不会出错. 
-         */
-        Set_lockName(tv_timestamp) { 
-            this.lockName = 'T' + String(tv_timestamp) ;
-        } ,
+    /**
+     * 设置this.lockName, 依据TV数据的时间戳
+     * @param {Number} tv_timestamp 
+     * @returns 无返回值, 默认不会出错
+     */
+    Set_lockName(tv_timestamp) { this.lockName = 'T' + String(tv_timestamp) } ,
 
-        /**
-         * 获取当前toGCPData
-         * @returns {Promise<Object>}
-         */
-        async Get_toGCPData() {
-            return A2dToCleanObj(await GetGS(this.sheets, this.spreadsheetID, toGCPRanges)) ;
-        } ,
+    /**
+     * 获取当前toGCPData
+     * @returns {Promise<Object>}
+     */
+    async Get_toGCPData() { return A2dToCleanObj(await GetGS(this.sheets, this.spreadsheetID, this.toGCPRanges)) } ,
 
-        /**
-         * 检测当前GS中分布式锁的真实归属,
-         * @returns {Promise<String>} String: 当前的lockName
-         */
-        async CheckLockFromGS() {
-            const toGCPData = await this.Get_toGCPData() ;
-            return toGCPData.LOCK ;
-        } ,
+    /**
+     * 检测当前GS中分布式锁的真实归属,
+     * @returns {Promise<String>} String: 当前的lockName
+     */
+    async CheckLockFromGS(toGCPRanges) { return ( await this.Get_toGCPData() )?.LOCK ?? 'NotGotLockValue' } ,
 
-        /**
-         * 分布式碰撞抢锁：抢占排他性写锁，带高频自旋重试机制
-         * @async
-         * @param {number} tv_timestamp 当前的信号时间戳
-         * @param {number} [cantSetAfter=30000] 当前时间超过多少时便不能再获得锁权限
-         * @returns {boolean} true : 抢锁成功返回
-         * @returns {String} String: 失败或超时熔断返回原因
-         */
-        async SetLockToGS(tv_timestamp, cantSetAfter = 30000) {
-            if (!isStrictString(this.lockName) || !this.lockName.startsWith('T')) {return 'SetLockToGS Error: this.lockName 未设置或设置错误'}
-            if (!isStrictNumber(tv_timestamp)  || !isStrictNumber(cantSetAfter) ) {return 'SetLockToGS Error: input @param 错误'}
+    /**
+     * 分布式碰撞抢锁：抢占排他性写锁，带高频自旋重试机制
+     * @async
+     * @param {number} tv_timestamp 当前的信号时间戳
+     * @param {number} [cantSetAfter=30000] 当前时间超过多少时便不能再获得锁权限
+     * @returns {boolean} true : 抢锁成功返回
+     * @returns {String} String: 失败或超时熔断返回原因
+     */
+    async SetLockToGS(tv_timestamp, cantSetAfter = 30000) {
+        if (!isStrictString(this.lockName) || !this.lockName.startsWith('T')) {return 'SetLockToGS Error: this.lockName 未设置或设置错误'}
+        if (!isStrictNumber(tv_timestamp)  || !isStrictNumber(cantSetAfter) ) {return 'SetLockToGS Error: input @param 错误'}
 
-            while (Date.now() < tv_timestamp + cantSetAfter) {
-                const toGCPData     = await this.Get_toGCPData() ;
-                const currentLock   = toGCPData.LOCK ;
-                if (currentLock === noLOCK) {
-                    await UpdateGS(this.sheets, this.spreadsheetID, toGCPData.lockRange, [[this.lockName]]) ;
-                    await Sleep(2000) ; // 等两秒后再确认是否成功, 防止同时有两个信号抢锁
-                    const checkWon = await this.CheckLockFromGS() === this.lockName ;
-                    if (isStrictTrue(checkWon)) {return true}
-                    if (isStrictFalse(checkWon)) {return 'SetLockToGS Error: 锁被其他几乎同时到达的信号抢去'}
+        while (Date.now() < tv_timestamp + cantSetAfter) {
+            const toGCPData     = await this.Get_toGCPData() ;
+            const currentLock   = toGCPData?.LOCK ?? 'NotGotLockValue';
+            if (currentLock === noLOCK) {
+                await UpdateGS(this.sheets, this.spreadsheetID, toGCPData.lockRange, [[this.lockName]]) ;
+                await Sleep(2000) ; // 等两秒后再确认是否成功, 防止同时有两个信号抢锁
+                const checkWon = await this.CheckLockFromGS() === this.lockName ;
+                if (isStrictTrue(checkWon)) {return true}
+                if (isStrictFalse(checkWon)) {return 'SetLockToGS Error: 锁被其他几乎同时到达的信号抢去'}
+            }
+            if (tv_timestamp < toGCPData.lstLockSignalTime) {return 'SetLockToGS Error: 更新更近的信号已被处理, 忽略本次信号'}
+            if (currentLock !== noLOCK && isStrictString(currentLock) && currentLock.startsWith('T')) {
+                const currentLockTime = ToStrictNumber(currentLock.split('T')[1]) ;
+                if (isStrictNumber(currentLockTime) && currentLockTime > tv_timestamp) {
+                    return  'SetLockToGS Error: 无法为当前信号设锁, 因为现有锁时间在当前信号之后';
                 }
-                if (tv_timestamp < toGCPData.lstLockSignalTime) {return 'SetLockToGS Error: 更新更近的信号已被处理, 忽略本次信号'}
-                if (currentLock !== noLOCK && isStrictString(currentLock) && currentLock.startsWith('T')) {
-                    const currentLockTime = ToStrictNumber(currentLock.split('T')[1]) ;
-                    if (isStrictNumber(currentLockTime) && currentLockTime > tv_timestamp) {
-                        return  'SetLockToGS Error: 无法为当前信号设锁, 因为现有锁时间在当前信号之后';
-                    }
+            }
+            await Sleep(1000) ;
+        } 
 
-                }
-                await Sleep(1000) ;
-            } 
-
-            return 'SetLockToGS Error: 已过抢锁时间' ;
-        } ,
+        return 'SetLockToGS Error: 已过抢锁时间' ;
+    } ,
 
         /**
          * 释放分布式排他锁
@@ -2197,26 +2191,37 @@ export async function HandleTradingBot(tvData) {
     } ) ;
 
     // 先行验锁
-    const thisLocTime  =  ToStrictNumber(tvData.timestamp) ;
-    if (!Object.hasOwn(tvBotLocks, tvData.botNumber)) {tvBotLocks[tvData.botNumber] = thisLocTime}
-    if (tvBotLocks[tvData.botNumber] > thisLocTime) {throw new Error('当前正在处理更新的信号, 本信号丢弃')}
 
-    // 这是最重要的判断, 如何判断当前正在处理的信号, 是真地正在处理, 还是遇到了问题, 
-    // 如果遇到了问题的话, 如何强行退出, 正在处理的信号
-    // 如果遇到问题的信号, 实际上已经退出了, 但是锁状态还是出错的锁, 如何强行解锁,
-    // 什么情况下可以强行解锁, 什么情况下必须要手动解锁???
-    // if (tvBotLocks[raw_tvData.botNumber] < thisLocTime) {tvBotLocks[raw_tvData.botNumber] = thisLocTime}
+    const thisBotLockTimeName   =  tvData.botNumber + '_lockTime'   ;
 
+    const thisLockTime          =  ToStrictNumber(tvData.timestamp) ;
 
+    if (!Object.hasOwn(TradeBot, thisBotLockTimeName) || TradeBot[thisBotLockTimeName] === null) {TradeBot[thisBotLockTimeName] = thisLockTime}
+    if (TradeBot[thisBotLockTimeName] > thisLockTime) {throw new Error('当前正在处理更新的信号, 本信号丢弃')}
 
+    // 正常情况下一个信号运行绝对不会超过5分钟; 一旦发生这种情况, 肯定是发生了不可挽回的错误, 直接抛错退出当前信号处理就可以了
+    if (Date.now() - TradeBot[thisBotLockTimeName] > 5 * 60 * 1000 ) {throw new Error('上一个信号长时间未解锁, 肯定遇到了问题, 本信号不再处理') }
 
-    const bot = Object.create(TradeBot) ;
-    bot.createBasicChildAttr() ;
-    bot.AddAlertMessage(bot.alertMessageSet, tvData.thisAlertMessage) ;
-    await bot.Set_spreadsheetID(tvData.botNumber) ;
+    while (TradeBot[thisBotLockTimeName] !== null && Date.now() - thisLockTime <  30 * 1000) { await Sleep(1000) } // 如果现在有锁的话, 等30s
+    if (TradeBot[thisBotLockTimeName] !== null ) {throw new Error('仍在处理上一个信号, 但是本信号已经超时, 直接退出')}
+    if (TradeBot[thisBotLockTimeName] === null ) {TradeBot[thisBotLockTimeName] = thisLockTime} 
 
 
 
+    const bot = Object.create(TradeBot);
+    bot.createBasicChildAttr();
+    bot.Set_toGCPRanges(toGCPRanges);
+    bot.AddAlertMessage(bot.alertMessageSet, tvData.thisAlertMessage);
+    await bot.Set_spreadsheetID(tvData.botNumber);
+    bot.Set_lockName(tvData.timestamp);
+    const toGCPData = await bot.Get_toGCPData(toGCPRanges);
+
+
+    if (!Object.hasOwn(TradeBot, thisBotLockTimeName) || TradeBot[thisBotLockTimeName] !== thisLockTime) {
+        // 出现未知错误
+    } else {
+        TradeBot[thisBotLockTimeName] = null ;
+    }
 
 
 
