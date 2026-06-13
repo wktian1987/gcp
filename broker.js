@@ -234,7 +234,7 @@ async function GATE_SendOrderToBroker(isReal, S, TradingSymbol) {
     ////这里应该要检查当前保证金余额
     //
 
-    const orderID   =  't-' + S.ing_orderID.replaceAll(':', '_') ;
+    const orderID   =  S.ing_buysell === order_BUY ? 't-' + S.ing_orderID.replaceAll(':', '_') : S.ing_orderID ;
     const price_mul = S.ing_orderPrice/order_price_round ;
     const price     =  ToStrictString( S.ing_buysell === order_BUY ? order_price_round * Math.floor(price_mul) : order_price_round * Math.ceil(price_mul)) ;
 
