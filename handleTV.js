@@ -315,6 +315,7 @@ export async function HandleTradeBot(raw_tvData) {
             const i_toClearRangeSet     =  new Set()    ;
             const i_toUpdateRangeList   =  []           ;
 
+            i_toClearRangeSet.add( toGCPData.ingOrderLine       )  ;
             i_toClearRangeSet.add( toGCPData.uncloseOrdersRange )  ;
             i_toClearRangeSet.add( toGCPData.tradeHistoryRange  )  ;
             i_toClearRangeSet.add( toGCPData.HghLowRange        )  ;
