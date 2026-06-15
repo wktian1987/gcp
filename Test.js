@@ -30,6 +30,3 @@ export async function HandleTradingBot(tvData) {
     // console.log(bot.cLogHead + 'Get_gsData()_after_ToCheckInitiate() success') ;
 
 }
-
-// go to branch
-// then try merge to main
