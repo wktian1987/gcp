@@ -1165,9 +1165,12 @@ export const CV = {
 
 export const TradeBot = {
     /**
-     * 为子对象创建基本的运行参数 ;
+     * 为大对象和子对象创建基本的运行参数 ;
      * 每次子对象创建后, 必须运行这个函数 ;
-     * 无返回值, 可直接运行, 出错后会往上层抛错
+     * @param {object} tvData 清理后的tvData
+     * @returns 因为有try/catch, 不会抛错
+     * @returns {boolean}   true: 成功
+     * @returns {string}    string:出错信息
      */
     async CreateBasicAttr(tvData) {
         this.tvData             =  tvData                       ;
@@ -1192,17 +1195,17 @@ export const TradeBot = {
         // 在全局中设runningWell
         if (!Object.hasOwn(TradeBot, this.RunningWellName)) {TradeBot[this.RunningWellName] = new Set() }
         // 在全局中有报错的话, 直接退出
-        if (this.isRunningWell()) {throw new Error('发现之前的运行中有错误, 本次信号没必要再处理, 提前退出, 以前的错误为: ' + StrFromSetMessage(TradeBot[this.RunningWellName])) }
+        if (this.isRunningWell()) {return '发现之前的运行中有错误, 本次信号没必要再处理, 提前退出, 以前的错误为: ' + StrFromSetMessage(TradeBot[this.RunningWellName]) }
 
         // 在全局中设锁
         if (!Object.hasOwn(TradeBot, this.LockTimeName) || TradeBot[this.LockTimeName] === null) { TradeBot[this.LockTimeName] = this.LockTime }
-        if (TradeBot[this.LockTimeName] > this.LockTime) {throw new Error('当前正在处理更新的信号, 本信号丢弃') }
+        if (TradeBot[this.LockTimeName] > this.LockTime) {return '当前正在处理更新的信号, 本信号丢弃' }
         // 正常情况下一个信号运行绝对不会超过5分钟; 一旦发生这种情况, 肯定是发生了不可挽回的错误, 直接抛错退出当前信号处理就可以了
-        if (Date.now() - TradeBot[this.LockTimeName] > 5 * 60 * 1000) {throw new Error('上一个信号长时间未解锁, 肯定遇到了无法挽回的错误, 但错误未被记录, 本信号不再处理, 需手动检查') }
+        if (Date.now() - TradeBot[this.LockTimeName] > 5 * 60 * 1000) {return '上一个信号长时间未解锁, 肯定遇到了无法挽回的错误, 但错误未被记录, 本信号不再处理, 需手动检查' }
         // 如果现在有锁的话, 等待当前正在处理的信号完成, 当信号已经过去60s后, 不再处理
         while (TradeBot[this.LockTimeName] !== null && Date.now() - this.LockTime < 60 * 1000) { await Sleep(1000) }
         // 已经超过60s, 或者大锁被释放
-        if (TradeBot[this.LockTimeName] !== null) {throw new Error('仍在处理上一个信号, 但是本信号已经超时, 直接退出') }
+        if (TradeBot[this.LockTimeName] !== null) {return '仍在处理上一个信号, 但是本信号已经超时, 直接退出' }
         // 大锁被清空后, 马上抢大锁
         if (TradeBot[this.LockTimeName] === null) {TradeBot[this.LockTimeName] = this.LockTime } 
         // 至此, 已经在大TradeBot对象中, 给当前botNumber上锁, 其他botNumber几乎不可能再抢占到 大TradeBot锁
@@ -1215,7 +1218,7 @@ export const TradeBot = {
                 let errMessage = e.message + '\n' ;
                 const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
                 errMessage += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK + '\n' : '大锁已释放' + '\n' ;
-                throw new Error('获取spreadsheetID失败: \n' + errMessage.trim());
+                return '获取spreadsheetID失败: \n' + errMessage.trim() ;
             }
         }
         if (Object.hasOwn(TradeBot, this.SpreadsheetIDName)) {this.spreadsheetID = TradeBot[this.SpreadsheetIDName] }
@@ -1226,8 +1229,8 @@ export const TradeBot = {
         try {
             let toGCPData   = await this.Get_toGCPData() ;
             let currentLock = toGCPData.LOCK ;
-            if (TradeBot[this.LockTimeName] !== this.LockTime) {throw new Error('临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去')}
-            if (currentLock !== CV.noLOCK) {throw new Error('大TradeBot锁被释放的情况下, GS锁未被释放') }
+            if (TradeBot[this.LockTimeName] !== this.LockTime) {return '临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去' }
+            if (currentLock !== CV.noLOCK) {return '大TradeBot锁被释放的情况下, GS锁未被释放' }
             if (currentLock === CV.noLOCK) {
                 await UpdateGS(this.sheets, this.spreadsheetID, toGCPData.lockRange, [[this.lockName]]);
                 await Sleep(100); // 等0.1后再确认是否成功,防止GS频繁写入读取限制
@@ -1241,7 +1244,7 @@ export const TradeBot = {
                         // 再次尝试给GS解锁, 万一有锁
                         // 不必关心返回值了, 因为下次信号进来设锁的时候, 会首先检查GS锁状态
                         await this.ReleaseLockOfGS();
-                        throw new Error('往GS写入LOCK失败') ;
+                        return '往GS写入LOCK失败' ;
                     }
                 }
             }
@@ -1254,8 +1257,10 @@ export const TradeBot = {
             const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
             errMessage += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK + '\n' : '大锁已释放' + '\n';
 
-            throw new Error('抢GS锁失败: \n' + errMessage);
+            return '抢GS锁失败: \n' + errMessage ;
         }
+
+        return true ; 
 
     } , // 执行完此后, 已获得 大TradeBot锁 和 GS锁 , 谨记最后释放
 
