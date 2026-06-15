@@ -85,8 +85,6 @@ export function AddSetMessage(messageSet, newMessageLine) {
 
 export function StrFromSetMessage(messageSet) {return [...messageSet].join('\n').trim() }
 
-
-
 /**
  * 将字符串形式的数字转换为纯数字
  * 不会处理带有%的数字
@@ -725,3 +723,10 @@ export async function SendEmail(mail_subject, mail_content) {
  * @returns {Promise<void>} 纯净的期约原色，由外层总控大闸刚性 await 拦截
  */
 export function Sleep(ms) { return new Promise(resolve => setTimeout(resolve, isStrictNumber(ms) ? ms : 1000)) }
+
+const ResultWithErrMessage = {
+    AddResult(r) {this.result = r} ,
+    // AddErrMessage(eMsg) { this.errMessage = 
+} ;
+
+const RwE = Object.create(ResultWithErrMessage) ;

@@ -1289,13 +1289,13 @@ export const TradeBot = {
      * @returns true: 运行中无错误
      * @returns false: 运行中有错误
      */
-    isRunningWell() { return TradeBot[this.RunningWellName].size === 0 } ,
+    isRunningWell() { return TradeBot[this.RunningWellName].size === 0 },
 
     /**
      * 获取当前toGCPData
      * @returns {Promise<Object>}
      */
-    async Get_toGCPData() {return A2dToCleanObj(await GetGS(this.sheets, this.spreadsheetID, CV.toGCPRanges)) } ,
+    async Get_toGCPData() { return A2dToCleanObj(await GetGS(this.sheets, this.spreadsheetID, CV.toGCPRanges)) },
 
     /**
      * 检测当前GS中分布式锁的真实归属,
