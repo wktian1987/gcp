@@ -1184,23 +1184,26 @@ const TradeBot = {
         this.SpreadsheetIDName  =  tvData.botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID, 避免每次重新读取
         // 可以通过TV信号来重置全局锁 和 报错信息
         if (isStrictTrue(tvData.RESET)) { 
-            delete TradeBot[this.LockTimeName]      ;
-            delete TradeBot[this.RunningWellName]   ;
-            delete TradeBot[this.SpreadsheetIDName] ;
+            delete TradeBot[this.LockTimeName       ]   ;
+            delete TradeBot[this.RunningWellName    ]   ;
+            delete TradeBot[this.SpreadsheetIDName  ]   ;
         }
 
         // 在全局中设runningWell
         if (!Object.hasOwn(TradeBot, this.RunningWellName)) {TradeBot[this.RunningWellName] = new Set() }
         // 在全局中有报错的话, 直接退出
-        if (TradeBot[this.RunningWellName].size > 0) {throw new Error('发现之前的运行中有错误, 本次信号没必要再处理, 提前退出, 以前的错误为: ' + StrFromSetMessage(TradeBot[this.RunningWellName])) }
+        if (this.isRunningWell()) {throw new Error('发现之前的运行中有错误, 本次信号没必要再处理, 提前退出, 以前的错误为: ' + StrFromSetMessage(TradeBot[this.RunningWellName])) }
 
         // 在全局中设锁
         if (!Object.hasOwn(TradeBot, this.LockTimeName) || TradeBot[this.LockTimeName] === null) { TradeBot[this.LockTimeName] = this.LockTime }
         if (TradeBot[this.LockTimeName] > this.LockTime) {throw new Error('当前正在处理更新的信号, 本信号丢弃') }
         // 正常情况下一个信号运行绝对不会超过5分钟; 一旦发生这种情况, 肯定是发生了不可挽回的错误, 直接抛错退出当前信号处理就可以了
-        if (Date.now() - TradeBot[this.LockTimeName] > 5 * 60 * 1000) {throw new Error('上一个信号长时间未解锁, 肯定遇到了无法挽回的错误, 本信号不再处理, 需手动检查') }
-        while (TradeBot[this.LockTimeName] !== null && Date.now() - this.LockTime < 30 * 1000) { await Sleep(1000) } // 如果现在有锁的话, 等30s, 从信号产生开始算, 而不是收到信号那时开始算
+        if (Date.now() - TradeBot[this.LockTimeName] > 5 * 60 * 1000) {throw new Error('上一个信号长时间未解锁, 肯定遇到了无法挽回的错误, 但错误未被记录, 本信号不再处理, 需手动检查') }
+        // 如果现在有锁的话, 等待当前正在处理的信号完成, 当信号已经过去60s后, 不再处理
+        while (TradeBot[this.LockTimeName] !== null && Date.now() - this.LockTime < 60 * 1000) { await Sleep(1000) }
+        // 已经超过60s, 或者大锁被释放
         if (TradeBot[this.LockTimeName] !== null) {throw new Error('仍在处理上一个信号, 但是本信号已经超时, 直接退出') }
+        // 大锁被清空后, 马上抢大锁
         if (TradeBot[this.LockTimeName] === null) {TradeBot[this.LockTimeName] = this.LockTime } 
         // 至此, 已经在大TradeBot对象中, 给当前botNumber上锁, 其他botNumber几乎不可能再抢占到 大TradeBot锁
         // 在GS中上锁前, 会再次检查 大TradeBot 中的锁, 确保万无一失
@@ -1209,21 +1212,21 @@ const TradeBot = {
             try {
                 TradeBot[this.SpreadsheetIDName] = await GetSpreadsheetID(tvData.botNumber, sheets);
             } catch (e) {
-                let errMessage = `获取 spreadsheetID失败: ${e.message} \n`;
+                let errMessage = e.message + '\n' ;
                 const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
-                errMessage += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK : '大锁已释放' ;
-                throw new Error(errMessage);
+                errMessage += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK + '\n' : '大锁已释放' + '\n' ;
+                throw new Error('获取spreadsheetID失败: \n' + errMessage.trim());
             }
         }
         if (Object.hasOwn(TradeBot, this.SpreadsheetIDName)) {this.spreadsheetID = TradeBot[this.SpreadsheetIDName] }
 
         // 开始设GS锁
-        // 分布式碰撞抢锁：抢占排他性写锁，带高频自旋重试机制
         // 只要进入这一步,说明抢到了 大TradeBot 锁
         // 只要拿到了 大TradeBot 锁 , GS 锁必然在上锁前是noLOCK状态, 会去验证
         try {
             let toGCPData   = await this.Get_toGCPData() ;
             let currentLock = toGCPData.LOCK ;
+            if (TradeBot[this.LockTimeName] !== this.LockTime) {throw new Error('临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去')}
             if (currentLock !== CV.noLOCK) {throw new Error('大TradeBot锁被释放的情况下, GS锁未被释放') }
             if (currentLock === CV.noLOCK) {
                 await UpdateGS(this.sheets, this.spreadsheetID, toGCPData.lockRange, [[this.lockName]]);
@@ -1244,14 +1247,14 @@ const TradeBot = {
             }
         } catch (e) { 
             let errMessage = '';
-            errMessage += `抢锁失败: ${e.message} \n`;
+            errMessage += e.message + '\n';
             // 设GS锁出错了, 这是一个非核心错误
             // 需要释放已获得的 大TradeBot锁
             // 并抛出错误给上层调用者
             const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
-            errMessage += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK : '大锁已释放';
+            errMessage += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK + '\n' : '大锁已释放' + '\n';
 
-            throw new Error(errMessage);
+            throw new Error('抢GS锁失败: \n' + errMessage);
         }
 
     } , // 执行完此后, 已获得 大TradeBot锁 和 GS锁 , 谨记最后释放
@@ -1297,41 +1300,47 @@ const TradeBot = {
 
     /**
      * 释放分布式排他锁
+     * @param {number} [MAX_Attempts=99] 最多尝试解锁次数
+     * @param {string} [NotGotLockValueTo='NotGotLockValue'] 未从GS中获取到锁状态时的默认值, 保持默认即可
      * @returns {Promise<boolean>} true:   解锁成功返回
-     * @returns                    String: 明确的出错信息
+     * @returns {Promise<string>}  string: 解锁失败原因
      */
-    async ReleaseLockOfGS(NotGotLockValueTo = 'NotGotLockValue') {
-        // 再次确权, 验证要加的锁, 是否与TradeBot中的锁相同
-        if (TradeBot[this.LockTimeName] !== this.LockTime) {return 'TradeBot存放的LockTime与当前写入的不符'}
+    async ReleaseLockOfGS(MAX_Attempts = 99, NotGotLockValueTo = 'NotGotLockValue') {
+        try {
+            // 再次确权, 验证要加的锁, 是否与TradeBot中的锁相同
+            if (TradeBot[this.LockTimeName] !== this.LockTime) { throw new Error('TradeBot存放的LockTime与当前写入的不符') }
 
-        // 确权拦截：先看自己现在还有没有解锁的权力（防止自己超时被别人强刷后，误把别人的锁给解了）
-        // 这种情况一旦发生, 说明运行有了问题, 需要处理
-        const toGCPData     = await this.Get_toGCPData()        ;
-        const currentLock   = toGCPData?.LOCK??NotGotLockValueTo  ;
-        if (currentLock === CV.noLOCK) {return true} // 因为会多次尝试解锁, 所以可以先判断是否锁已被解
+            // 确权拦截：先看自己现在还有没有解锁的权力（防止自己超时被别人强刷后，误把别人的锁给解了）
+            // 这种情况一旦发生, 说明运行有了问题, 需要处理
+            const toGCPData = await this.Get_toGCPData();
+            const currentLock = toGCPData?.LOCK ?? NotGotLockValueTo;
+            if (currentLock === CV.noLOCK) { return true } // 因为会多次尝试解锁, 所以可以先判断是否锁已被解
 
-        const hasRight = currentLock === this.lockName     ;
-        if (isStrictFalse(hasRight)) { return '当前锁状态出错, 并不是正在处理轮的锁, 出现系统错误' }
+            const hasRight = currentLock === this.lockName;
+            if (isStrictFalse(hasRight)) { throw new Error('当前锁状态出错, 并不是正在处理轮的锁, 出现系统错误') }
 
-        const MAX_Attempts = 99;
-        let attempt = 1;
-        while (attempt <= MAX_Attempts) {
-            // 之所以用try是为了最大可能尝试解锁, 而不是仅仅报错
-            try {
-                await UpdateGS(this.sheets, this.spreadsheetID, toGCPData.lockRange, [[noLOCK]]);
-                await Sleep(100);
-                // 验证是否真正安全归还
-                const lockNameAfterAttempt = await this.CheckLockFromGS();
-                if (lockNameAfterAttempt === noLOCK) {
-                    console.log(`第${attempt}次解锁成功`)
-                    return true ;
-                }
-            } catch (e) { console.log(`第${attempt}次解锁出错: ${e.message}, 1s后再次尝试解锁`) }
-            attempt += 1;
-            await Sleep(1000);
+            let attempt = 1;
+            while (attempt <= MAX_Attempts) {
+                // 之所以用try是为了最大可能尝试解锁, 而不是仅仅报错
+                try {
+                    await UpdateGS(this.sheets, this.spreadsheetID, toGCPData.lockRange, [[noLOCK]]);
+                    await Sleep(100);
+                    // 验证是否真正安全归还
+                    const lockNameAfterAttempt = await this.CheckLockFromGS();
+                    if (lockNameAfterAttempt === noLOCK) {
+                        console.log(`第${attempt}次解锁成功`)
+                        return true;
+                    }
+                } catch (e) { console.log(`第${attempt}次解锁出错: ${e.message}, 1s后再次尝试解锁`) }
+                attempt += 1;
+                await Sleep(1000);
+            }
+            throw new Error(`经过${MAX_Attempts}次尝试, 仍无法解锁`);
+        } catch (e) {
+            let errMessage = e.message;
+            this.AddRunningWellMessage(errMessage);
+            return ('ReleaseLockOfGS() 失败: \n' + errMessage) ;
         }
-
-        return `解锁出错, 经过${MAX_Attempts}次尝试, 仍无法解锁`;
     } ,
 
     /**
