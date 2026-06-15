@@ -7,13 +7,13 @@ app.listen(process.env.PORT || 8080, () => {
 });
 
 
-app.post('/schedule', json(), async (req, res) => {
-    console.log("✔ 收到/schedule连接");
-    console.log("✔ 收到/schedule连接, 暂时啥也不做, HandleUnreadGmails() 由 AllPrices信号接管") ;
-    // const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
-    // await HandleUnreadGmails(req, res);
-}
-);
+// app.post('/schedule', json(), async (req, res) => {
+//     console.log("✔ 收到/schedule连接");
+//     console.log("✔ 收到/schedule连接, 暂时啥也不做, HandleUnreadGmails() 由 AllPrices信号接管") ;
+//     // const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
+//     // await HandleUnreadGmails(req, res);
+// }
+// );
 
 app.post('/tgBot', json(), async (req, res) => {
     console.log("✔ 收到/tgBot连接");
@@ -60,7 +60,7 @@ app.post('/tradingview', json(), async (req, res) => {
             console.log(`✔ HandleAllPrice()处理成功`);
         } catch (e) {console.error(`✘ HandleAllPrice()处理失败: ` + e.message) }
 
-        // 用AllPrice信号来激活查看邮件的
+        // 用AllPrice信号来激活查看邮件的操作
         console.log(`HandleAllPrice()处理完毕, 开始处理HandleUnreadGmails()`) ;
         try {
             const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
@@ -68,8 +68,6 @@ app.post('/tradingview', json(), async (req, res) => {
             console.log(`✔ HandleUnreadGmails()处理成功`);
         } catch (e) {console.error(`✘ HandleUnreadGmails()处理失败: ` + e.message)}
     }
-
-
 
 }  )  ;
 

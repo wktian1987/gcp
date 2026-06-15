@@ -1170,14 +1170,14 @@ const TradeBot = {
      * 无返回值, 可直接运行, 出错后会往上层抛错
      */
     async CreateBasicAttr(tvData) {
-        this.tvData             =  tvData ;
-        this.cLogHead           =  tvData.botNumber + ": "   ;
-        this.LockTime           =  tvData.timestamp ;
-        this.lockName           =  'T' + String(this.LockTime) ;
-        this.sheets             =  sheets       ;
-        this.toUpdateRangeList  =  []           ;
-        this.toClearRangeSet    =  new Set()    ;
-        this.alertMessageSet    =  new Set()    ;
+        this.tvData             =  tvData                       ;
+        this.cLogHead           =  tvData.botNumber + ": "      ;
+        this.LockTime           =  tvData.timestamp             ;
+        this.lockName           =  'T' + String(this.LockTime)  ;
+        this.sheets             =  sheets                       ;
+        this.toUpdateRangeList  =  []                           ;
+        this.toClearRangeSet    =  new Set()                    ;
+        this.alertMessageSet    =  new Set()                    ;
         AddSetMessage(this.alertMessageSet, tvData.thisAlertMessage) ;
         this.LockTimeName       =  tvData.botNumber + '_lockTime'       ; // 全局中的锁名
         this.RunningWellName    =  tvData.botNumber + '_runningWell'    ; // 全局中的出错名
@@ -1188,10 +1188,12 @@ const TradeBot = {
             delete TradeBot[this.RunningWellName]   ;
             delete TradeBot[this.SpreadsheetIDName] ;
         }
+
         // 在全局中设runningWell
         if (!Object.hasOwn(TradeBot, this.RunningWellName)) {TradeBot[this.RunningWellName] = new Set() }
         // 在全局中有报错的话, 直接退出
         if (TradeBot[this.RunningWellName].size > 0) {throw new Error('发现之前的运行中有错误, 本次信号没必要再处理, 提前退出, 以前的错误为: ' + StrFromSetMessage(TradeBot[this.RunningWellName])) }
+
         // 在全局中设锁
         if (!Object.hasOwn(TradeBot, this.LockTimeName) || TradeBot[this.LockTimeName] === null) { TradeBot[this.LockTimeName] = this.LockTime }
         if (TradeBot[this.LockTimeName] > this.LockTime) {throw new Error('当前正在处理更新的信号, 本信号丢弃') }
@@ -1219,8 +1221,6 @@ const TradeBot = {
         // 分布式碰撞抢锁：抢占排他性写锁，带高频自旋重试机制
         // 只要进入这一步,说明抢到了 大TradeBot 锁
         // 只要拿到了 大TradeBot 锁 , GS 锁必然在上锁前是noLOCK状态, 会去验证
-        let thereErr_GS_LOCK    =  false    ;
-        let errMessage_GS_LOCK  =  ''       ; 
         try {
             let toGCPData   = await this.Get_toGCPData() ;
             let currentLock = toGCPData.LOCK ;
@@ -1234,23 +1234,24 @@ const TradeBot = {
                     await Sleep(2000) ; // 第一次校验失败的话, 等2s再次校验
                     toGCPData   = await this.Get_toGCPData() ;
                     currentLock = toGCPData.LOCK ;
-                    if (currentLock !== this.lockName) {throw new Error('往GS写入LOCK失败')}
+                    if (currentLock !== this.lockName) {
+                        // 再次尝试给GS解锁, 万一有锁
+                        // 不必关心返回值了, 因为下次信号进来设锁的时候, 会首先检查GS锁状态
+                        await this.ReleaseLockOfGS();
+                        throw new Error('往GS写入LOCK失败') ;
+                    }
                 }
             }
-        } catch (e) { thereErr_GS_LOCK = true ; errMessage_GS_LOCK += `抢锁失败: ${e.message}` ; }
-        // 设GS锁出错了, 这是一个非核心错误
-        // 需要释放已获得的 大TradeBot锁
-        // 并抛出错误给上层调用者
-        if (thereErr_GS_LOCK) {
-            await this.ReleaseLockOfGS() ; // 再次尝试给GS解锁, 万一有锁
+        } catch (e) { 
+            let errMessage = '';
+            errMessage += `抢锁失败: ${e.message} \n`;
+            // 设GS锁出错了, 这是一个非核心错误
+            // 需要释放已获得的 大TradeBot锁
+            // 并抛出错误给上层调用者
             const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
-            errMessage_GS_LOCK += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK : '大锁已释放' ;
+            errMessage += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK : '大锁已释放';
 
-
-
-
-
-            throw new Error(errMessage_GS_LOCK);
+            throw new Error(errMessage);
         }
 
     } , // 执行完此后, 已获得 大TradeBot锁 和 GS锁 , 谨记最后释放
@@ -1262,7 +1263,7 @@ const TradeBot = {
      */
     ReleaseTradeBotLOCK() {
         if (TradeBot[this.LockTimeName] !== this.LockTime) {
-            return '释放大锁失败, 校验出错' ;
+            return '释放大锁失败, 此信号无权解锁' ;
         } else {
             TradeBot[this.LockTimeName] = null ;
             return true ;
@@ -1273,7 +1274,7 @@ const TradeBot = {
      * 将新的出错信息写入 大TradeBot对象 中
      * @param {string} errMessage 
      */
-    AddRunningWellMessage(errMessage) { AddSetMessage(TradeBot[bot.RunningWellName], errMessage) } ,
+    AddRunningWellMessage(errMessage) { AddSetMessage(TradeBot[this.RunningWellName], errMessage) } ,
 
     /**
      * 依据runningWellSet中是否有元素来判断是否有运行错误
@@ -1292,23 +1293,22 @@ const TradeBot = {
      * 检测当前GS中分布式锁的真实归属,
      * @returns {Promise<String>} String: 当前的lockName
      */
-    async CheckLockFromGS() {return (await this.Get_toGCPData() )?.LOCK ?? 'NotGotLockValue' } ,
+    async CheckLockFromGS(NotGotLockValueTo = 'NotGotLockValue') {return (await this.Get_toGCPData() )?.LOCK ?? NotGotLockValueTo } ,
 
     /**
      * 释放分布式排他锁
      * @returns {Promise<boolean>} true:   解锁成功返回
      * @returns                    String: 明确的出错信息
      */
-    async ReleaseLockOfGS() {
+    async ReleaseLockOfGS(NotGotLockValueTo = 'NotGotLockValue') {
         // 再次确权, 验证要加的锁, 是否与TradeBot中的锁相同
-        if (this[LockTimeName] !== this.LockTime) {return 'TradeBot存放的LockTime与当前写入的不符'}
+        if (TradeBot[this.LockTimeName] !== this.LockTime) {return 'TradeBot存放的LockTime与当前写入的不符'}
 
-        const NotGotLockValue = 'NotGotLockValue' ;
         // 确权拦截：先看自己现在还有没有解锁的权力（防止自己超时被别人强刷后，误把别人的锁给解了）
         // 这种情况一旦发生, 说明运行有了问题, 需要处理
         const toGCPData     = await this.Get_toGCPData()        ;
-        const currentLock   = toGCPData?.LOCK??NotGotLockValue  ;
-        if (currentLock === CV.noLOCK) {return true} // 因为会多次尝试解锁, 所以可能在解锁前
+        const currentLock   = toGCPData?.LOCK??NotGotLockValueTo  ;
+        if (currentLock === CV.noLOCK) {return true} // 因为会多次尝试解锁, 所以可以先判断是否锁已被解
 
         const hasRight = currentLock === this.lockName     ;
         if (isStrictFalse(hasRight)) { return '当前锁状态出错, 并不是正在处理轮的锁, 出现系统错误' }
@@ -1326,7 +1326,7 @@ const TradeBot = {
                     console.log(`第${attempt}次解锁成功`)
                     return true ;
                 }
-            } catch (e) { console.log(`第${attempt}次解锁出错, 1s后再次尝试解锁`) }
+            } catch (e) { console.log(`第${attempt}次解锁出错: ${e.message}, 1s后再次尝试解锁`) }
             attempt += 1;
             await Sleep(1000);
         }
@@ -1339,8 +1339,6 @@ const TradeBot = {
      * 无返回值
      */
     async Get_gsData() {
-        let thereErr    = false ;
-        let errMessage  = ''    ;
         try {
             const toGCPData = await this.Get_toGCPData() ;
             if(!Object.hasOwn(toGCPData, "LOCK") ) {throw new Error("get toGCPData error") }
@@ -1377,15 +1375,15 @@ const TradeBot = {
             this.uncloseOrdersA2d       =  uncloseOrdersA2d     ;
             this.uncloseOrdersTitleA    =  uncloseOrdersTitleA  ;
             this.tradeHistoryTitleA     =  uncloseOrdersTitleA  ;
-        } catch(e) {thereErr = true; errMessage += `${e.message}`} ; 
-
+        } catch(e) { 
         // 这里的错误是非核心错误, 可以在释放两个锁后, 抛出错误退出
-        if (thereErr) {
+            let errMessage = e.message + '\n' ;
+
             const r_ReleaseLockOfGS     =  await this.ReleaseLockOfGS() ; // 尝试给GS解锁
             const r_ReleaseTradeBotLOCK =  isStrictTrue(r_ReleaseLockOfGS) ? this.ReleaseTradeBotLOCK() : 'r_ReleaseLockOfGS() fail, no need to release TradeBot Lock' ;
             errMessage  += isStrictString(r_ReleaseLockOfGS)     ? r_ReleaseLockOfGS     + '\n' : 'GS LOCK释放成功'       + '\n';
             errMessage  += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK + '\n' : 'TradeBot LOCK释放成功' + '\n';
-            throw new Error(`Get_gsData() 失败: ${errMessage}`) ;
+            throw new Error(`Get_gsData() 失败: \n` + errMessage) ;
         }
     } ,
 

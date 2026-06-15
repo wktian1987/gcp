@@ -544,6 +544,7 @@ export async function AppendGS(sheets, spreadsheetID, fullRange, values) {
 
 /**
  * 批量读取多个区域内容（多区域打包，类型对齐，精度不失）
+ * @async
  * @param {object} sheets - Google Sheets API 实例
  * @param {string} spreadsheetID - 电子表格 ID
  * @param {Array<string>} rangesList - 想要读取的区域数组，例如 ['MAIN!A:B', 'LOG!C:D']
