@@ -9,6 +9,8 @@ const A = {
 } ;
 const a = Object.create(A) ;
 
+
+import {TradeBot} from './handleTV' ;
 //////////////////////////////////////////////////////
 
 export async function HandleTradingBot(tvData) {

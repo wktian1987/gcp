@@ -1163,7 +1163,7 @@ export const CV = {
     order_partial   : 'partial'         ,
     order_cancel    : "cancel"          }
 
-const TradeBot = {
+export const TradeBot = {
     /**
      * 为子对象创建基本的运行参数 ;
      * 每次子对象创建后, 必须运行这个函数 ;
