@@ -31,7 +31,4 @@ export async function HandleTradingBot(tvData) {
 
 }
 
-
-// test here from 
-// new line
-
+// g
