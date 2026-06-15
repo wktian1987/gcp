@@ -56,10 +56,12 @@ export function ToStrictString(val, notAvailableValueTo) {
  * 如果需要保证新添加的信息不会与就信息重复, 请使用Set的功能
  * @param {string} theOld 如果输入的数据不是string类型, 则原数据将被无情抛弃
  * @param {string} theNew 
+ * @param {string} [notAvailableValueTo='notAvailableValue'] 如果输入的theNew不是纯字符串的话, 用此值
  * @returns 
  */
-export function AddMessage (theOld, theNew) {
-    const   newMessage  =   isStrictString(theNew)  ?  theNew.trim()  :  ToStrictString(theNew, 'A Value that cant tranfer to string Go to AddMessage()' )  ;
+export function AddMessage (theOld, theNew, notAvailableValueTo = 'notAvailableValue') {
+    const notAvailableValue = isStrictString(notAvailableValueTo) ? notAvailableValueTo : 'notAvailableValue' ;
+    const   newMessage  =   isStrictString(theNew)  ?  theNew.trim()  :  ToStrictString(theNew, notAvailableValue )  ;
     return isStrictString(theOld) ? theOld.trim() + "\n" + newMessage : newMessage ;
 }
 
@@ -84,8 +86,6 @@ export function AddSetMessage(messageSet, newMessageLine) {
 }
 
 export function StrFromSetMessage(messageSet) {return [...messageSet].join('\n').trim() }
-
-
 
 /**
  * 将字符串形式的数字转换为纯数字
@@ -725,3 +725,12 @@ export async function SendEmail(mail_subject, mail_content) {
  * @returns {Promise<void>} 纯净的期约原色，由外层总控大闸刚性 await 拦截
  */
 export function Sleep(ms) { return new Promise(resolve => setTimeout(resolve, isStrictNumber(ms) ? ms : 1000)) }
+
+export const ResultWithErrMessage = {
+    AddResult(r) {this.result = r} ,
+    AddErrMessage(eMsg) { this.errMessage = AddMessage(this.errMessage, ToStrictString(eMsg, 'unkownErr')) } ,
+    noError() {return (!Object.hasOwn(this, 'errMessage'))}
+} ;
+// const RwE = Object.create(ResultWithErrMessage) ;
+// RwE.AddResult({s:12, d:14}) ;
+// RwE.AddErrMessage('there err') ;

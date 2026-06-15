@@ -1,6 +1,10 @@
 // test
 
-import { AddSetMessage, isStrictString } from "./utility";
+import {
+    AddSetMessage,
+    isStrictTrue,
+    isStrictString
+} from "./utility";
 
 const A = {
     s : 'sss' ,
@@ -9,6 +13,8 @@ const A = {
 } ;
 const a = Object.create(A) ;
 
+
+import {TradeBot} from './handleTV' ;
 //////////////////////////////////////////////////////
 
 export async function HandleTradingBot(tvData) {
@@ -20,8 +26,11 @@ export async function HandleTradingBot(tvData) {
     } ) ;
 
     const bot = Object.create(TradeBot) ;
-    await bot.CreateBasicAttr(tvData) ;
-    console.log(bot.cLogHead + 'CreateBasicAttr() success') ;
+
+    const r_CreateBasicAttr = await bot.CreateBasicAttr(tvData) ;
+    if (isStrictString(r_CreateBasicAttr)) {throw new Error(r_CreateBasicAttr.trim())}
+    if (isStrictTrue(r_CreateBasicAttr)) {console.log(bot.cLogHead + 'CreateBasicAttr() success')}
+
     await bot.Get_gsData()  ;
     console.log(bot.cLogHead + 'Get_gsData() success') ;
     await bot.ToCheckInitiate()  ;
@@ -30,6 +39,3 @@ export async function HandleTradingBot(tvData) {
     // console.log(bot.cLogHead + 'Get_gsData()_after_ToCheckInitiate() success') ;
 
 }
-
-// go to branch
-// then try merge to main
