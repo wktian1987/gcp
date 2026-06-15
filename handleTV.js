@@ -1478,8 +1478,8 @@ export const TradeBot = {
     /**
      * 检查fundfee
      * @param 调用前必须保证已更新过 Get_gsData()
-     * @returns true: 表示收取fundFee并写入成功
-     * @returns false: 表示不需要检查fund fee
+     * @returns 因为有try/catch 不会抛错
+     * @returns true: 表示收取fundFee并写入成功, 或者不需要检查fundfee并成功退出
      * @returns String: 表示运行错误
      */
     async ToCheckFundFee() {
@@ -1488,10 +1488,6 @@ export const TradeBot = {
             const tvData                = this.tvData                       ;
             const tradeHistoryTitleA    = this.tradeHistoryTitleA           ;
             const tradeHistoryRange     = this.toGCPData.tradeHistoryRange  ;
-
-            if (!isPlainObject(mainData) || !Array.isArray(tradeHistoryTitleA) || !isStrictString(tradeHistoryRange)) {
-                return "ToCheckFundFee Error: input @param error";
-            }
 
             let toCheckFundFee = false;
             if (isStrictNumber(mainData.lstFundTime)) {
@@ -1502,22 +1498,26 @@ export const TradeBot = {
 
             if (isStrictFalse(toCheckFundFee)) { return false } 
 
-            let S = {}  ;
-            S.fund_orderID          = 'F-' + GetTimeStringWithOffset(8, 28800000 * Math.floor(tvData.timestamp / 28800000)) ;
-            S.fund_orderTimestamp   = Date.now()                                                                            ;
-            S.fund_orderDate        = GetTimeStringWithOffset(8, S.fund_orderTimestamp)                                     ;
-            S.fund_buysell          = order_FUND                                                                            ;
-            S.fund_avgBuyPrice      = mainData.avgBuyPrice                                                                  ;
-            S.fund_reason           = "FundFee"                                                                             ;
-            S.fund_orderStatus      = order_pending                                                                         ;
-            S.fund_lst_allFundFee   = ToStrictNumber(mainData.allFundFee, 0)                                                ;
-            S.fund_inCoin           = ToStrictNumber(mainData.inCoin           , 0                         )  ;
-            S.fund_inFund           = ToStrictNumber(mainData.inFund           , 0                         )  ;
-            S.fund_BaseCoinPrice    = ToStrictNumber(mainData.BaseCoinPrice    , mainData.inBaseCoinPrice  )  ;
+            const fund = {}  ;
+            fund.orderID          = 'F-' + GetTimeStringWithOffset(8, 28800000 * Math.floor(tvData.timestamp / 28800000))  ;
+            fund.orderTimestamp   = Date.now()                                                                             ;
+            fund.orderDate        = GetTimeStringWithOffset(8, fund.orderTimestamp)                                        ;
+            fund.buysell          = CV.order_FUND                                                                          ;
+            fund.avgBuyPrice      = mainData.avgBuyPrice                                                                   ;
+            fund.reason           = "FundFee"                                                                              ;
+            fund.orderStatus      = CV.order_pending                                                                       ;
+            fund.lst_allFundFee   = ToStrictNumber(mainData.allFundFee, 0)                                                 ;
+            fund.inCoin           = ToStrictNumber(mainData.inCoin           , 0                         )                 ;
+            fund.inFund           = ToStrictNumber(mainData.inFund           , 0                         )                 ;
+            fund.BaseCoinPrice    = ToStrictNumber(tvData.BaseCoinPrice    , mainData.BaseCoinPrice  )                     ;
+            fund.isReal           = mainData.isReal                                                                        ;
+            fund.TradingSymbol    = tvData.TradingSymbol                                                                   ;
+            fund.sheets           = this.sheets                                                                            ;
+            fund.spreadsheetID    = this.spreadsheetID                                                                     ;
 
-            const returnS = await CheckFundFee(S, mainData.isReal, tvData.TradingSymbol, this.sheets, this.spreadsheetID);
+            const returnS = await CheckFundFee(fund, mainData.isReal, tvData.TradingSymbol, this.sheets, this.spreadsheetID);
 
-            const newFundHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(returnS['fund_' + v]) ? returnS['fund_' + v] : (returnS['fund_' + v] || NA));
+            const newFundHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(returnS[v]) ? returnS[v] : (returnS[v] || NA));
 
             await AppendGS(this.sheets, this.spreadsheetID, tradeHistoryRange, [newFundHistoryA]);
 

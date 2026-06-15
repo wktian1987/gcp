@@ -17,28 +17,7 @@ import {
 
 import { CV } from "./handleTV.js";
 
-/**
- * 将 TV 信号 Symbol 转换为交易所标准 Symbol 矩阵（高频提纯版）
- * @param {string} tvSymbol 例: "GATE:BTCUSDT.P"
- * @returns {object|false}
- */
-function tvSymbol_TO_brokerSymbol(tvSymbol) {
-    // 1. 一线风控：强类型校验（防御 Null 或 Undefined 穿透）
-    if (!isStrictString(tvSymbol)) { return false; }
-    // 2. 利用正则一步到位拦截加解构。
-    // 这一行正则的意思是：匹配 “交易所:币种名称USDT.P”，且严格限制 USDT.P 必须死锁在字符串的末尾（$）
-    const match = tvSymbol.match(/^([^:]+):(.+)USDT\.P$/);
-    // 3. 如果格式不对，或者不是以 USDT.P 结尾的 U 本位永续合约，瞬间熔断
-    if (!match) { return false; }
-    
-    // 4. 完美提取。match[1] 是交易所名，match[2] 是绝对干净的 BaseCurrency
-    return {
-        broker: match[1],
-        basecurrency: match[2], // 🟢 哪怕币名叫 AUSDT，由于正则锁死了末尾，这里依然能稳稳吐出 "AUSDT"
-        currency: 'USDT',
-        settle: 'usdt'
-    };
-}
+
 
 //#region - Basic Broker interface
 
@@ -97,18 +76,17 @@ export async function CheckOrderConfirm(ingOrderData, isReal, TradingSymbol, she
     return {}  ;
 }
 
-export async function CheckFundFee(S, isReal, TradingSymbol, sheets, spreadsheetID) {
-    if (!isStrictFalse(isReal) && TradingSymbol.startsWith("GATE:")) {return await GATE_CheckFundFee(isReal, S, TradingSymbol) ;}
+export async function CheckFundFee(fund) {
+    if (!isStrictFalse(fund.isReal) && fund.TradingSymbol.startsWith("GATE:")) {return await GATE_CheckFundFee(fund) ;}
 
-    const res                =  CleanObjToNumBoolStr(Object.fromEntries(await GetGS(sheets, spreadsheetID, 'simBroker!A1:B29'))) ;
-    S.fund_fundFee           =  typeof res.fundFee === 'number'  ?  res.fundFee  :  0   ;
-    S.fund_confirmDate       =  S.fund_orderDate        ;
-    S.fund_confirmTimestamp  =  S.fund_orderTimestamp   ;
-    S.fund_allFund           =  res.allFund + S.fund_fundFee  ;
-    S.fund_allCoin           =  S.fund_allFund / res.BaseCoinPrice  ;
+    const res = CleanObjToNumBoolStr(Object.fromEntries(await GetGS(fund.sheets, fund.spreadsheetID, 'simBroker!A1:B29')));
+    fund.fund_fundFee           =  typeof res.fundFee === 'number'  ?  res.fundFee  :  0   ;
+    fund.fund_confirmDate       =  fund.fund_orderDate        ;
+    fund.fund_confirmTimestamp  =  fund.fund_orderTimestamp   ;
+    fund.fund_allFund           =  res.allFund + fund.fund_fundFee  ;
+    fund.fund_allCoin           =  fund.fund_allFund / res.BaseCoinPrice  ;
 
-   
-    return S  ;
+    return fund  ;
 }
 
 //#endregion
@@ -120,6 +98,28 @@ export async function CheckFundFee(S, isReal, TradingSymbol, sheets, spreadsheet
 // 现在的版本为: /api/v4
 // 是否是实盘交易, 只有isStrictTrue(isReal)是实盘交易, 其他全是模拟盘
 
+/**
+ * 将 TV 信号 Symbol 转换为交易所标准 Symbol 矩阵（高频提纯版）
+ * @param {string} tvSymbol 例: "GATE:BTCUSDT.P"
+ * @returns {object|false}
+ */
+function tvSymbol_TO_GATE_Symbol(tvSymbol) {
+    // 1. 一线风控：强类型校验（防御 Null 或 Undefined 穿透）
+    if (!isStrictString(tvSymbol)) { return false; }
+    // 2. 利用正则一步到位拦截加解构。
+    // 这一行正则的意思是：匹配 “交易所:币种名称USDT.P”，且严格限制 USDT.P 必须死锁在字符串的末尾（$）
+    const match = tvSymbol.match(/^([^:]+):(.+)USDT\.P$/);
+    // 3. 如果格式不对，或者不是以 USDT.P 结尾的 U 本位永续合约，瞬间熔断
+    if (!match) { return false; }
+    
+    // 4. 完美提取。match[1] 是交易所名，match[2] 是绝对干净的 BaseCurrency
+    return {
+        broker: match[1],
+        basecurrency: match[2], // 🟢 哪怕币名叫 AUSDT，由于正则锁死了末尾，这里依然能稳稳吐出 "AUSDT"
+        currency: 'USDT',
+        settle: 'usdt'
+    };
+}
 
 /**
  * 签名并网发送信息到交易所（GATE唯一请求入口）
@@ -203,7 +203,7 @@ async function GATE_Fetch(isReal, method, path, body = null) {
 // 你在外面的发单、对账、查统一账户资产的函数，瞬间变得像喝水一样简单利落：
 
 async function GATE_SendOrderToBroker(isReal, S, TradingSymbol) {
-    const brokerSymbol  =  tvSymbol_TO_brokerSymbol(TradingSymbol) ;
+    const brokerSymbol  =  tvSymbol_TO_GATE_Symbol(TradingSymbol) ;
     const contract      =  brokerSymbol.basecurrency + '_' + brokerSymbol.currency ;
 
     // Get quanto_multiplier = 0.01
@@ -252,7 +252,7 @@ async function GATE_SendOrderToBroker(isReal, S, TradingSymbol) {
 }
 
 async function GATE_CheckOrderConfirm(isReal, ingOrderData, TradingSymbol) {
-    const brokerSymbol  =  tvSymbol_TO_brokerSymbol(TradingSymbol) ;
+    const brokerSymbol  =  tvSymbol_TO_GATE_Symbol(TradingSymbol) ;
     const contract      =  brokerSymbol.basecurrency + '_' + brokerSymbol.currency ;
 
     // 如果需要撤单的话, 先去撤单
@@ -317,8 +317,8 @@ async function GATE_CheckOrderConfirm(isReal, ingOrderData, TradingSymbol) {
     return ingOrderData ;
 }
 
-async function GATE_CheckFundFee(isReal, S, TradingSymbol) {
-    const brokerSymbol  =  tvSymbol_TO_brokerSymbol(TradingSymbol) ;
+async function GATE_CheckFundFee(fund) {
+    const brokerSymbol  =  tvSymbol_TO_GATE_Symbol(fund.TradingSymbol) ;
     const contract      =  brokerSymbol.basecurrency + '_' + brokerSymbol.currency ;
 
     // 再去查看当前的仓位信息
@@ -330,18 +330,18 @@ async function GATE_CheckFundFee(isReal, S, TradingSymbol) {
     // » pnl_fund	    string	已实现盈亏中的资金费结算盈亏
     // » pnl_fee	    string	已实现盈亏中的总手续费支出
     const path_position  =  '/futures/' + brokerSymbol.settle + '/positions/' + contract ;
-    const resp_position  =  await GATE_Fetch(isReal, 'GET', path_position) ;
+    const resp_position  =  await GATE_Fetch(fund.isReal, 'GET', path_position) ;
     const data_position  =  CleanObjToNumBoolStr( await resp_position.json() ) ;
     if (resp_position.status !== 200) {throw new Error(`position ${contract} 查询失败 1`) }
     if (data_position.contract !== contract) {throw new Error(`position ${contract} 查询失败 2`) }
 
-    S.fund_fundFee           =  ToStrictNumber(data_position.pnl_fund, 0) -  S.fund_lst_allFundFee  ;
-    S.fund_confirmTimestamp  =  Date.now()                                                          ;
-    S.fund_confirmDate       =  GetTimeStringWithOffset(8, S.fund_confirmTimestamp)                 ;
-    S.fund_allFund	         =  S.fund_inFund + ToStrictNumber(data_position.unrealised_pnl, 0) + ToStrictNumber(data_position.realised_pnl, 0) + S.fund_inCoin * S.fund_BaseCoinPrice ;
-    S.fund_allCoin	         =  S.fund_allFund / S.fund_BaseCoinPrice                               ;
+    fund.fund_fundFee           =  ToStrictNumber(data_position.pnl_fund, 0) -  fund.fund_lst_allFundFee  ;
+    fund.fund_confirmTimestamp  =  Date.now()                                                          ;
+    fund.fund_confirmDate       =  GetTimeStringWithOffset(8, fund.fund_confirmTimestamp)                 ;
+    fund.fund_allFund	         =  fund.fund_inFund + ToStrictNumber(data_position.unrealised_pnl, 0) + ToStrictNumber(data_position.realised_pnl, 0) + fund.fund_inCoin * fund.fund_BaseCoinPrice ;
+    fund.fund_allCoin	         =  fund.fund_allFund / fund.fund_BaseCoinPrice                               ;
 
-    return S  ;
+    return fund  ;
 }
 
 
