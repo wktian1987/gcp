@@ -15,20 +15,7 @@ import {
     A2dToCleanObj
 } from "./utility.js";
 
-const   noLOCK          =  "noLOCK"         ;
-const   NA              =  "NA"             ;
-const   toGCPRanges     =  "toGCP!A:B"      ;
-const   HuanHang        =  "__HuangHang__"  ;
-const   order_T_LMT     =  "LMT"            ;
-const   order_T_MKT     =  "MKT"            ; 
-const   order_BUY       =  "B"              ;
-const   order_SELL      =  "S"              ;
-const   order_FUND      =  "F"              ;
-const   order_pending   =  "pending"        ;
-const   order_waiting   =  "waiting"        ;
-const   order_confirm   =  "confirm"        ;
-const   order_partial   =  'partial'        ;
-const   order_cancel    =  "cancel"         ;
+import { CV } from "./handleTV.js";
 
 /**
  * 将 TV 信号 Symbol 转换为交易所标准 Symbol 矩阵（高频提纯版）
@@ -234,17 +221,17 @@ async function GATE_SendOrderToBroker(isReal, S, TradingSymbol) {
     ////这里应该要检查当前保证金余额
     //
 
-    const orderID   =  S.ing_buysell === order_BUY ? 't-' + S.ing_orderID.replaceAll(':', '_') : S.ing_orderID ;
+    const orderID   =  S.ing_buysell === CV.order_BUY ? 't-' + S.ing_orderID.replaceAll(':', '_') : S.ing_orderID ;
     const price_mul = S.ing_orderPrice/order_price_round ;
-    const price     =  ToStrictString( S.ing_buysell === order_BUY ? order_price_round * Math.floor(price_mul) : order_price_round * Math.ceil(price_mul)) ;
+    const price     =  ToStrictString( S.ing_buysell === CV.order_BUY ? order_price_round * Math.floor(price_mul) : order_price_round * Math.ceil(price_mul)) ;
 
     const orderBody = {} ;
     orderBody.contract  =  contract     ;
     orderBody.size      =  size         ;
     orderBody.price     =  price        ;
-    if (S.ing_orderType === order_T_MKT) {orderBody.price = '0'}
+    if (S.ing_orderType === CV.order_T_MKT) {orderBody.price = '0'}
     if (S.ing_buysell.includes('S')) {orderBody.reduce_only = true}
-    if (S.ing_orderType === order_T_MKT) {orderBody.tif = 'ioc'}
+    if (S.ing_orderType === CV.order_T_MKT) {orderBody.tif = 'ioc'}
     orderBody.text      =  orderID      ;
 
     // 合约交易下单:
@@ -258,7 +245,7 @@ async function GATE_SendOrderToBroker(isReal, S, TradingSymbol) {
     S.ing_orderID		    = data_order.text               ;
     S.ing_orderTimestamp    = Math.floor(data_order.create_time * 1000) ;
     S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp) ;    
-    S.ing_orderStatus		= order_waiting      ; // 按照现在的逻辑, 下单成功后, 暂时先不管交易所真实返回的订单状态, 一律按照waiting来记录
+    S.ing_orderStatus		= CV.order_waiting      ; // 按照现在的逻辑, 下单成功后, 暂时先不管交易所真实返回的订单状态, 一律按照waiting来记录
     S.ing_partial           = 0  ;
 
     return S ;
@@ -277,7 +264,7 @@ async function GATE_CheckOrderConfirm(isReal, ingOrderData, TradingSymbol) {
         if (resp_cancel.status !== 200) {throw new Error(`order ${ingOrderData.ing_orderID} 撤单失败 1`) }
         if (data_cancel.text !== ingOrderData.ing_orderID) {throw new Error(`order ${ingOrderData.ing_orderID} 撤单失败 2` ) }
 
-        ingOrderData.ing_orderStatus        = data_cancel.status === 'finished' && data_cancel.left === 0 ? order_confirm : order_cancel    ;
+        ingOrderData.ing_orderStatus        = data_cancel.status === 'finished' && data_cancel.left === 0 ? CV.order_confirm : CV.order_cancel    ;
         ingOrderData.ing_confirmTimestamp   = Math.floor( ( data_confirm.finish_time || (Date.now()/1000) ) * 1000)                         ;
         ingOrderData.ing_confirmDate		= GetTimeStringWithOffset(8, ingOrderData.ing_confirmTimestamp)                                 ;
         ingOrderData.ing_confirmPrice		= data_confirm.fill_price                                                                       ;
@@ -292,13 +279,13 @@ async function GATE_CheckOrderConfirm(isReal, ingOrderData, TradingSymbol) {
         if (data_confirm.text !== ingOrderData.ing_orderID) {throw new Error(`order ${ingOrderData.ing_orderID} 查询失败 2` ) }
 
         if ( data_confirm.status === 'open' && Math.abs(data_confirm.left) < Math.abs(data_confirm.size) ) {
-            ingOrderData.ing_orderStatus =  order_partial ;
+            ingOrderData.ing_orderStatus =  CV.order_partial ;
             ingOrderData.ing_partial     =  (Math.abs(data_confirm.size) - Math.abs(data_confirm.left)) / Math.abs(data_confirm.size) ;
             return ingOrderData ;
         }
 
         if (data_confirm.status === 'finished') {
-            ingOrderData.ing_orderStatus		= order_confirm                                                 ;
+            ingOrderData.ing_orderStatus		= CV.order_confirm                                                 ;
             ingOrderData.ing_confirmTimestamp   = Math.floor(data_confirm.finish_time * 1000)                   ;
             ingOrderData.ing_confirmDate		= GetTimeStringWithOffset(8, ingOrderData.ing_confirmTimestamp) ;
             ingOrderData.ing_confirmPrice		= data_confirm.fill_price                                       ;

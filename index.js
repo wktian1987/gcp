@@ -9,8 +9,9 @@ app.listen(process.env.PORT || 8080, () => {
 
 app.post('/schedule', json(), async (req, res) => {
     console.log("✔ 收到/schedule连接");
-    const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
-    await HandleUnreadGmails(req, res);
+    console.log("✔ 收到/schedule连接, 暂时啥也不做, HandleUnreadGmails() 由 AllPrices信号接管") ;
+    // const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
+    // await HandleUnreadGmails(req, res);
 }
 );
 
@@ -49,9 +50,7 @@ app.post('/tradingview', json(), async (req, res) => {
             const { HandleTradeBot} = await import("./handleTV.js");
             await HandleTradeBot(body);
             console.log(`✔ ${body.botNumber}: HandleTradeBot()处理成功`);
-        } catch (e) {
-            console.error(`✘ ${body.botNumber}: HandleTradeBot()处理失败: ` + e.message);
-        }
+        } catch (e) {console.error(`✘ ${body.botNumber}: HandleTradeBot()处理失败: ` + e.message) }
     }
 
     if (body.botGate === "AllPrice") {
@@ -59,9 +58,15 @@ app.post('/tradingview', json(), async (req, res) => {
             const { HandleAllPrice} = await import("./handleTV.js");
             await HandleAllPrice(body);
             console.log(`✔ HandleAllPrice()处理成功`);
-        } catch (e) {
-            console.error(`✘ HandleAllPrice()处理失败: ` + e.message);
-        }
+        } catch (e) {console.error(`✘ HandleAllPrice()处理失败: ` + e.message) }
+
+        // 用AllPrice信号来激活查看邮件的
+        console.log(`HandleAllPrice()处理完毕, 开始处理HandleUnreadGmails()`) ;
+        try {
+            const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
+            await HandleUnreadGmails(req, res);
+            console.log(`✔ HandleUnreadGmails()处理成功`);
+        } catch (e) {console.error(`✘ HandleUnreadGmails()处理失败: ` + e.message)}
     }
 
 

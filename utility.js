@@ -64,6 +64,30 @@ export function AddMessage (theOld, theNew) {
 }
 
 /**
+ * 直接在原Set上修改 ; 
+ * 添加新的Set信息行; 
+ * 如果发现新进来的警报在历史缓存里有重名的, 先无情抹杀掉旧的占位; 
+ * 刷新到整个集合的最底部（最新时间线）; 
+ * 如果确认输入的两个参数值都是正确的格式(Set, String)的话, 可以不验证使用
+ * @param {Set} messageSet 
+ * @param {string} newMessageLine 
+ * @returns string: 表示错误信息
+ */
+export function AddSetMessage(messageSet, newMessageLine) {
+    if (!isStrictSet(messageSet)) { return 'AddAlertMessage Error: oldMessageSet is not strictSet' }
+    if (!isStrictString(newMessageLine)) { return 'AddAlertMessage Error: newMessage is not strictString' }
+    const cleanMsg = newMessageLine.trim();
+    // 核心防线：如果发现新进来的警报在历史缓存里有重名的, 先无情抹杀掉旧的占位！
+    if (messageSet.has(cleanMsg)) { messageSet.delete(cleanMsg) }
+    // 重新 add。因为 Set 严格按插入顺序排列，这一步会强行把这条重复的最新警报，刷新到整个集合的最底部（最新时间线）！
+    messageSet.add(cleanMsg);
+}
+
+export function StrFromSetMessage(messageSet) {return [...messageSet].join('\n').trim() }
+
+
+
+/**
  * 将字符串形式的数字转换为纯数字
  * 不会处理带有%的数字
  * 3,4.5这种不符合千分位,逗号规则的字符串会判定为false

@@ -1,37 +1,43 @@
-import {    isStrictNumber                  ,
-            isStrictBoolean                 ,
-            isStrictTrue                    ,
-            isStrictFalse                   , 
-            isStrictString                  ,
-            isStrictSet                     ,
-            isPlainObject                   ,
-            ToStrictNumber                  ,
-            ToStrictString                  ,
-            ToStrictNumBoolStr              , 
-            CleanObjToNumBoolStr            ,
-            CleanArrayToNumStrBool          ,
-            A2dToCleanObj                        ,
-            A2LinesToCleanObj                    ,
-            ObjToA2dNumBoolStr              ,
-            AddMessage                      ,
-            GetTimeStringWithOffset         , 
-            SendSplitTGMessages             ,
-            FormatMatrixToString            ,            
-            GetSpreadsheetID                ,
-            GetGS                           ,         
-            UpdateGS                        ,
-            AppendGS                        ,
-            BatchClearGS                    ,
-            BatchClearUpdateGS              ,
-            BatchGetGS                      ,
-            ClearGS                         ,
-            ConvertRowsToHtmlTable          ,
-            SendEmail,                       
-            Sleep} from "./utility.js";
+import {
+    isStrictNumber,
+    isStrictBoolean,
+    isStrictTrue,
+    isStrictFalse,
+    isStrictString,
+    isStrictSet,
+    isPlainObject,
+    ToStrictNumber,
+    ToStrictString,
+    ToStrictNumBoolStr,
+    AddSetMessage,
+    StrFromSetMessage,
+    CleanObjToNumBoolStr,
+    CleanArrayToNumStrBool,
+    A2dToCleanObj,
+    A2LinesToCleanObj,
+    ObjToA2dNumBoolStr,
+    AddMessage,
+    GetTimeStringWithOffset,
+    SendSplitTGMessages,
+    FormatMatrixToString,
+    GetSpreadsheetID,
+    GetGS,
+    UpdateGS,
+    AppendGS,
+    BatchClearGS,
+    BatchClearUpdateGS,
+    BatchGetGS,
+    ClearGS,
+    ConvertRowsToHtmlTable,
+    SendEmail,
+    Sleep
+} from "./utility.js";
 
-import {    SendOrderToBroker               ,
-            CheckOrderConfirm               ,               
-            CheckFundFee                    } from "./broker.js";    
+import {
+    SendOrderToBroker,
+    CheckOrderConfirm,
+    CheckFundFee
+} from "./broker.js";
 
 import { google } from 'googleapis';
 const auth = new google.auth.GoogleAuth({
@@ -177,8 +183,8 @@ export async function HandleTradeBot(raw_tvData) {
          * @returns {String} String: 失败或超时熔断返回原因
          */
         async SetLockToGS(tv_timestamp, cantSetAfter = 30000) {
-            if (!isStrictString(this.lockName) || !this.lockName.startsWith('T')) {return 'SetLockToGS Error: this.lockName 未设置或设置错误'}
-            if (!isStrictNumber(tv_timestamp)  || !isStrictNumber(cantSetAfter) ) {return 'SetLockToGS Error: input @param 错误'}
+            if (!isStrictString(this.lockName) || !this.lockName.startsWith('T')) {return 'this.lockName 未设置或设置错误'}
+            if (!isStrictNumber(tv_timestamp)  || !isStrictNumber(cantSetAfter) ) {return 'input @param 错误'}
 
             while (Date.now() < tv_timestamp + cantSetAfter) {
                 const toGCPData     = await this.Get_toGCPData() ;
@@ -188,20 +194,20 @@ export async function HandleTradeBot(raw_tvData) {
                     await Sleep(2000) ; // 等两秒后再确认是否成功, 防止同时有两个信号抢锁
                     const checkWon = await this.CheckLockFromGS() === this.lockName ;
                     if (isStrictTrue(checkWon)) {return true}
-                    if (isStrictFalse(checkWon)) {return 'SetLockToGS Error: 锁被其他几乎同时到达的信号抢去'}
+                    if (isStrictFalse(checkWon)) {return '锁被其他几乎同时到达的信号抢去'}
                 }
-                if (tv_timestamp < toGCPData.lstLockSignalTime) {return 'SetLockToGS Error: 更新更近的信号已被处理, 忽略本次信号'}
+                if (tv_timestamp < toGCPData.lstLockSignalTime) {return '更新更近的信号已被处理, 忽略本次信号'}
                 if (currentLock !== noLOCK && isStrictString(currentLock) && currentLock.startsWith('T')) {
                     const currentLockTime = ToStrictNumber(currentLock.split('T')[1]) ;
                     if (isStrictNumber(currentLockTime) && currentLockTime > tv_timestamp) {
-                        return  'SetLockToGS Error: 无法为当前信号设锁, 因为现有锁时间在当前信号之后';
+                        return  '无法为当前信号设锁, 因为现有锁时间在当前信号之后';
                     }
 
                 }
                 await Sleep(1000) ;
             } 
 
-            return 'SetLockToGS Error: 已过抢锁时间' ;
+            return '已过抢锁时间' ;
         } ,
 
         /**
@@ -1141,162 +1147,203 @@ export async function HandleAllPrice(raw_tvData) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-
+export const CV = {
+    noLOCK          : "noLOCK"          ,
+    NA              : "NA"              ,
+    toGCPRanges     : "toGCP!A:B"       ,
+    HuanHang        : "__HuangHang__"   ,
+    order_T_LMT     : "LMT"             ,
+    order_T_MKT     : "MKT"             ,
+    order_BUY       : "B"               ,
+    order_SELL      : "S"               ,
+    order_FUND      : "F"               ,
+    order_pending   : "pending"         ,
+    order_waiting   : "waiting"         ,
+    order_confirm   : "confirm"         ,
+    order_partial   : 'partial'         ,
+    order_cancel    : "cancel"          }
 
 const TradeBot = {
-    sheets: sheets ,
+    /**
+     * 为子对象创建基本的运行参数 ;
+     * 每次子对象创建后, 必须运行这个函数 ;
+     * 无返回值, 可直接运行, 出错后会往上层抛错
+     */
+    async CreateBasicAttr(tvData) {
+        this.tvData             =  tvData ;
+        this.cLogHead           =  tvData.botNumber + ": "   ;
+        this.LockTime           =  tvData.timestamp ;
+        this.lockName           =  'T' + String(this.LockTime) ;
+        this.sheets             =  sheets       ;
+        this.toUpdateRangeList  =  []           ;
+        this.toClearRangeSet    =  new Set()    ;
+        this.alertMessageSet    =  new Set()    ;
+        AddSetMessage(this.alertMessageSet, tvData.thisAlertMessage) ;
+        this.LockTimeName       =  tvData.botNumber + '_lockTime'       ; // 全局中的锁名
+        this.RunningWellName    =  tvData.botNumber + '_runningWell'    ; // 全局中的出错名
+        this.SpreadsheetIDName  =  tvData.botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID, 避免每次重新读取
+        // 可以通过TV信号来重置全局锁 和 报错信息
+        if (isStrictTrue(tvData.RESET)) { 
+            delete TradeBot[this.LockTimeName]      ;
+            delete TradeBot[this.RunningWellName]   ;
+            delete TradeBot[this.SpreadsheetIDName] ;
+        }
+        // 在全局中设runningWell
+        if (!Object.hasOwn(TradeBot, this.RunningWellName)) {TradeBot[this.RunningWellName] = new Set() }
+        // 在全局中有报错的话, 直接退出
+        if (TradeBot[this.RunningWellName].size > 0) {throw new Error('发现之前的运行中有错误, 本次信号没必要再处理, 提前退出, 以前的错误为: ' + StrFromSetMessage(TradeBot[this.RunningWellName])) }
+        // 在全局中设锁
+        if (!Object.hasOwn(TradeBot, this.LockTimeName) || TradeBot[this.LockTimeName] === null) { TradeBot[this.LockTimeName] = this.LockTime }
+        if (TradeBot[this.LockTimeName] > this.LockTime) {throw new Error('当前正在处理更新的信号, 本信号丢弃') }
+        // 正常情况下一个信号运行绝对不会超过5分钟; 一旦发生这种情况, 肯定是发生了不可挽回的错误, 直接抛错退出当前信号处理就可以了
+        if (Date.now() - TradeBot[this.LockTimeName] > 5 * 60 * 1000) {throw new Error('上一个信号长时间未解锁, 肯定遇到了无法挽回的错误, 本信号不再处理, 需手动检查') }
+        while (TradeBot[this.LockTimeName] !== null && Date.now() - this.LockTime < 30 * 1000) { await Sleep(1000) } // 如果现在有锁的话, 等30s, 从信号产生开始算, 而不是收到信号那时开始算
+        if (TradeBot[this.LockTimeName] !== null) {throw new Error('仍在处理上一个信号, 但是本信号已经超时, 直接退出') }
+        if (TradeBot[this.LockTimeName] === null) {TradeBot[this.LockTimeName] = this.LockTime } 
+        // 至此, 已经在大TradeBot对象中, 给当前botNumber上锁, 其他botNumber几乎不可能再抢占到 大TradeBot锁
+        // 在GS中上锁前, 会再次检查 大TradeBot 中的锁, 确保万无一失
+
+        if (!Object.hasOwn(TradeBot, this.SpreadsheetIDName)) {
+            try {
+                TradeBot[this.SpreadsheetIDName] = await GetSpreadsheetID(tvData.botNumber, sheets);
+            } catch (e) {
+                let errMessage = `获取 spreadsheetID失败: ${e.message} \n`;
+                const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
+                errMessage += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK : '大锁已释放' ;
+                throw new Error(errMessage);
+            }
+        }
+        if (Object.hasOwn(TradeBot, this.SpreadsheetIDName)) {this.spreadsheetID = TradeBot[this.SpreadsheetIDName] }
+
+        // 开始设GS锁
+        // 分布式碰撞抢锁：抢占排他性写锁，带高频自旋重试机制
+        // 只要进入这一步,说明抢到了 大TradeBot 锁
+        // 只要拿到了 大TradeBot 锁 , GS 锁必然在上锁前是noLOCK状态, 会去验证
+        let thereErr_GS_LOCK    =  false    ;
+        let errMessage_GS_LOCK  =  ''       ; 
+        try {
+            let toGCPData   = await this.Get_toGCPData() ;
+            let currentLock = toGCPData.LOCK ;
+            if (currentLock !== CV.noLOCK) {throw new Error('大TradeBot锁被释放的情况下, GS锁未被释放') }
+            if (currentLock === CV.noLOCK) {
+                await UpdateGS(this.sheets, this.spreadsheetID, toGCPData.lockRange, [[this.lockName]]);
+                await Sleep(100); // 等0.1后再确认是否成功,防止GS频繁写入读取限制
+                toGCPData   = await this.Get_toGCPData() ;
+                currentLock = toGCPData.LOCK ;
+                if (isStrictTrue(currentLock !== this.lockName)) {
+                    await Sleep(2000) ; // 第一次校验失败的话, 等2s再次校验
+                    toGCPData   = await this.Get_toGCPData() ;
+                    currentLock = toGCPData.LOCK ;
+                    if (currentLock !== this.lockName) {throw new Error('往GS写入LOCK失败')}
+                }
+            }
+        } catch (e) { thereErr_GS_LOCK = true ; errMessage_GS_LOCK += `抢锁失败: ${e.message}` ; }
+        // 设GS锁出错了, 这是一个非核心错误
+        // 需要释放已获得的 大TradeBot锁
+        // 并抛出错误给上层调用者
+        if (thereErr_GS_LOCK) {
+            await this.ReleaseLockOfGS() ; // 再次尝试给GS解锁, 万一有锁
+            const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
+            errMessage_GS_LOCK += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK : '大锁已释放' ;
+
+
+
+
+
+            throw new Error(errMessage_GS_LOCK);
+        }
+
+    } , // 执行完此后, 已获得 大TradeBot锁 和 GS锁 , 谨记最后释放
 
     /**
-     * 为子对象创建基本的运行参数
-     * 每次子对象创建后, 必须运行这个函数
+     * 释放大锁
+     * @returns true: 解锁成功
+     * @returns string: 解锁校验出错
      */
-    createBasicChildAttr() {
-        this.toUpdateRangeList   =  []         ;
-        this.toClearRangeSet     =  new Set()  ;
-        this.alertMessageSet     =  new Set()  ;
-        this.runningWellSet      =  new Set()  ; // 每次有运行中的错误都写入这个Set, 所以可以根据isRunningWell()来判断是否有错误发生
-    } ,
+    ReleaseTradeBotLOCK() {
+        if (TradeBot[this.LockTimeName] !== this.LockTime) {
+            return '释放大锁失败, 校验出错' ;
+        } else {
+            TradeBot[this.LockTimeName] = null ;
+            return true ;
+        }
+    },
 
-    Set_toGCPRanges(toGCPRanges) { this.toGCPRanges = toGCPRanges } ,
+    /**
+     * 将新的出错信息写入 大TradeBot对象 中
+     * @param {string} errMessage 
+     */
+    AddRunningWellMessage(errMessage) { AddSetMessage(TradeBot[bot.RunningWellName], errMessage) } ,
 
     /**
      * 依据runningWellSet中是否有元素来判断是否有运行错误
      * @returns true: 运行中无错误
      * @returns false: 运行中有错误
      */
-    isRunningWell() { return this.runningWellSet.size === 0 } ,
-
-    /**
-    * 添加新的报警行; 
-    * 如果发现新进来的警报在历史缓存里有重名的, 先无情抹杀掉旧的占位; 
-    * 刷新到整个集合的最底部（最新时间线）; 
-    * 如果确认输入的两个参数值都是正确的格式(Set, String)的话, 可以不验证使用
-    * @param {Set} messageSet 
-    * @param {string} newMessageLine 
-    * @returns Set: 表示成功并返回添加新元素后Set的本身
-    * @returns string: 表示错误信息
-    */
-    AddAlertMessage(messageSet, newMessageLine) {
-        if (!isStrictSet(messageSet)) { return 'AddAlertMessage Error: oldMessageSet is not strictSet' } 
-        if (!isStrictString(newMessageLine)) { return 'AddAlertMessage Error: newMessage is not strictString' }
-        const cleanMsg = newMessageLine.trim();
-        // 核心防线：如果发现新进来的警报在历史缓存里有重名的, 先无情抹杀掉旧的占位！
-        if (messageSet.has(cleanMsg)) { messageSet.delete(cleanMsg) }
-        // 重新 add。因为 Set 严格按插入顺序排列，这一步会强行把这条重复的最新警报，刷新到整个集合的最底部（最新时间线）！
-        return messageSet.add(cleanMsg) ;
-    } ,
-
-    /**
-     * 获取spreadsheetID 并写入到子对象中 
-     * @param {String} botNumber 
-     * @returns 无返回值, 若有返回值则说明运行错误
-     */
-    async Set_spreadsheetID(botNumber) { this.spreadsheetID = await GetSpreadsheetID(botNumber, this.sheets) } ,
-
-    /**
-     * 设置this.lockName, 依据TV数据的时间戳
-     * @param {Number} tv_timestamp 
-     * @returns 无返回值, 默认不会出错
-     */
-    Set_lockName(tv_timestamp) { this.lockName = 'T' + String(tv_timestamp) } ,
+    isRunningWell() { return TradeBot[this.RunningWellName].size === 0 } ,
 
     /**
      * 获取当前toGCPData
      * @returns {Promise<Object>}
      */
-    async Get_toGCPData() { return A2dToCleanObj(await GetGS(this.sheets, this.spreadsheetID, this.toGCPRanges)) } ,
+    async Get_toGCPData() {return A2dToCleanObj(await GetGS(this.sheets, this.spreadsheetID, CV.toGCPRanges)) } ,
 
     /**
      * 检测当前GS中分布式锁的真实归属,
      * @returns {Promise<String>} String: 当前的lockName
      */
-    async CheckLockFromGS(toGCPRanges) { return ( await this.Get_toGCPData() )?.LOCK ?? 'NotGotLockValue' } ,
+    async CheckLockFromGS() {return (await this.Get_toGCPData() )?.LOCK ?? 'NotGotLockValue' } ,
 
     /**
-     * 分布式碰撞抢锁：抢占排他性写锁，带高频自旋重试机制
-     * @async
-     * @param {number} tv_timestamp 当前的信号时间戳
-     * @param {number} [cantSetAfter=30000] 当前时间超过多少时便不能再获得锁权限
-     * @returns {boolean} true : 抢锁成功返回
-     * @returns {String} String: 失败或超时熔断返回原因
+     * 释放分布式排他锁
+     * @returns {Promise<boolean>} true:   解锁成功返回
+     * @returns                    String: 明确的出错信息
      */
-    async SetLockToGS(tv_timestamp, cantSetAfter = 30000) {
-        if (!isStrictString(this.lockName) || !this.lockName.startsWith('T')) {return 'SetLockToGS Error: this.lockName 未设置或设置错误'}
-        if (!isStrictNumber(tv_timestamp)  || !isStrictNumber(cantSetAfter) ) {return 'SetLockToGS Error: input @param 错误'}
+    async ReleaseLockOfGS() {
+        // 再次确权, 验证要加的锁, 是否与TradeBot中的锁相同
+        if (this[LockTimeName] !== this.LockTime) {return 'TradeBot存放的LockTime与当前写入的不符'}
 
-        while (Date.now() < tv_timestamp + cantSetAfter) {
-            const toGCPData     = await this.Get_toGCPData() ;
-            const currentLock   = toGCPData?.LOCK ?? 'NotGotLockValue';
-            if (currentLock === noLOCK) {
-                await UpdateGS(this.sheets, this.spreadsheetID, toGCPData.lockRange, [[this.lockName]]) ;
-                await Sleep(2000) ; // 等两秒后再确认是否成功, 防止同时有两个信号抢锁
-                const checkWon = await this.CheckLockFromGS() === this.lockName ;
-                if (isStrictTrue(checkWon)) {return true}
-                if (isStrictFalse(checkWon)) {return 'SetLockToGS Error: 锁被其他几乎同时到达的信号抢去'}
-            }
-            if (tv_timestamp < toGCPData.lstLockSignalTime) {return 'SetLockToGS Error: 更新更近的信号已被处理, 忽略本次信号'}
-            if (currentLock !== noLOCK && isStrictString(currentLock) && currentLock.startsWith('T')) {
-                const currentLockTime = ToStrictNumber(currentLock.split('T')[1]) ;
-                if (isStrictNumber(currentLockTime) && currentLockTime > tv_timestamp) {
-                    return  'SetLockToGS Error: 无法为当前信号设锁, 因为现有锁时间在当前信号之后';
+        const NotGotLockValue = 'NotGotLockValue' ;
+        // 确权拦截：先看自己现在还有没有解锁的权力（防止自己超时被别人强刷后，误把别人的锁给解了）
+        // 这种情况一旦发生, 说明运行有了问题, 需要处理
+        const toGCPData     = await this.Get_toGCPData()        ;
+        const currentLock   = toGCPData?.LOCK??NotGotLockValue  ;
+        if (currentLock === CV.noLOCK) {return true} // 因为会多次尝试解锁, 所以可能在解锁前
+
+        const hasRight = currentLock === this.lockName     ;
+        if (isStrictFalse(hasRight)) { return '当前锁状态出错, 并不是正在处理轮的锁, 出现系统错误' }
+
+        const MAX_Attempts = 99;
+        let attempt = 1;
+        while (attempt <= MAX_Attempts) {
+            // 之所以用try是为了最大可能尝试解锁, 而不是仅仅报错
+            try {
+                await UpdateGS(this.sheets, this.spreadsheetID, toGCPData.lockRange, [[noLOCK]]);
+                await Sleep(100);
+                // 验证是否真正安全归还
+                const lockNameAfterAttempt = await this.CheckLockFromGS();
+                if (lockNameAfterAttempt === noLOCK) {
+                    console.log(`第${attempt}次解锁成功`)
+                    return true ;
                 }
-            }
-            await Sleep(1000) ;
-        } 
+            } catch (e) { console.log(`第${attempt}次解锁出错, 1s后再次尝试解锁`) }
+            attempt += 1;
+            await Sleep(1000);
+        }
 
-        return 'SetLockToGS Error: 已过抢锁时间' ;
+        return `解锁出错, 经过${MAX_Attempts}次尝试, 仍无法解锁`;
     } ,
 
-        /**
-         * 释放分布式排他锁
-         * @returns {Promise<boolean>} true:   解锁成功返回
-         * @returns                    String: 明确的出错信息
-         */
-        async ReleaseLockOfGS() {
-            // 确权拦截：先看自己现在还有没有解锁的权力（防止自己超时被别人强刷后，误把别人的锁给解了）
-            // 这种情况一旦发生, 说明运行有了问题, 需要处理
-            const toGCPData     =  await this.Get_toGCPData() ;
-            const currentLock   =  toGCPData.LOCK ;
-            const hasRight      =  currentLock === this.lockName ;
-            if (isStrictFalse(hasRight)) { return 'ReleaseLockOfGS Error: 当前锁状态出错，并不是正在处理轮的锁，出现系统错误' }
-
-            const MAX_Attempts  = 99 ;
-            let   attempt       = 1  ;
-            while (attempt <= MAX_Attempts) {
-                try {
-                    await UpdateGS(this.sheets, this.spreadsheetID, toGCPData.lockRange, [[noLOCK]]);
-                    await Sleep(300) ;
-                    // 验证是否真正安全归还
-                    const lockNameAfterAttempt = await this.CheckLockFromGS() ;
-                    if (lockNameAfterAttempt === noLOCK) {return true}
-                    // 如果锁被别人抢走也是对的
-                    if (lockNameAfterAttempt !== this.lockName) {return true}
-
-
-                } catch(e) {
-                    // do nothing, continue to try release
-                }
-                attempt += 1 ;
-                await Sleep(1000) ;
-            }
-
-            return 'ReleaseLockOfGS Error: 解锁出错，出现系统错误' ;
-        } ,
-
-        /**
-         * 获取GS数据
-         * @returns  正确的返回结果: [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA]
-         * @returns  String: 返回已知的错误类型
-         */
-        async Get_gsData() {
-            if( !isStrictString(this.spreadsheetID)     || 
-                !isStrictString(toGCPRanges)            || 
-                !toGCPRanges.includes(":")              || 
-                !toGCPRanges.includes("!")              )   {
-                    return "Get_gsData Error: GetGS() @param error"  ;
-                }
-            const toGCPData = CleanObjToNumBoolStr(A2dToCleanObj(await GetGS(this.sheets, this.spreadsheetID, toGCPRanges )))  ;
-            if(!Object.hasOwn(toGCPData, "LOCK") ) {return "Get_gsData Error: get toGCPData error" }
+    /**
+     * 获取GS数据, 并写入子对象中
+     * 无返回值
+     */
+    async Get_gsData() {
+        let thereErr    = false ;
+        let errMessage  = ''    ;
+        try {
+            const toGCPData = await this.Get_toGCPData() ;
+            if(!Object.hasOwn(toGCPData, "LOCK") ) {throw new Error("get toGCPData error") }
 
             const rangesList = [    toGCPData.mainRange                ,       // 0 
                                     toGCPData.uncloseOrdersRange       ,       // 1
@@ -1305,14 +1352,13 @@ const TradeBot = {
                                     toGCPData.uncloseOrdersTitleLine   ,       // 4
                                     toGCPData.ingOrderTitleLine        ] ;     // 5
             const valuesArray   = await BatchGetGS(this.sheets, this.spreadsheetID, rangesList);
+
             const raw_mainData  = valuesArray[0];
-            if (!Array.isArray(raw_mainData) || !Array.isArray(raw_mainData[0]) ) {return 'Get_gsData Error: didnt get available data, 1'}
-            const mainData  = CleanObjToNumBoolStr(A2dToCleanObj(raw_mainData), 'notAvailableValue') ;
+            if (!Array.isArray(raw_mainData) || !Array.isArray(raw_mainData[0]) ) {throw new Error('didnt get available data, 1') }
+            const mainData  = A2dToCleanObj(raw_mainData) ;
             if (    !Object.hasOwn(mainData, 'LOCK')    ||
                     !isStrictString(mainData.LOCK)      ||
-                    mainData.LOCK !== this.lockName     )   { 
-                return 'Get_gsData Error: didnt get available data, 2' ;
-            }
+                    mainData.LOCK !== this.lockName     )   {throw new Error('didnt get available data, 2') }
 
             const uncloseOrdersA2d      = isStrictTrue(mainData.therePosition) ? (valuesArray[1]).map(lines => CleanArrayToNumStrBool(lines)) : [] ;
 
@@ -1324,47 +1370,64 @@ const TradeBot = {
 
             const tradeHistoryTitleA    = CleanArrayToNumStrBool(valuesArray[3][0])  ;
 
-            return [toGCPData, mainData, ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA] ;
-        } ,
+            this.toGCPData              =  toGCPData            ;
+            this.mainData               =  mainData             ;
+            this.ingOrderData           =  ingOrderData         ;
+            this.ingOrderTitleA         =  ingOrderTitleA       ;
+            this.uncloseOrdersA2d       =  uncloseOrdersA2d     ;
+            this.uncloseOrdersTitleA    =  uncloseOrdersTitleA  ;
+            this.tradeHistoryTitleA     =  uncloseOrdersTitleA  ;
+        } catch(e) {thereErr = true; errMessage += `${e.message}`} ; 
 
-        /**
-         * initiate 仅仅是系统首次初始化 ; 
-         * 每次信号进来的时候的初始化 用 start() ;
-         * @returns true: 表示初始化成功
-         * @returns false: 表示不需要初始化
-         * @returns String: 表示初始化中遇到的明确错误
-         */
-        async ToCheckInitiate(mainData, tvData, toGCPData) {
-            if (isStrictTrue(mainData.initiated)) {return false}
+        // 这里的错误是非核心错误, 可以在释放两个锁后, 抛出错误退出
+        if (thereErr) {
+            const r_ReleaseLockOfGS     =  await this.ReleaseLockOfGS() ; // 尝试给GS解锁
+            const r_ReleaseTradeBotLOCK =  isStrictTrue(r_ReleaseLockOfGS) ? this.ReleaseTradeBotLOCK() : 'r_ReleaseLockOfGS() fail, no need to release TradeBot Lock' ;
+            errMessage  += isStrictString(r_ReleaseLockOfGS)     ? r_ReleaseLockOfGS     + '\n' : 'GS LOCK释放成功'       + '\n';
+            errMessage  += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK + '\n' : 'TradeBot LOCK释放成功' + '\n';
+            throw new Error(`Get_gsData() 失败: ${errMessage}`) ;
+        }
+    } ,
+
+    /**
+     * initiate 仅仅是系统首次初始化 ; 
+     * 每次信号进来的时候的初始化 用 start() ;
+     * 无返回值
+     */
+    async ToCheckInitiate() {
+        let thereErr    =  false    ;
+        let errMessage  =  ''       ;
+
+        try {
+            if (isStrictTrue(this.mainData.initiated)) {return}
 
             // 初始化时间不能在GS中预设的交易开始时间之后
-            if (tvData.timestamp > mainData.realTradeTime) { return 'Inititate Error: 初始化时间不能在GS中预设的交易开始时间之后' }
+            if (this.tvData.timestamp > this.mainData.realTradeTime) {throw new Error('初始化时间不能在GS中预设的交易开始时间之后') }
 
             // 下面是初始化过程
             // 系统处于未初始化状态
             const iD = {} ;
-
-            iD.initiated            =   true                                                        ;
-            iD.initiateTime         =   tvData.timestamp                                            ;
-            iD.inTradingSymbolPrice =   tvData.TradingSymbolPrice                                   ;
-            iD.inBaseCoinPrice      =   tvData.BaseCoinPrice                                        ;
-            iD.initialFund          =   mainData.inFund + mainData.inCoin * tvData.BaseCoinPrice    ;
-            iD.hghestFund           =   iD.initialFund                                              ;
-            iD.lowestFund           =   iD.initialFund                                              ;
-            iD.initialCoin          =   iD.initialFund / tvData.BaseCoinPrice                       ;
-            iD.hghestCoin           =   iD.initialCoin                                              ;
-            iD.lowestCoin           =   iD.initialCoin                                              ;
+            iD.initiated            =   true                                                                        ;
+            iD.initiateTime         =   this.tvData.timestamp                                                       ;
+            iD.inTradingSymbolPrice =   this.tvData.TradingSymbolPrice                                              ;
+            iD.inBaseCoinPrice      =   this.tvData.BaseCoinPrice                                                   ;
+            iD.initialFund          =   this.mainData.inFund + this.mainData.inCoin * this.tvData.BaseCoinPrice     ;
+            iD.hghestFund           =   iD.initialFund                                                              ;
+            iD.lowestFund           =   iD.initialFund                                                              ;
+            iD.initialCoin          =   iD.initialFund / this.tvData.BaseCoinPrice                                  ;
+            iD.hghestCoin           =   iD.initialCoin                                                              ;
+            iD.lowestCoin           =   iD.initialCoin                                                              ;
 
             const i_toClearRangeSet     =  new Set()    ;
             const i_toUpdateRangeList   =  []           ;
 
-            i_toClearRangeSet.add( toGCPData.ingOrderLine       )  ;
-            i_toClearRangeSet.add( toGCPData.uncloseOrdersRange )  ;
-            i_toClearRangeSet.add( toGCPData.tradeHistoryRange  )  ;
-            i_toClearRangeSet.add( toGCPData.HghLowRange        )  ;
-            i_toClearRangeSet.add( toGCPData.simBrokerRange     )  ;
-            i_toClearRangeSet.add( toGCPData.BrokerRange        )  ;
-            i_toClearRangeSet.add( toGCPData.toWriteMainRange   )  ;
+            i_toClearRangeSet.add( this.toGCPData.ingOrderLine       )  ;
+            i_toClearRangeSet.add( this.toGCPData.uncloseOrdersRange )  ;
+            i_toClearRangeSet.add( this.toGCPData.tradeHistoryRange  )  ;
+            i_toClearRangeSet.add( this.toGCPData.HghLowRange        )  ;
+            i_toClearRangeSet.add( this.toGCPData.simBrokerRange     )  ;
+            i_toClearRangeSet.add( this.toGCPData.BrokerRange        )  ;
+            i_toClearRangeSet.add( this.toGCPData.toWriteMainRange   )  ;
 
             const newHghLowV    = [ [iD.initiated           ]    ,
                                     [iD.initiateTime        ]    ,
@@ -1378,18 +1441,37 @@ const TradeBot = {
                                     [iD.lowestCoin          ]    ]   ;
 
             i_toUpdateRangeList.push(    {
-                range   : toGCPData.HghLowRange     ,
+                range   : this.toGCPData.HghLowRange     ,
                 values  : newHghLowV                } ) ;
 
-
             await BatchClearGS(this.sheets, this.spreadsheetID, Array.from(i_toClearRangeSet));
-
+            await Sleep(100) ;
             await BatchClearUpdateGS(this.sheets, this.spreadsheetID, i_toUpdateRangeList);
+            await Sleep(100) ;
 
-            this.AddAlertMessage(this.alertMessageSet, 'just initiated')  ;
+            await this.Get_gsData() ;
+            if (!isStrictTrue(this.mainData.initiated)) {
+                await Sleep(2000) ; // 第一次校验不成功的话, 等2s再校验一次
+                await this.Get_gsData() ;
+                if (!isStrictTrue(this.mainData.initiated)) {throw new Error('初始化后经校验初始化结果未更新') }
+            }
+                
 
-            return true ;
-        } ,
+
+
+
+            AddSetMessage(this.alertMessageSet, 'just initiated')  ;
+
+        } catch(e) {thereErr = true; errMessage += `${e.message}`; }
+
+        if (thereErr) {
+            // 这属于严重核心错误, 不必解锁了, 让它一直锁着
+            // 等手动调试
+            const throwErrMessage = errMessage.trim() ;
+            this.AddRunningWellMessage(throwErrMessage) ;
+            throw new Error(`ToCheckInitiate() 失败: ${throwErrMessage}`) ;
+        }
+    } ,
 
         /**
          * 检查fundfee
@@ -1402,41 +1484,45 @@ const TradeBot = {
          * @returns String: 表示运行错误
          */
         async ToCheckFundFee(mainData, tvData, tradeHistoryTitleA, tradeHistoryRange) {
-            if (!isPlainObject(mainData) || !Array.isArray(tradeHistoryTitleA) || !isStrictString(tradeHistoryRange)) {
-                return "ToCheckFundFee Error: input @param error"  ;
-            }
+            let thereErr    =  false    ;
+            let errMessage  =  ''       ;
+            try {
+                if (!isPlainObject(mainData) || !Array.isArray(tradeHistoryTitleA) || !isStrictString(tradeHistoryRange)) {
+                    return "ToCheckFundFee Error: input @param error"  ;
+                }
 
-            let toCheckFundFee = false;
-            if ( isStrictNumber(mainData.lstFundTime) ) {
-                const lstRound  = Math.floor(mainData.lstFundTime / 28800000) ; // 8 * 60 * 60 * 1000
-                const thisRound = Math.floor(tvData.timestamp     / 28800000) ;
-                toCheckFundFee  = lstRound === thisRound ? false : true;
-            } else {toCheckFundFee = true}
+                let toCheckFundFee = false;
+                if ( isStrictNumber(mainData.lstFundTime) ) {
+                    const lstRound  = Math.floor(mainData.lstFundTime / 28800000) ; // 8 * 60 * 60 * 1000
+                    const thisRound = Math.floor(tvData.timestamp     / 28800000) ;
+                    toCheckFundFee  = lstRound === thisRound ? false : true;
+                } else {toCheckFundFee = true}
 
-            if (isStrictFalse(toCheckFundFee)) {return false} 
+                if (isStrictFalse(toCheckFundFee)) {return false} 
 
-            let S = {}  ;
-            S.fund_orderID          = 'F-' + GetTimeStringWithOffset(8, 28800000 * Math.floor(tvData.timestamp / 28800000)) ;
-            S.fund_orderTimestamp   = Date.now()                                                                            ;
-            S.fund_orderDate        = GetTimeStringWithOffset(8, S.fund_orderTimestamp)                                     ;
-            S.fund_buysell          = order_FUND                                                                            ;
-            S.fund_avgBuyPrice      = mainData.avgBuyPrice                                                                  ;
-            S.fund_reason           = "FundFee"                                                                             ;
-            S.fund_orderStatus      = order_pending                                                                         ;
-            S.fund_lst_allFundFee   = ToStrictNumber(mainData.allFundFee, 0)                                                ;
-            S.fund_inCoin           = ToStrictNumber(mainData.inCoin           , 0                         )  ;
-            S.fund_inFund           = ToStrictNumber(mainData.inFund           , 0                         )  ;
-            S.fund_BaseCoinPrice    = ToStrictNumber(mainData.BaseCoinPrice    , mainData.inBaseCoinPrice  )  ;
+                let S = {}  ;
+                S.fund_orderID          = 'F-' + GetTimeStringWithOffset(8, 28800000 * Math.floor(tvData.timestamp / 28800000)) ;
+                S.fund_orderTimestamp   = Date.now()                                                                            ;
+                S.fund_orderDate        = GetTimeStringWithOffset(8, S.fund_orderTimestamp)                                     ;
+                S.fund_buysell          = order_FUND                                                                            ;
+                S.fund_avgBuyPrice      = mainData.avgBuyPrice                                                                  ;
+                S.fund_reason           = "FundFee"                                                                             ;
+                S.fund_orderStatus      = order_pending                                                                         ;
+                S.fund_lst_allFundFee   = ToStrictNumber(mainData.allFundFee, 0)                                                ;
+                S.fund_inCoin           = ToStrictNumber(mainData.inCoin           , 0                         )  ;
+                S.fund_inFund           = ToStrictNumber(mainData.inFund           , 0                         )  ;
+                S.fund_BaseCoinPrice    = ToStrictNumber(mainData.BaseCoinPrice    , mainData.inBaseCoinPrice  )  ;
 
-            const returnS = await CheckFundFee(S, mainData.isReal, tvData.TradingSymbol, this.sheets, this.spreadsheetID) ;
+                const returnS = await CheckFundFee(S, mainData.isReal, tvData.TradingSymbol, this.sheets, this.spreadsheetID) ;
 
-            const newFundHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(returnS['fund_'+v]) ? returnS['fund_'+v] : (returnS['fund_'+v] || NA) ) ;
+                const newFundHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(returnS['fund_'+v]) ? returnS['fund_'+v] : (returnS['fund_'+v] || NA) ) ;
 
-            await AppendGS(this.sheets, this.spreadsheetID, tradeHistoryRange, [newFundHistoryA]) ;
+                await AppendGS(this.sheets, this.spreadsheetID, tradeHistoryRange, [newFundHistoryA]) ;
 
-            this.AddAlertMessage(this.alertMessageSet, "New fund fee: " + String(returnS.fund_fundFee)) ;
+                this.AddAlertMessage(this.alertMessageSet, "New fund fee: " + String(returnS.fund_fundFee)) ;
 
-            return true ;
+                return true ;
+            } catch(e) {thereErr = true; errMessage = e.message.trim(); }
 
         } ,
 
@@ -2049,7 +2135,7 @@ const TradeBot = {
             this.Set_lockName(tvData.timestamp)  ;
             console.log(cosoleLogHead + 'Set_lockName() end') ;
 
-            const r_SetLockToGS = await this.SetLockToGS(tvData.timestamp, 30000) ;
+            const r_SetLockToGS = await this.SetLockToGS() ;
             if (isStrictString(r_SetLockToGS)) {throw new Error(r_SetLockToGS.trim())}
             console.log(cosoleLogHead + 'SetLockToGS() end') ;
             // 当获得lock后就可以不主动抛出错误了
@@ -2168,61 +2254,6 @@ const TradeBot = {
         }
     }   ;
 
-export async function HandleTradingBot(tvData) {
-    const   noLOCK          =  "noLOCK"         ;
-    const   NA              =  "NA"             ;
-    const   toGCPRanges     =  "toGCP!A:B"      ;
-    const   HuanHang        =  "__HuangHang__"  ;
-    const   order_T_LMT     =  "LMT"            ;
-    const   order_T_MKT     =  "MKT"            ; 
-    const   order_BUY       =  "B"              ;
-    const   order_SELL      =  "S"              ;
-    const   order_FUND      =  "F"              ;
-    const   order_pending   =  "pending"        ;
-    const   order_waiting   =  "waiting"        ;
-    const   order_confirm   =  "confirm"        ;
-    const   order_partial   =  'partial'        ;
-    const   order_cancel    =  "cancel"         ;
-
-    // 清洗来自TV的数据
-    Object.keys(tvData).forEach(key => {
-        tvData[key] = ToStrictNumBoolStr(tvData[key], 'notAvailableValueFromTV') ;
-        if ( isStrictString(tvData[key]) && tvData[key].includes(HuanHang) ) { tvData[key] = tvData[key].replaceAll(HuanHang, '\n').trim() }
-    } ) ;
-
-    // 先行验锁
-
-    const thisBotLockTimeName   =  tvData.botNumber + '_lockTime'   ;
-
-    const thisLockTime          =  ToStrictNumber(tvData.timestamp) ;
-
-    if (!Object.hasOwn(TradeBot, thisBotLockTimeName) || TradeBot[thisBotLockTimeName] === null) {TradeBot[thisBotLockTimeName] = thisLockTime}
-    if (TradeBot[thisBotLockTimeName] > thisLockTime) {throw new Error('当前正在处理更新的信号, 本信号丢弃')}
-
-    // 正常情况下一个信号运行绝对不会超过5分钟; 一旦发生这种情况, 肯定是发生了不可挽回的错误, 直接抛错退出当前信号处理就可以了
-    if (Date.now() - TradeBot[thisBotLockTimeName] > 5 * 60 * 1000 ) {throw new Error('上一个信号长时间未解锁, 肯定遇到了问题, 本信号不再处理') }
-
-    while (TradeBot[thisBotLockTimeName] !== null && Date.now() - thisLockTime <  30 * 1000) { await Sleep(1000) } // 如果现在有锁的话, 等30s
-    if (TradeBot[thisBotLockTimeName] !== null ) {throw new Error('仍在处理上一个信号, 但是本信号已经超时, 直接退出')}
-    if (TradeBot[thisBotLockTimeName] === null ) {TradeBot[thisBotLockTimeName] = thisLockTime} 
 
 
 
-    const bot = Object.create(TradeBot);
-    bot.createBasicChildAttr();
-    bot.Set_toGCPRanges(toGCPRanges);
-    bot.AddAlertMessage(bot.alertMessageSet, tvData.thisAlertMessage);
-    await bot.Set_spreadsheetID(tvData.botNumber);
-    bot.Set_lockName(tvData.timestamp);
-    const toGCPData = await bot.Get_toGCPData(toGCPRanges);
-
-
-    if (!Object.hasOwn(TradeBot, thisBotLockTimeName) || TradeBot[thisBotLockTimeName] !== thisLockTime) {
-        // 出现未知错误
-    } else {
-        TradeBot[thisBotLockTimeName] = null ;
-    }
-
-
-
-}
