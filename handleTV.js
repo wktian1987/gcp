@@ -1475,56 +1475,58 @@ export const TradeBot = {
         }
     } ,
 
-        /**
-         * 检查fundfee
-         * @param {Object} mainData
-         * @param {Object} tvData 
-         * @param {Array<String>} tradeHistoryTitleA 
-         * @param {String} tradeHistoryRange 
-         * @returns true: 表示收取fundFee并写入成功
-         * @returns false: 表示不需要检查fund fee
-         * @returns String: 表示运行错误
-         */
-        async ToCheckFundFee(mainData, tvData, tradeHistoryTitleA, tradeHistoryRange) {
-            let thereErr    =  false    ;
-            let errMessage  =  ''       ;
-            try {
-                if (!isPlainObject(mainData) || !Array.isArray(tradeHistoryTitleA) || !isStrictString(tradeHistoryRange)) {
-                    return "ToCheckFundFee Error: input @param error"  ;
-                }
+    /**
+     * 检查fundfee
+     * @param 调用前必须保证已更新过 Get_gsData()
+     * @returns true: 表示收取fundFee并写入成功
+     * @returns false: 表示不需要检查fund fee
+     * @returns String: 表示运行错误
+     */
+    async ToCheckFundFee() {
+        try {
+            const mainData              = this.mainData                     ;
+            const tvData                = this.tvData                       ;
+            const tradeHistoryTitleA    = this.tradeHistoryTitleA           ;
+            const tradeHistoryRange     = this.toGCPData.tradeHistoryRange  ;
 
-                let toCheckFundFee = false;
-                if ( isStrictNumber(mainData.lstFundTime) ) {
-                    const lstRound  = Math.floor(mainData.lstFundTime / 28800000) ; // 8 * 60 * 60 * 1000
-                    const thisRound = Math.floor(tvData.timestamp     / 28800000) ;
-                    toCheckFundFee  = lstRound === thisRound ? false : true;
-                } else {toCheckFundFee = true}
+            if (!isPlainObject(mainData) || !Array.isArray(tradeHistoryTitleA) || !isStrictString(tradeHistoryRange)) {
+                return "ToCheckFundFee Error: input @param error";
+            }
 
-                if (isStrictFalse(toCheckFundFee)) {return false} 
+            let toCheckFundFee = false;
+            if (isStrictNumber(mainData.lstFundTime)) {
+                const lstRound = Math.floor(mainData.lstFundTime / 28800000); // 8 * 60 * 60 * 1000
+                const thisRound = Math.floor(tvData.timestamp / 28800000);
+                toCheckFundFee = lstRound === thisRound ? false : true;
+            } else { toCheckFundFee = true }
 
-                let S = {}  ;
-                S.fund_orderID          = 'F-' + GetTimeStringWithOffset(8, 28800000 * Math.floor(tvData.timestamp / 28800000)) ;
-                S.fund_orderTimestamp   = Date.now()                                                                            ;
-                S.fund_orderDate        = GetTimeStringWithOffset(8, S.fund_orderTimestamp)                                     ;
-                S.fund_buysell          = order_FUND                                                                            ;
-                S.fund_avgBuyPrice      = mainData.avgBuyPrice                                                                  ;
-                S.fund_reason           = "FundFee"                                                                             ;
-                S.fund_orderStatus      = order_pending                                                                         ;
-                S.fund_lst_allFundFee   = ToStrictNumber(mainData.allFundFee, 0)                                                ;
-                S.fund_inCoin           = ToStrictNumber(mainData.inCoin           , 0                         )  ;
-                S.fund_inFund           = ToStrictNumber(mainData.inFund           , 0                         )  ;
-                S.fund_BaseCoinPrice    = ToStrictNumber(mainData.BaseCoinPrice    , mainData.inBaseCoinPrice  )  ;
+            if (isStrictFalse(toCheckFundFee)) { return false } 
 
-                const returnS = await CheckFundFee(S, mainData.isReal, tvData.TradingSymbol, this.sheets, this.spreadsheetID) ;
+            let S = {}  ;
+            S.fund_orderID          = 'F-' + GetTimeStringWithOffset(8, 28800000 * Math.floor(tvData.timestamp / 28800000)) ;
+            S.fund_orderTimestamp   = Date.now()                                                                            ;
+            S.fund_orderDate        = GetTimeStringWithOffset(8, S.fund_orderTimestamp)                                     ;
+            S.fund_buysell          = order_FUND                                                                            ;
+            S.fund_avgBuyPrice      = mainData.avgBuyPrice                                                                  ;
+            S.fund_reason           = "FundFee"                                                                             ;
+            S.fund_orderStatus      = order_pending                                                                         ;
+            S.fund_lst_allFundFee   = ToStrictNumber(mainData.allFundFee, 0)                                                ;
+            S.fund_inCoin           = ToStrictNumber(mainData.inCoin           , 0                         )  ;
+            S.fund_inFund           = ToStrictNumber(mainData.inFund           , 0                         )  ;
+            S.fund_BaseCoinPrice    = ToStrictNumber(mainData.BaseCoinPrice    , mainData.inBaseCoinPrice  )  ;
 
-                const newFundHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(returnS['fund_'+v]) ? returnS['fund_'+v] : (returnS['fund_'+v] || NA) ) ;
+            const returnS = await CheckFundFee(S, mainData.isReal, tvData.TradingSymbol, this.sheets, this.spreadsheetID);
 
-                await AppendGS(this.sheets, this.spreadsheetID, tradeHistoryRange, [newFundHistoryA]) ;
+            const newFundHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(returnS['fund_' + v]) ? returnS['fund_' + v] : (returnS['fund_' + v] || NA));
 
-                this.AddAlertMessage(this.alertMessageSet, "New fund fee: " + String(returnS.fund_fundFee)) ;
+            await AppendGS(this.sheets, this.spreadsheetID, tradeHistoryRange, [newFundHistoryA]);
 
-                return true ;
-            } catch(e) {thereErr = true; errMessage = e.message.trim(); }
+            this.AddAlertMessage(this.alertMessageSet, "New fund fee: " + String(returnS.fund_fundFee));
+
+            return true;
+        } catch (e) { 
+
+        }
 
         } ,
 
