@@ -48,7 +48,6 @@ export async function SendOrderToBroker(S, isReal, TradingSymbol, sheets, spread
 export async function CheckOrderConfirm(ingOrderData) { 
     if (!isStrictFalse(ingOrderData.isReal) && ingOrderData.TradingSymbol.startsWith("GATE:")) { await GATE_CheckOrderConfirm(ingOrderData); return; }
 
-    
     const simRange_00 = 'simBroker!A30:B'   ;
     const simRange_01 = 'simBroker!A1:B29'  ;
 
@@ -107,26 +106,28 @@ export async function CheckFundFee(fund) {
 // 是否是实盘交易, 只有isStrictTrue(isReal)是实盘交易, 其他全是模拟盘
 
 /**
- * 将 TV 信号 Symbol 转换为交易所标准 Symbol 矩阵（高频提纯版）
+ * 将 TV 信号 Symbol 转换为交易所标准 Symbol 对象 ; 
+ * 目前只考虑USDT本位合约情况, 非USDT本位合约报错
  * @param {string} tvSymbol 例: "GATE:BTCUSDT.P"
  * @returns {object|false}
  */
 function tvSymbol_TO_GATE_Symbol(tvSymbol) {
     // 1. 一线风控：强类型校验（防御 Null 或 Undefined 穿透）
-    if (!isStrictString(tvSymbol)) { return false; }
+    if (!isStrictString(tvSymbol)) { throw new Error('tvSymbol_TO_GATE_Symbol()输入值非字符串形式') }
     // 2. 利用正则一步到位拦截加解构。
     // 这一行正则的意思是：匹配 “交易所:币种名称USDT.P”，且严格限制 USDT.P 必须死锁在字符串的末尾（$）
     const match = tvSymbol.match(/^([^:]+):(.+)USDT\.P$/);
     // 3. 如果格式不对，或者不是以 USDT.P 结尾的 U 本位永续合约，瞬间熔断
-    if (!match) { return false; }
+    if (!match) { throw new Error('非USDT本位合约, 必须是标准的 交易所:币种名称USDT.P 形式 ') }
     
     // 4. 完美提取。match[1] 是交易所名，match[2] 是绝对干净的 BaseCurrency
-    return {
-        broker: match[1],
-        basecurrency: match[2], // 🟢 哪怕币名叫 AUSDT，由于正则锁死了末尾，这里依然能稳稳吐出 "AUSDT"
-        currency: 'USDT',
-        settle: 'usdt'
-    };
+    const settle        = 'usdt'                        ;
+    const currency      = 'USDT'                        ;
+    const broker        = match[1]                      ;
+    const basecurrency  = match[2]                      ; // 🟢 哪怕币名叫 AUSDT，由于正则锁死了末尾，这里依然能稳稳吐出 "AUSDT"
+    const contract      = basecurrency + '_' + currency ;
+
+    return {broker, basecurrency, currency, settle, contract} ; 
 }
 
 class GateFetchBody {
@@ -292,9 +293,13 @@ async function GATE_SendOrderToBroker(isReal, S, TradingSymbol) {
     return S ;
 }
 
+/**
+ * 
+ * @param {object} ingOrderData 
+ * @returns 会抛出错误
+ */
 async function GATE_CheckOrderConfirm(ingOrderData) {
     const brokerSymbol  =  tvSymbol_TO_GATE_Symbol(ingOrderData.TradingSymbol) ;
-    const contract      =  brokerSymbol.basecurrency + '_' + brokerSymbol.currency ;
 
     // 如果需要撤单的话, 先去撤单
     // DELETE /futures/{settle}/orders/{order_id}
@@ -348,24 +353,26 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
     // » pnl_pnl	    string	已实现盈亏中的平仓结算盈亏
     // » pnl_fund	    string	已实现盈亏中的资金费结算盈亏
     // » pnl_fee	    string	已实现盈亏中的总手续费支出
-    const path_position  =  '/futures/' + brokerSymbol.settle + '/positions/' + contract ;
+    const path_position  =  '/futures/' + brokerSymbol.settle + '/positions/' + brokerSymbol.contract ;
     const resp_position  =  await GATE_Fetch(ingOrderData.isReal, 'GET', path_position) ;
     const data_position  =  CleanObjToNumBoolStr( await resp_position.json() ) ;
-    if (resp_position.status !== 200) {throw new Error(`position ${contract} 查询失败 1`) }
-    if (data_position.contract !== contract) {throw new Error(`position ${contract} 查询失败 2`) }
+    if (resp_position.status !== 200) {throw new Error(`position ${brokerSymbol.contract} 查询失败 1`) }
+    if (data_position.contract !== brokerSymbol.contract) {throw new Error(`position ${brokerSymbol.contract} 查询失败 2`) }
 
     ingOrderData.ing_getProfit      =  data_position.pnl_pnl - ingOrderData.lst_allGotProfit                                                                    ;
     ingOrderData.ing_tradeFee       =  data_position.pnl_fee - ingOrderData.lst_allTradeFee                                                                     ;
     ingOrderData.ing_avgBuyPrice    =  data_position.entry_price                                                                                                ;
     ingOrderData.ing_allFund	    =  ingOrderData.inFund + ToStrictNumber(data_position.unrealised_pnl, 0) + ToStrictNumber(data_position.realised_pnl, 0) + ingOrderData.inCoin * ingOrderData.BaseCoinPrice  ;
     ingOrderData.ing_allCoin	    =  ingOrderData.ing_allFund / ingOrderData.BaseCoinPrice                                                                    ;
-
-    return ingOrderData ;
 }
 
+/**
+ * 
+ * @param {object} fund 
+ * @returns 会抛出错误
+ */
 async function GATE_CheckFundFee(fund) {
     const brokerSymbol  =  tvSymbol_TO_GATE_Symbol(fund.TradingSymbol) ;
-    const contract      =  brokerSymbol.basecurrency + '_' + brokerSymbol.currency ;
 
     // 再去查看当前的仓位信息
     // 获取单个仓位信息:    GET  /futures/{settle}/positions/{contract}
@@ -375,9 +382,9 @@ async function GATE_CheckFundFee(fund) {
     // » pnl_pnl	    string	已实现盈亏中的平仓结算盈亏
     // » pnl_fund	    string	已实现盈亏中的资金费结算盈亏
     // » pnl_fee	    string	已实现盈亏中的总手续费支出
-    const path_position  =  '/futures/' + brokerSymbol.settle + '/positions/' + contract ;
+    const path_position  =  '/futures/' + brokerSymbol.settle + '/positions/' + brokerSymbol.contract ;
 
-    const fetchBody = new GateFetchBody(fund.isReal, 'GET', path_position, null, 200, {contract: contract}) ;
+    const fetchBody = new GateFetchBody(fund.isReal, 'GET', path_position, null, 200, {contract: brokerSymbol.contract}) ;
     await GATE_Fetch(fetchBody) ;
     if (!fetchBody.isOK) {throw new Error(fetchBody.errMessage)}
     const data_position = fetchBody.resData ;
