@@ -1163,7 +1163,7 @@ export const CV = {
     order_partial   : 'partial'         ,
     order_cancel    : "cancel"          }
 
-export const TradeBot = {
+const TradeBot = {
     /**
      * 为大对象和子对象创建基本的运行参数 ;
      * 每次子对象创建后, 必须运行这个函数 ;
@@ -1257,7 +1257,7 @@ export const TradeBot = {
             const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
             errMessage += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK + '\n' : '大锁已释放' + '\n';
 
-            return '抢GS锁失败: \n' + errMessage ;
+            return '抢GS锁失败: \n' + errMessage.trim() ;
         }
 
         return true ; 
@@ -1350,7 +1350,10 @@ export const TradeBot = {
 
     /**
      * 获取GS数据, 并写入子对象中
-     * 无返回值
+     * 无返回值, 直接在对象上修改
+     * @returns 因为有try/catch, 不会抛错
+     * @returns true: 获取数据并写入对象成功
+     * @returns string: 具体的出错信息
      */
     async Get_gsData() {
         try {
@@ -1394,21 +1397,22 @@ export const TradeBot = {
             let errMessage = e.message + '\n' ;
 
             const r_ReleaseLockOfGS     =  await this.ReleaseLockOfGS() ; // 尝试给GS解锁
-            const r_ReleaseTradeBotLOCK =  isStrictTrue(r_ReleaseLockOfGS) ? this.ReleaseTradeBotLOCK() : 'r_ReleaseLockOfGS() fail, no need to release TradeBot Lock' ;
+            const r_ReleaseTradeBotLOCK =  isStrictTrue(r_ReleaseLockOfGS) ? this.ReleaseTradeBotLOCK() : 'ReleaseLockOfGS() fail, no need to release TradeBot Lock' ;
             errMessage  += isStrictString(r_ReleaseLockOfGS)     ? r_ReleaseLockOfGS     + '\n' : 'GS LOCK释放成功'       + '\n';
             errMessage  += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK + '\n' : 'TradeBot LOCK释放成功' + '\n';
-            throw new Error(`Get_gsData() 失败: \n` + errMessage) ;
+            return errMessage.trim() ;
         }
     } ,
 
     /**
      * initiate 仅仅是系统首次初始化 ; 
-     * 每次信号进来的时候的初始化 用 start() ;
-     * 无返回值
+     * @returns 因为有try/catch, 不会抛错
+     * @returns true: 初始化成功, 或者已经初始化过, 不必再次初始化
+     * @returns string: 具体的出错信息
      */
     async ToCheckInitiate() {
         try {
-            if (isStrictTrue(this.mainData.initiated)) {return}
+            if (isStrictTrue(this.mainData.initiated)) {return true}
 
             // 初始化时间不能在GS中预设的交易开始时间之后
             if (this.tvData.timestamp > this.mainData.realTradeTime) {throw new Error('初始化时间不能在GS中预设的交易开始时间之后') }
@@ -1458,18 +1462,21 @@ export const TradeBot = {
             await BatchClearUpdateGS(this.sheets, this.spreadsheetID, i_toUpdateRangeList);
             await Sleep(100) ;
 
-            await this.Get_gsData() ;
+            const r_Get_gsData = await this.Get_gsData() ;
+            if (isStrictString(r_Get_gsData)) {throw new Error('Get_gsData() 失败: \n' + r_Get_gsData)}
             if (!isStrictTrue(this.mainData.initiated)) {
                 await Sleep(2000) ; // 第一次校验不成功的话, 等2s再校验一次
-                await this.Get_gsData() ;
+                const r_Get_gsData = await this.Get_gsData() ;
+                if (isStrictString(r_Get_gsData)) {throw new Error('Get_gsData() 失败: \n' + r_Get_gsData)}
                 if (!isStrictTrue(this.mainData.initiated)) {throw new Error('初始化后经校验初始化结果未更新') }
             }
 
             AddSetMessage(this.alertMessageSet, 'just initiated')  ;
+            
+            return true ;
 
         } catch(e) {
-            // 这属于严重核心错误, 不必解锁了, 让它一直锁着
-            // 等手动调试
+            // 这属于严重核心错误, 不必解锁了, 让它一直锁着, 等手动调试
             this.AddRunningWellMessage(e.message) ;
             return e.message ;
         }
@@ -1480,7 +1487,7 @@ export const TradeBot = {
      * @param 调用前必须保证已更新过 Get_gsData()
      * @returns 因为有try/catch 不会抛错
      * @returns true: 表示收取fundFee并写入成功, 或者不需要检查fundfee并成功退出
-     * @returns String: 表示运行错误
+     * @returns String: 具体的出错信息
      */
     async ToCheckFundFee() {
         try {
@@ -1496,7 +1503,7 @@ export const TradeBot = {
                 toCheckFundFee = lstRound === thisRound ? false : true;
             } else { toCheckFundFee = true }
 
-            if (isStrictFalse(toCheckFundFee)) { return false } 
+            if (isStrictFalse(toCheckFundFee)) { return true } 
 
             const fund = {}  ;
             fund.orderID          = 'F-' + GetTimeStringWithOffset(8, 28800000 * Math.floor(tvData.timestamp / 28800000))  ;
@@ -1506,9 +1513,9 @@ export const TradeBot = {
             fund.avgBuyPrice      = mainData.avgBuyPrice                                                                   ;
             fund.reason           = "FundFee"                                                                              ;
             fund.orderStatus      = CV.order_pending                                                                       ;
-            fund.lst_allFundFee   = ToStrictNumber(mainData.allFundFee, 0)                                                 ;
-            fund.inCoin           = ToStrictNumber(mainData.inCoin           , 0                         )                 ;
-            fund.inFund           = ToStrictNumber(mainData.inFund           , 0                         )                 ;
+            fund.lst_allFundFee   = ToStrictNumber(mainData.allFundFee     , 0                       )                     ;
+            fund.inCoin           = ToStrictNumber(mainData.inCoin         , 0                       )                     ;
+            fund.inFund           = ToStrictNumber(mainData.inFund         , 0                       )                     ;
             fund.BaseCoinPrice    = ToStrictNumber(tvData.BaseCoinPrice    , mainData.BaseCoinPrice  )                     ;
             fund.isReal           = mainData.isReal                                                                        ;
             fund.TradingSymbol    = tvData.TradingSymbol                                                                   ;
@@ -1521,117 +1528,159 @@ export const TradeBot = {
 
             await AppendGS(this.sheets, this.spreadsheetID, tradeHistoryRange, [newFundHistoryA]);
 
-            this.AddAlertMessage(this.alertMessageSet, "New fund fee: " + String(fund.fund_fundFee));
+            const r_Get_gsData = await this.Get_gsData() ;
+            if (isStrictString(r_Get_gsData)) {throw new Error('Get_gsData() 失败: \n' + r_Get_gsData)}
+            // 校验写入的最后fund时间是否与本次写入一致
+            if (this.mainData.lstFundTime !== fund.confirmTimestamp) {
+                await Sleep(2000) ; // 第一次校验不成功的话, 等2s再校验一次
+                const r_Get_gsData = await this.Get_gsData() ;
+                if (isStrictString(r_Get_gsData)) {throw new Error('Get_gsData() 失败: \n' + r_Get_gsData)}
+                if (this.mainData.lstFundTime !== fund.confirmTimestamp) {throw new Error('检查fundFee后经校验GS数据未更新') }
+            }
+
+            AddSetMessage(this.alertMessageSet, `New fund fee: ${fund.fundFee}`)  ;
 
             return true;
         } catch (e) { 
+            // 这里的错误是非核心错误, 可以在释放两个锁后, 抛出错误退出
+            let errMessage = e.message + '\n' ;
 
+            const r_ReleaseLockOfGS     =  await this.ReleaseLockOfGS() ; // 尝试给GS解锁
+            const r_ReleaseTradeBotLOCK =  isStrictTrue(r_ReleaseLockOfGS) ? this.ReleaseTradeBotLOCK() : 'ReleaseLockOfGS() fail, no need to release TradeBot Lock' ;
+            errMessage  += isStrictString(r_ReleaseLockOfGS)     ? r_ReleaseLockOfGS     + '\n' : 'GS LOCK释放成功'       + '\n';
+            errMessage  += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK + '\n' : 'TradeBot LOCK释放成功' + '\n';
+            return errMessage.trim() ;
         }
 
         } ,
 
-        /**
-         * 判断waiting 订单状态
-         * @param {Object} ingOrderData 
-         * @param {Array<Array>} uncloseOrdersA2d 
-         * @param {Array<String>} uncloseOrdersTitleA 
-         * @param {Array<String>} tradeHistoryTitleA 
-         * @param {Object} mainData 
-         * @param {Object} tvData 
-         * @param {Object} toGCPData 
-         * @returns false: 没有状态更改
-         * @returns true:  有状态更改
-         */
-        async ToCheckWaitingOrder(ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA, mainData, tvData, toGCPData) {
-            if (!isStrictTrue(mainData.ifOrderWaiting)) {return false}
+    /**
+     * 判断waiting 订单状态
+     * @returns 因为有try/catch, 不会抛错
+     * @returns true: 检查成功, 只表示检查过程无误, 可能没有需要检查的订单, 也可能是有订单但没有成交, 也可能是有成交并成功写入
+     * @returns string: 具体的出错信息
+     */
 
-            ingOrderData.lst_allGotProfit   =  ToStrictNumber(mainData.allGotProfit     , 0                         )  ;
-            ingOrderData.lst_allTradeFee    =  ToStrictNumber(mainData.allTradeFee      , 0                         )  ;
-            ingOrderData.inCoin             =  ToStrictNumber(mainData.inCoin           , 0                         )  ;
-            ingOrderData.inFund             =  ToStrictNumber(mainData.inFund           , 0                         )  ;
-            ingOrderData.BaseCoinPrice      =  ToStrictNumber(mainData.BaseCoinPrice    , mainData.inBaseCoinPrice  )  ;
+    async ToCheckWaitingOrder(ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA, mainData, tvData, toGCPData) {
+        try {
+            const tvData                =  this.tvData                  ;
+            const mainData              =  this.mainData                ;
+            const toGCPData             =  this.toGCPData               ;
+            const ingOrderData          =  this.ingOrderData            ;
+            const ingOrderTitleA        =  this.ingOrderTitleA          ;
+            const uncloseOrdersA2d      =  this.uncloseOrdersA2d        ;
+            const uncloseOrdersTitleA   =  this.uncloseOrdersTitleA     ;
+            const tradeHistoryTitleA    =  this.tradeHistoryTitleA      ;
 
-            ingOrderData.ifWaitingThenCancel = true ;
+            if (!isStrictTrue(mainData.ifOrderWaiting)) { return true }
+
+            ingOrderData.isReal             = mainData.isReal                                                       ;
+            ingOrderData.TradingSymbol      = tvData.TradingSymbol                                                  ;
+            ingOrderData.sheets             = this.sheets                                                           ;
+            ingOrderData.spreadsheetID      = this.spreadsheetID                                                    ;
+            ingOrderData.lst_allGotProfit   = ToStrictNumber(mainData.allGotProfit  , 0                      )      ;
+            ingOrderData.lst_allTradeFee    = ToStrictNumber(mainData.allTradeFee   , 0                      )      ;
+            ingOrderData.inCoin             = ToStrictNumber(mainData.inCoin        , 0                      )      ;
+            ingOrderData.inFund             = ToStrictNumber(mainData.inFund        , 0                      )      ;
+            ingOrderData.BaseCoinPrice      = ToStrictNumber(tvData.BaseCoinPrice   , mainData.BaseCoinPrice )      ;
+
+            ingOrderData.ifWaitingThenCancel = true;
             if (ingOrderData.ing_buysell === order_BUY  && tvData.TradingSymbolPrice < ingOrderData.ing_orderPrice * (1 + tvData.waveUpChg)) { ingOrderData.ifWaitingThenCancel = false }
             if (ingOrderData.ing_buysell === order_SELL && tvData.TradingSymbolPrice > ingOrderData.ing_orderPrice * (1 + tvData.waveDnChg)) { ingOrderData.ifWaitingThenCancel = false }
 
             // 去交易所查看成交情况
-            // 此时获得的数据已经是clean
-            const returnS = await CheckOrderConfirm(ingOrderData, this.isReal, tvData.TradingSymbol, this.sheets, this.spreadsheetID);
+            await CheckOrderConfirm(ingOrderData);
 
-            const w_toUpdateRangeList       = []        ;
-            const w_toClearRangeSet         = new Set() ;
-            const w_toAppendTradeHistory    = []        ;
+        } catch(e) {
 
-            let ingOrderStatusChange = false ;
+        }
 
-            // 对于部分成交的情况,
-            // 如果ifWaitingThenCancel = false,  只修改ing_orderStatus一个变量
-            // 如果ifWaitingThenCancel = true ,  当做confirm来判断
-            if  (returnS.ing_orderStatus === order_confirm                                   || 
-                (returnS.ing_orderStatus === order_cancel  && returnS.ing_partial > 0 )   )   {
 
-                if (ingOrderData.ing_buysell === order_BUY) {
-                    const newUncloseOrderLine = uncloseOrdersTitleA.map(v => isStrictNumber(returnS['ing_'+v]) ? returnS['ing_'+v] : (returnS['ing_'+v] || NA) ) ;
-                    uncloseOrdersA2d.push(newUncloseOrderLine) ;
-                }
-                if (ingOrderData.ing_buysell === order_SELL) {
-                    const indexOfSerial = uncloseOrdersTitleA.indexOf('serial') ;
-                    if (indexOfSerial > -1) {uncloseOrdersA2d = uncloseOrdersA2d.filter(row => String(row[indexOfSerial]) !== String(Math.abs(returnS.ing_serial))) }
-                }
 
-                w_toClearRangeSet.add(toGCPData.ingOrderLine) ;
-                w_toClearRangeSet.add(toGCPData.uncloseOrdersRange) ;
 
-                const newTradeHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(returnS['ing_'+v]) ? returnS['ing_'+v] : (returnS['ing_'+v] || NA) ) ;
-                w_toAppendTradeHistory.toAppend = true                          ;
-                w_toAppendTradeHistory.range    = toGCPData.tradeHistoryRange   ;
-                w_toAppendTradeHistory.values   = [newTradeHistoryA]            ;
 
-                if (uncloseOrdersA2d.length > 0) {
-                    w_toUpdateRangeList.push( {
-                        range   : toGCPData.uncloseOrdersRange  ,
-                        values  : uncloseOrdersA2d                 } ) ;
-                }
 
-                const thisMessage = returnS.ing_orderStatus === order_confirm                                ?
-                    (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order confirmed"               :
-                    (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order partially confirmed"           ;
 
-                this.AddAlertMessage(this.alertMessageSet, thisMessage) ;
 
-                ingOrderStatusChange = true ;
+
+
+
+
+        const w_toUpdateRangeList = [];
+        const w_toClearRangeSet = new Set();
+        const w_toAppendTradeHistory = [];
+
+        let ingOrderStatusChange = false;
+
+        // 对于部分成交的情况,
+        // 如果ifWaitingThenCancel = false,  只修改ing_orderStatus一个变量
+        // 如果ifWaitingThenCancel = true ,  当做confirm来判断
+        if (returnS.ing_orderStatus === order_confirm ||
+            (returnS.ing_orderStatus === order_cancel && returnS.ing_partial > 0)) {
+
+            if (ingOrderData.ing_buysell === order_BUY) {
+                const newUncloseOrderLine = uncloseOrdersTitleA.map(v => isStrictNumber(returnS['ing_' + v]) ? returnS['ing_' + v] : (returnS['ing_' + v] || NA));
+                uncloseOrdersA2d.push(newUncloseOrderLine);
+            }
+            if (ingOrderData.ing_buysell === order_SELL) {
+                const indexOfSerial = uncloseOrdersTitleA.indexOf('serial');
+                if (indexOfSerial > -1) { uncloseOrdersA2d = uncloseOrdersA2d.filter(row => String(row[indexOfSerial]) !== String(Math.abs(returnS.ing_serial))) }
             }
 
-            if (returnS.ing_orderStatus === order_waiting && returnS.ing_partial > 0 && returnS.ing_partial > ingOrderData.ing_partial) {
-                ingOrderData.ing_partial = returnS.ing_partial ;
-                const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(ingOrderData[v]) ? ingOrderData[v] : ingOrderData[v] || NA ) ;
+            w_toClearRangeSet.add(toGCPData.ingOrderLine);
+            w_toClearRangeSet.add(toGCPData.uncloseOrdersRange);
+
+            const newTradeHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(returnS['ing_' + v]) ? returnS['ing_' + v] : (returnS['ing_' + v] || NA));
+            w_toAppendTradeHistory.toAppend = true;
+            w_toAppendTradeHistory.range = toGCPData.tradeHistoryRange;
+            w_toAppendTradeHistory.values = [newTradeHistoryA];
+
+            if (uncloseOrdersA2d.length > 0) {
                 w_toUpdateRangeList.push({
-                    range   : toGCPData.ingOrderLine    , 
-                    values  : [new_ingOrderLineA]       } ) ;
-                this.AddAlertMessage(this.alertMessageSet, (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order more partial confirmed") ;
-
-                ingOrderStatusChange = true ;
+                    range: toGCPData.uncloseOrdersRange,
+                    values: uncloseOrdersA2d
+                });
             }
 
-            if (returnS.ing_orderStatus === order_cancel) {
-                w_toClearRangeSet.add(toGCPData.ingOrderLine) ;
-                this.AddAlertMessage(this.alertMessageSet, (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order canceled") ;
+            const thisMessage = returnS.ing_orderStatus === order_confirm ?
+                (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order confirmed" :
+                (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order partially confirmed";
 
-                ingOrderStatusChange = true ;
-            }
+            this.AddAlertMessage(this.alertMessageSet, thisMessage);
 
-            if (isStrictFalse(ingOrderStatusChange)) {return false}
+            ingOrderStatusChange = true;
+        }
 
-            await BatchClearGS(this.sheets, this.spreadsheetID, Array.from(w_toClearRangeSet) ) ;
+        if (returnS.ing_orderStatus === order_waiting && returnS.ing_partial > 0 && returnS.ing_partial > ingOrderData.ing_partial) {
+            ingOrderData.ing_partial = returnS.ing_partial;
+            const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(ingOrderData[v]) ? ingOrderData[v] : ingOrderData[v] || NA);
+            w_toUpdateRangeList.push({
+                range: toGCPData.ingOrderLine,
+                values: [new_ingOrderLineA]
+            });
+            this.AddAlertMessage(this.alertMessageSet, (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order more partial confirmed");
 
-            await BatchClearUpdateGS(this.sheets, this.spreadsheetID, w_toUpdateRangeList)  ;
+            ingOrderStatusChange = true;
+        }
 
-            if (isStrictTrue(w_toAppendTradeHistory.toAppend)) { await AppendGS(this.sheets, this.spreadsheetID, w_toAppendTradeHistory.range, w_toAppendTradeHistory.values) }
+        if (returnS.ing_orderStatus === order_cancel) {
+            w_toClearRangeSet.add(toGCPData.ingOrderLine);
+            this.AddAlertMessage(this.alertMessageSet, (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order canceled");
 
-            return true ;
+            ingOrderStatusChange = true;
+        }
 
-        } ,
+        if (isStrictFalse(ingOrderStatusChange)) { return false }
+
+        await BatchClearGS(this.sheets, this.spreadsheetID, Array.from(w_toClearRangeSet));
+
+        await BatchClearUpdateGS(this.sheets, this.spreadsheetID, w_toUpdateRangeList);
+
+        if (isStrictTrue(w_toAppendTradeHistory.toAppend)) { await AppendGS(this.sheets, this.spreadsheetID, w_toAppendTradeHistory.range, w_toAppendTradeHistory.values) }
+
+        return true;
+
+    },
 
         /**
          * 判断可写入的新数据key
@@ -2261,3 +2310,30 @@ export const TradeBot = {
 
 
 
+export async function HandleTradingBot(tvData) {
+
+    // 清洗来自TV的数据
+    Object.keys(tvData).forEach(key => {
+        tvData[key] = ToStrictNumBoolStr(tvData[key], 'notAvailableValueFromTV') ;
+        if ( isStrictString(tvData[key]) && tvData[key].includes(HuanHang) ) { tvData[key] = tvData[key].replaceAll(HuanHang, '\n').trim() }
+    } ) ;
+
+    const bot = Object.create(TradeBot);
+
+    const r_CreateBasicAttr = await bot.CreateBasicAttr(tvData);
+    if (isStrictString(r_CreateBasicAttr)) { throw new Error('CreateBasicAttr() 失败: \n' + r_CreateBasicAttr) }
+    if (isStrictTrue(r_CreateBasicAttr)) { console.log(bot.cLogHead + 'CreateBasicAttr() success') }
+
+    const r_Get_gsData = await bot.Get_gsData();
+    if (isStrictString(r_Get_gsData)) { throw new Error('Get_gsData() 失败: \n' + r_Get_gsData) }
+    if (isStrictTrue(r_Get_gsData)) { console.log(bot.cLogHead + 'Get_gsData() success') }
+
+    const r_ToCheckInitiate = await bot.ToCheckInitiate();
+    if (isStrictString(r_ToCheckInitiate)) { throw new Error('ToCheckInitiate() 失败: \n' + r_ToCheckInitiate) }
+    if (isStrictTrue(r_ToCheckInitiate)) { console.log(bot.cLogHead + 'ToCheckInitiate() success') }
+
+    const r_ToCheckFundFee = await bot.ToCheckFundFee();
+    if (isStrictString(r_ToCheckFundFee)) { throw new Error('ToCheckFundFee() 失败: \n' + r_ToCheckFundFee) }
+    if (isStrictTrue(r_ToCheckFundFee)) { console.log(bot.cLogHead + 'ToCheckFundFee() success') }
+
+}

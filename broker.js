@@ -39,8 +39,14 @@ export async function SendOrderToBroker(S, isReal, TradingSymbol, sheets, spread
     return S ;
 }
 
-export async function CheckOrderConfirm(ingOrderData, isReal, TradingSymbol, sheets, spreadsheetID) { 
-    if (!isStrictFalse(isReal) && TradingSymbol.startsWith("GATE:")) {return await GATE_CheckOrderConfirm(isReal, ingOrderData, TradingSymbol) ;}
+/**
+ * 去检查ingOrder
+ * @param {object} ingOrderData 
+ * @returns 会抛出错误, 用是否抛错来判断是否执行成功
+ * @returns 直接在传入的ingOrderData对象中修改属性, 不会另外返回
+ */
+export async function CheckOrderConfirm(ingOrderData) { 
+    if (!isStrictFalse(ingOrderData.isReal) && ingOrderData.TradingSymbol.startsWith("GATE:")) { await GATE_CheckOrderConfirm(ingOrderData); return; }
 
     
     const simRange_00 = 'simBroker!A30:B'   ;
@@ -48,7 +54,7 @@ export async function CheckOrderConfirm(ingOrderData, isReal, TradingSymbol, she
 
     // 无论是要取消交易, 都要首先查看现在的交易状态
     // 在模拟交易中, 没有 部分成交 这种情况 
-    const res   = CleanObjToNumBoolStr(Object.fromEntries(await GetGS(sheets, spreadsheetID, simRange_01 ))) ;
+    const res   = CleanObjToNumBoolStr(Object.fromEntries(await GetGS(ingOrderData.sheets, ingOrderData.spreadsheetID, simRange_01 ))) ;
     if (res.orderStatus === "confirm")  {
         ingOrderData.ing_orderID		    = res.orderID                                           ;
         ingOrderData.ing_confirmTimestamp   = res.confirmTimestamp                                  ;
@@ -62,21 +68,22 @@ export async function CheckOrderConfirm(ingOrderData, isReal, TradingSymbol, she
         ingOrderData.ing_orderStatus		= res.orderStatus                                       ;
         ingOrderData.ing_pXq                = ingOrderData.ing_confirmPrice * ingOrderData.ing_qty  ;
 
-        await ClearGS(sheets, spreadsheetID, simRange_00) ;
-
-        return ingOrderData  ;
+        await ClearGS(ingOrderData.sheets, ingOrderData.spreadsheetID, simRange_00) ;
     } 
 
     // 在模拟交易中, 没有 部分成交 这种情况 
-    if ( isStrictTrue(ingOrderData.ifWaitingThenCancel) ) {
-        await ClearGS(sheets, spreadsheetID, simRange_00) ;
-
-        return {ing_orderStatus: "cancel"} ;
+    if ( isStrictTrue(ingOrderData.ifWaitingThenCancel) && res.orderStatus !== "confirm") {
+        await ClearGS(ingOrderData.sheets, ingOrderData.spreadsheetID, simRange_00) ;
+        ingOrderData.ing_orderStatus = CV.order_cancel;
     }
-
-    return {}  ;
 }
 
+/**
+ * 去检查fundFee 
+ * @param {object} fund 
+ * @returns 会抛出错误, 用是否抛错来判断是否执行成功
+ * @returns 直接在传入的fund对象中修改属性, 不会另外返回
+ */
 export async function CheckFundFee(fund) {
     if (!isStrictFalse(fund.isReal) && fund.TradingSymbol.startsWith("GATE:")) { await GATE_CheckFundFee(fund); return; }
 
@@ -230,8 +237,6 @@ async function GATE_Fetch(fetchBody) {
         fetchBody.isOK          =  false            ;
         fetchBody.errMessage    =  e.message.trim() ;
     }
-
-    return response; // 将满血的回执抛给上游具体业务去解包
 }
 // 当有了上面那个无缝签名的 gateProtectedFetch 大闸后，
 // 你在外面的发单、对账、查统一账户资产的函数，瞬间变得像喝水一样简单利落：
@@ -285,15 +290,33 @@ async function GATE_SendOrderToBroker(isReal, S, TradingSymbol) {
     return S ;
 }
 
-async function GATE_CheckOrderConfirm(isReal, ingOrderData, TradingSymbol) {
-    const brokerSymbol  =  tvSymbol_TO_GATE_Symbol(TradingSymbol) ;
+async function GATE_CheckOrderConfirm(ingOrderData) {
+    const brokerSymbol  =  tvSymbol_TO_GATE_Symbol(ingOrderData.TradingSymbol) ;
     const contract      =  brokerSymbol.basecurrency + '_' + brokerSymbol.currency ;
 
     // 如果需要撤单的话, 先去撤单
     // DELETE /futures/{settle}/orders/{order_id}
     if ( isStrictTrue(ingOrderData.ifWaitingThenCancel) ) {
         const path_cancel   =  '/futures/' + brokerSymbol.settle + '/orders/' + ingOrderData.ing_orderID ;
-        const resp_cancel   =  await GATE_Fetch(isReal, 'DELETE', path_cancel)    ;
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        const resp_cancel   =  await GATE_Fetch(ingOrderData.isReal, 'DELETE', path_cancel)    ;
         const data_cancel   =  CleanObjToNumBoolStr( await resp_cancel.json() ) ;
         if (resp_cancel.status !== 200) {throw new Error(`order ${ingOrderData.ing_orderID} 撤单失败 1`) }
         if (data_cancel.text !== ingOrderData.ing_orderID) {throw new Error(`order ${ingOrderData.ing_orderID} 撤单失败 2` ) }
@@ -307,7 +330,7 @@ async function GATE_CheckOrderConfirm(isReal, ingOrderData, TradingSymbol) {
     } else { // 如果不撤单单的话, 去查看是否有新的成交记录
         // GET  '/futures/{settle}/orders/{order_id}'
         const path_confirm      =  '/futures/' + brokerSymbol.settle + '/orders/' + ingOrderData.ing_orderID ;
-        const resp_confirm      =  await GATE_Fetch(isReal, 'GET', path_confirm)    ;
+        const resp_confirm      =  await GATE_Fetch(ingOrderData.isReal, 'GET', path_confirm)    ;
         const data_confirm      =  CleanObjToNumBoolStr( await resp_confirm.json() ) ;
         if (resp_confirm.status !== 200) {throw new Error(`order ${ingOrderData.ing_orderID} 查询失败 1`) }
         if (data_confirm.text !== ingOrderData.ing_orderID) {throw new Error(`order ${ingOrderData.ing_orderID} 查询失败 2` ) }
@@ -337,7 +360,7 @@ async function GATE_CheckOrderConfirm(isReal, ingOrderData, TradingSymbol) {
     // » pnl_fund	    string	已实现盈亏中的资金费结算盈亏
     // » pnl_fee	    string	已实现盈亏中的总手续费支出
     const path_position  =  '/futures/' + brokerSymbol.settle + '/positions/' + contract ;
-    const resp_position  =  await GATE_Fetch(isReal, 'GET', path_position) ;
+    const resp_position  =  await GATE_Fetch(ingOrderData.isReal, 'GET', path_position) ;
     const data_position  =  CleanObjToNumBoolStr( await resp_position.json() ) ;
     if (resp_position.status !== 200) {throw new Error(`position ${contract} 查询失败 1`) }
     if (data_position.contract !== contract) {throw new Error(`position ${contract} 查询失败 2`) }
@@ -364,20 +387,18 @@ async function GATE_CheckFundFee(fund) {
     // » pnl_fund	    string	已实现盈亏中的资金费结算盈亏
     // » pnl_fee	    string	已实现盈亏中的总手续费支出
     const path_position  =  '/futures/' + brokerSymbol.settle + '/positions/' + contract ;
-    const resp_position  =  await GATE_Fetch(fund.isReal, 'GET', path_position) ;
-    const data_position  =  CleanObjToNumBoolStr( await resp_position.json() ) ;
-    if (resp_position.status !== 200) {throw new Error(`position ${contract} 查询失败 1`) }
-    if (data_position.contract !== contract) {throw new Error(`position ${contract} 查询失败 2`) }
 
-    fund.fundFee            =  ToStrictNumber(data_position.pnl_fund, 0) -  fund.fund_lst_allFundFee                                                                            ;
+    const fetchBody = new GateFetchBody(fund.isReal, 'GET', path_position, null, 200, {contract: contract}) ;
+    await GATE_Fetch(fetchBody) ;
+    if (!fetchBody.isOK) {throw new Error(fetchBody.errMessage)}
+    const data_position = fetchBody.resData ;
+
+    fund.fundFee            =  ToStrictNumber(data_position.pnl_fund, 0) -  fund.lst_allFundFee                                                                                 ;
     fund.confirmTimestamp   =  Date.now()                                                                                                                                       ;
     fund.confirmDate        =  GetTimeStringWithOffset(8, fund.confirmTimestamp)                                                                                                ;
     fund.allFund	        =  fund.inFund + ToStrictNumber(data_position.unrealised_pnl, 0) + ToStrictNumber(data_position.realised_pnl, 0) + fund.inCoin * fund.BaseCoinPrice ;
     fund.allCoin	        =  fund.allFund / fund.BaseCoinPrice                                                                                                                ;
 }
-
-
-
 
 //#endregion
 
