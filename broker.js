@@ -148,7 +148,7 @@ class GateFetchBody {
 /**
  * 签名并网发送信息到交易所（GATE唯一请求入口）
  * @param {GateFetchBody} fetchBody 
- * @returns 无返回值, 直接在传入的对象上进行修改
+ * @returns 因为try/catch, 不会抛出错误, 无论执行是否成功都会在传入的fetchBody上进行数据修改
  */
 async function GATE_Fetch(fetchBody) {
     const isReal        =  fetchBody.isReal         ;
@@ -158,8 +158,7 @@ async function GATE_Fetch(fetchBody) {
     const resOK         =  fetchBody.resOK          ;
     const dataCheck     =  fetchBody.dataCheck      ;
 
-    // const { crypto } = await import('node:crypto');
-    const crypto = (await import('node:crypto')).default || await import('node:crypto');
+
 
     const GATE_PATH_version     = '/api/v4'                                     ;
     const GATE_simulate_Key     =  process.env.GATE_simulate_Key                ; 
@@ -178,46 +177,49 @@ async function GATE_Fetch(fetchBody) {
     const fullPath  = GATE_PATH_version + path ;
     const url       = GATE_URL + fullPath ;
 
-    // 签名处理（全项目唯一的一处加密逻辑）
-    // APIv4 中签名字符串按照如下方式拼接生成：
-    //      Request Method + "\n" + Request URL + "\n" + Query String + "\n" + HexEncode(SHA512(Request Payload)) + "\n" + Timestamp
-    // Request Method
-    //      请求方法，全大写, 如 POST, GET
-    // Request URL
-    //      请求 URL，不包括服务地址和端口，正确格式如: /api/v4/futures/orders
-    // Query String
-    //      没有使用 URL 编码的请求参数，请求参数在参与计算签名时的顺序一定要保证和实际请求里的顺序一致。 如 status=finished&limit=50 。 ; 如果没有请求参数，使用空字符串 ("")
-    // HexEncode(SHA512(Request Payload))
-    //      将请求体字符串使用 SHA512 哈希之后的结果。如果没有请求体，使用空字符串的哈希结果，即 cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e
-    // Timestamp
-    //      设置在请求头部 Timestamp 里的值
-    // 下面是过程:
 
-    // 刚性处理 Body 序列化
-    const bodyString = body && method !== 'GET' ? JSON.stringify(body) : '' ;
-    // 算出 Body 的 SHA512 哈希（GET 请求的 bodyString 为空，符合官方规范）
-    const hashedBody = crypto.createHash('sha512').update(bodyString).digest('hex');
-    // 刚性合拢 Gate 官方签名原文公式 (Method + "\n" + Path + "\n" + QueryString + "\n" + HashedBody + "\n" + Timestamp)
-    const signString = `${method}\n${fullPath}\n\n${hashedBody}\n${timestamp}`;
-    // 动用藏在 GCP 内存里的主权私钥进行 HMAC-SHA512 深度锻造
-    const signature = crypto.createHmac('sha512', GATE_Secret).update(signString).digest('hex');
-    // ==============================================================================
-
-    // 2. 统一焊死最高级别的安全防护 Headers
-    const options = {
-        method: method                                  ,
-        headers: {
-            'Accept'        : 'application/json'    ,
-            'Content-Type'  : 'application/json'    ,
-            'KEY'           : GATE_Key              ,        // 明文公钥账号
-            'SIGN'          : signature             ,        // 刚刚现场砸出来的铁血印章
-            'Timestamp'     : timestamp             }   } ;  // 刚性防重放时空防线
-
-    // 如果是 POST/PUT 动词，无缝注入 body 装弹
-    if (method !== 'GET' && bodyString) { options.body = bodyString }
-
-    // 3. 原生大炮轰鸣出海
     try {
+        // 签名处理（全项目唯一的一处加密逻辑）
+        // APIv4 中签名字符串按照如下方式拼接生成：
+        //      Request Method + "\n" + Request URL + "\n" + Query String + "\n" + HexEncode(SHA512(Request Payload)) + "\n" + Timestamp
+        // Request Method
+        //      请求方法，全大写, 如 POST, GET
+        // Request URL
+        //      请求 URL，不包括服务地址和端口，正确格式如: /api/v4/futures/orders
+        // Query String
+        //      没有使用 URL 编码的请求参数，请求参数在参与计算签名时的顺序一定要保证和实际请求里的顺序一致。 如 status=finished&limit=50 。 ; 如果没有请求参数，使用空字符串 ("")
+        // HexEncode(SHA512(Request Payload))
+        //      将请求体字符串使用 SHA512 哈希之后的结果。如果没有请求体，使用空字符串的哈希结果，即 cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e
+        // Timestamp
+        //      设置在请求头部 Timestamp 里的值
+        // 下面是过程:
+
+        // const { crypto } = await import('node:crypto');
+        const crypto = (await import('node:crypto')).default || await import('node:crypto');
+
+        // 刚性处理 Body 序列化
+        const bodyString = body && method !== 'GET' ? JSON.stringify(body) : '' ;
+        // 算出 Body 的 SHA512 哈希（GET 请求的 bodyString 为空，符合官方规范）
+        const hashedBody = crypto.createHash('sha512').update(bodyString).digest('hex');
+        // 刚性合拢 Gate 官方签名原文公式 (Method + "\n" + Path + "\n" + QueryString + "\n" + HashedBody + "\n" + Timestamp)
+        const signString = `${method}\n${fullPath}\n\n${hashedBody}\n${timestamp}`;
+        // 动用藏在 GCP 内存里的主权私钥进行 HMAC-SHA512 深度锻造
+        const signature = crypto.createHmac('sha512', GATE_Secret).update(signString).digest('hex');
+        // ==============================================================================
+
+        // 2. 统一焊死最高级别的安全防护 Headers
+        const options = {
+            method: method                                  ,
+            headers: {
+                'Accept'        : 'application/json'    ,
+                'Content-Type'  : 'application/json'    ,
+                'KEY'           : GATE_Key              ,        // 明文公钥账号
+                'SIGN'          : signature             ,        // 刚刚现场砸出来的铁血印章
+                'Timestamp'     : timestamp             }   } ;  // 刚性防重放时空防线
+
+        // 如果是 POST/PUT 动词，无缝注入 body 装弹
+        if (method !== 'GET' && bodyString) { options.body = bodyString }
+
         const resp = await fetch(url, options);
         const data = CleanObjToNumBoolStr(await resp.json() )    ; //这里必须需要await
 
@@ -298,34 +300,21 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
     // DELETE /futures/{settle}/orders/{order_id}
     if ( isStrictTrue(ingOrderData.ifWaitingThenCancel) ) {
         const path_cancel   =  '/futures/' + brokerSymbol.settle + '/orders/' + ingOrderData.ing_orderID ;
+        const fetchBody_cancel = new GateFetchBody(ingOrderData.isReal, 'DELETE', path_cancel, null, 200, {text: ingOrderData.ing_orderID}) ;
+        await GATE_Fetch(fetchBody_cancel) ;
+        if (!fetchBody_cancel.isOK) {throw new Error(fetchBody_cancel.errMessage)}
+        const data_cancel = fetchBody_cancel.resData ;
 
 
 
+        ////////////////////////////
+        //////  关于n cancel 下面的逻辑 还需要再次检查
 
-
-
-
-
-
-        
-
-
-
-
-
-
-
-
-        const resp_cancel   =  await GATE_Fetch(ingOrderData.isReal, 'DELETE', path_cancel)    ;
-        const data_cancel   =  CleanObjToNumBoolStr( await resp_cancel.json() ) ;
-        if (resp_cancel.status !== 200) {throw new Error(`order ${ingOrderData.ing_orderID} 撤单失败 1`) }
-        if (data_cancel.text !== ingOrderData.ing_orderID) {throw new Error(`order ${ingOrderData.ing_orderID} 撤单失败 2` ) }
-
-        ingOrderData.ing_orderStatus        = data_cancel.status === 'finished' && data_cancel.left === 0 ? CV.order_confirm : CV.order_cancel    ;
-        ingOrderData.ing_confirmTimestamp   = Math.floor( ( data_confirm.finish_time || (Date.now()/1000) ) * 1000)                         ;
-        ingOrderData.ing_confirmDate		= GetTimeStringWithOffset(8, ingOrderData.ing_confirmTimestamp)                                 ;
-        ingOrderData.ing_confirmPrice		= data_confirm.fill_price                                                                       ;
-        ingOrderData.ing_pXq                = ingOrderData.ing_confirmPrice * ingOrderData.ing_qty                                          ; // 实际上只取买单成交的值, 对于卖单成交, 即使算出来也不关注
+        ingOrderData.ing_orderStatus        = data_cancel.status === 'finished' && data_cancel.left === 0 ? CV.order_confirm : CV.order_cancel      ;
+        ingOrderData.ing_confirmTimestamp   = Math.floor( ( data_confirm.finish_time || (Date.now()/1000) ) * 1000)                                 ;
+        ingOrderData.ing_confirmDate		= GetTimeStringWithOffset(8, ingOrderData.ing_confirmTimestamp)                                         ;
+        ingOrderData.ing_confirmPrice		= data_confirm.fill_price                                                                               ;
+        ingOrderData.ing_pXq                = ingOrderData.ing_confirmPrice * ingOrderData.ing_qty                                                  ; // 实际上只取买单成交的值, 对于卖单成交, 即使算出来也不关注
 
     } else { // 如果不撤单单的话, 去查看是否有新的成交记录
         // GET  '/futures/{settle}/orders/{order_id}'
