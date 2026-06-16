@@ -1585,15 +1585,15 @@ const TradeBot = {
             ingOrderData.BaseCoinPrice      = ToStrictNumber(tvData.BaseCoinPrice   , mainData.BaseCoinPrice )      ;
 
             ingOrderData.ifWaitingThenCancel = true;
-            if (ingOrderData.ing_buysell === order_BUY  && tvData.TradingSymbolPrice < ingOrderData.ing_orderPrice * (1 + tvData.waveUpChg)) { ingOrderData.ifWaitingThenCancel = false }
-            if (ingOrderData.ing_buysell === order_SELL && tvData.TradingSymbolPrice > ingOrderData.ing_orderPrice * (1 + tvData.waveDnChg)) { ingOrderData.ifWaitingThenCancel = false }
+            if (ingOrderData.ing_buysell === CV.order_BUY  && tvData.TradingSymbolPrice < ingOrderData.ing_orderPrice * (1 + tvData.waveUpChg)) { ingOrderData.ifWaitingThenCancel = false }
+            if (ingOrderData.ing_buysell === CV.order_SELL && tvData.TradingSymbolPrice > ingOrderData.ing_orderPrice * (1 + tvData.waveDnChg)) { ingOrderData.ifWaitingThenCancel = false }
 
             // 去交易所查看成交情况
             await CheckOrderConfirm(ingOrderData);
 
             const w_toUpdateRangeList       = []            ;
             const w_toClearRangeSet         = new Set()     ;
-            const w_toAppendTradeHistory    = []            ;
+            const w_toAppendTradeHistory    = {}            ;
 
 
 
@@ -1611,16 +1611,18 @@ const TradeBot = {
         let ingOrderStatusChange = false;
 
         // 对于部分成交的情况,
+        // 按照成交逻辑, 如果返回order_cancel的话, 表示订单没有任何成交
+        // 如果传入了撤单命令, 但是订单有成交的话, 返回的订单状态为order_confirm, 但是ing_qty参数做了修改
         // 如果ifWaitingThenCancel = false,  只修改ing_orderStatus一个变量
         // 如果ifWaitingThenCancel = true ,  当做confirm来判断
-        if (ingOrderData.ing_orderStatus === order_confirm ||
-            (ingOrderData.ing_orderStatus === order_cancel && ingOrderData.ing_partial > 0)) {
 
-            if (ingOrderData.ing_buysell === order_BUY) {
+        if (ingOrderData.ing_orderStatus === CV.order_confirm ) {
+
+            if (ingOrderData.ing_buysell === CV.order_BUY) {
                 const newUncloseOrderLine = uncloseOrdersTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || NA));
                 uncloseOrdersA2d.push(newUncloseOrderLine);
             }
-            if (ingOrderData.ing_buysell === order_SELL) {
+            if (ingOrderData.ing_buysell === CV.order_SELL) {
                 const indexOfSerial = uncloseOrdersTitleA.indexOf('serial');
                 if (indexOfSerial > -1) { uncloseOrdersA2d = uncloseOrdersA2d.filter(row => String(row[indexOfSerial]) !== String(Math.abs(ingOrderData.ing_serial))) }
             }
@@ -1629,20 +1631,20 @@ const TradeBot = {
             w_toClearRangeSet.add(toGCPData.uncloseOrdersRange);
 
             const newTradeHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || NA));
-            w_toAppendTradeHistory.toAppend = true;
-            w_toAppendTradeHistory.range = toGCPData.tradeHistoryRange;
-            w_toAppendTradeHistory.values = [newTradeHistoryA];
+            w_toAppendTradeHistory.toAppend     = true;
+            w_toAppendTradeHistory.range        = toGCPData.tradeHistoryRange;
+            w_toAppendTradeHistory.values       = [newTradeHistoryA];
 
-            if (uncloseOrdersA2d.length > 0) {
-                w_toUpdateRangeList.push({
-                    range: toGCPData.uncloseOrdersRange,
-                    values: uncloseOrdersA2d
-                });
-            }
+            if (uncloseOrdersA2d.length > 0) { w_toUpdateRangeList.push({ range: toGCPData.uncloseOrdersRange, values: uncloseOrdersA2d }) }
 
+
+
+
+
+            /// 有成交但是没有完全成交, 但是已经confirm 及 撤单的 的情况
             const thisMessage = ingOrderData.ing_orderStatus === order_confirm ?
-                (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order confirmed" :
-                (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order partially confirmed";
+                (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + "Order confirmed" :
+                (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + "Order partially confirmed";
 
             this.AddAlertMessage(this.alertMessageSet, thisMessage);
 
