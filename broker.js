@@ -316,11 +316,12 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
         const abs_left = Math.abs(data_cancel.left) ;
         const abs_size = Math.abs(data_cancel.size) ;
         ingOrderData.ing_partial = data_cancel.status === 'finished' ? 1 : (abs_size - abs_left) / abs_size ;
-        const toSet_confirm = ingOrderData.ing_partial < 0.001 ? fasle : true ; // 将计算成交量小于 千分之一 的情况设为没有成交, 其他情况均按照有成交计算, 避免浮点数对比计算出错
+        const toSet_confirm = ingOrderData.ing_partial < 0.001 ? false : true ; // 将计算成交量小于 千分之一 的情况设为没有成交, 其他情况均按照有成交计算, 避免浮点数对比计算出错
         
         if (toSet_confirm) {
             ingOrderData.ing_orderStatus        = CV.order_confirm                                                          ;
             ingOrderData.ing_qty                = ingOrderData.ing_qty * ingOrderData.ing_partial                           ;
+            ingOrderData.ing_isPartial          = ingOrderData.ing_partial                                                  ;
             ingOrderData.ing_confirmTimestamp   = Math.floor( ( data_confirm?.finish_time??(Date.now()/1000) ) * 1000)      ;
             ingOrderData.ing_confirmDate		= GetTimeStringWithOffset(8, ingOrderData.ing_confirmTimestamp)             ;
             ingOrderData.ing_confirmPrice		= data_confirm.fill_price                                                   ;
@@ -347,6 +348,7 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
         const abs_size = Math.abs(data_confirm.size) ;
         if ( data_confirm.status === 'open' && abs_left < abs_size )  {
             ingOrderData.ing_orderStatus =  CV.order_partial                    ;
+            ingOrderData.lst_partial     =  ingOrderData.ing_partial            ;
             ingOrderData.ing_partial     =  (abs_size - abs_left) / abs_size    ;
         }
         if (data_confirm.status === 'finished') {
