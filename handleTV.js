@@ -1561,7 +1561,7 @@ const TradeBot = {
      * @returns string: 具体的出错信息
      */
 
-    async ToCheckWaitingOrder(ingOrderData, ingOrderTitleA, uncloseOrdersA2d, uncloseOrdersTitleA, tradeHistoryTitleA, mainData, tvData, toGCPData) {
+    async ToCheckWaitingOrder() {
         try {
             const tvData                =  this.tvData                  ;
             const mainData              =  this.mainData                ;
@@ -1591,6 +1591,13 @@ const TradeBot = {
             // 去交易所查看成交情况
             await CheckOrderConfirm(ingOrderData);
 
+            const w_toUpdateRangeList       = []            ;
+            const w_toClearRangeSet         = new Set()     ;
+            const w_toAppendTradeHistory    = []            ;
+
+
+
+
         } catch(e) {
 
         }
@@ -1598,39 +1605,30 @@ const TradeBot = {
 
 
 
+/////////////////////////////
 
-
-
-
-
-
-
-
-        const w_toUpdateRangeList = [];
-        const w_toClearRangeSet = new Set();
-        const w_toAppendTradeHistory = [];
 
         let ingOrderStatusChange = false;
 
         // 对于部分成交的情况,
         // 如果ifWaitingThenCancel = false,  只修改ing_orderStatus一个变量
         // 如果ifWaitingThenCancel = true ,  当做confirm来判断
-        if (returnS.ing_orderStatus === order_confirm ||
-            (returnS.ing_orderStatus === order_cancel && returnS.ing_partial > 0)) {
+        if (ingOrderData.ing_orderStatus === order_confirm ||
+            (ingOrderData.ing_orderStatus === order_cancel && ingOrderData.ing_partial > 0)) {
 
             if (ingOrderData.ing_buysell === order_BUY) {
-                const newUncloseOrderLine = uncloseOrdersTitleA.map(v => isStrictNumber(returnS['ing_' + v]) ? returnS['ing_' + v] : (returnS['ing_' + v] || NA));
+                const newUncloseOrderLine = uncloseOrdersTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || NA));
                 uncloseOrdersA2d.push(newUncloseOrderLine);
             }
             if (ingOrderData.ing_buysell === order_SELL) {
                 const indexOfSerial = uncloseOrdersTitleA.indexOf('serial');
-                if (indexOfSerial > -1) { uncloseOrdersA2d = uncloseOrdersA2d.filter(row => String(row[indexOfSerial]) !== String(Math.abs(returnS.ing_serial))) }
+                if (indexOfSerial > -1) { uncloseOrdersA2d = uncloseOrdersA2d.filter(row => String(row[indexOfSerial]) !== String(Math.abs(ingOrderData.ing_serial))) }
             }
 
             w_toClearRangeSet.add(toGCPData.ingOrderLine);
             w_toClearRangeSet.add(toGCPData.uncloseOrdersRange);
 
-            const newTradeHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(returnS['ing_' + v]) ? returnS['ing_' + v] : (returnS['ing_' + v] || NA));
+            const newTradeHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || NA));
             w_toAppendTradeHistory.toAppend = true;
             w_toAppendTradeHistory.range = toGCPData.tradeHistoryRange;
             w_toAppendTradeHistory.values = [newTradeHistoryA];
@@ -1642,7 +1640,7 @@ const TradeBot = {
                 });
             }
 
-            const thisMessage = returnS.ing_orderStatus === order_confirm ?
+            const thisMessage = ingOrderData.ing_orderStatus === order_confirm ?
                 (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order confirmed" :
                 (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order partially confirmed";
 
@@ -1651,8 +1649,8 @@ const TradeBot = {
             ingOrderStatusChange = true;
         }
 
-        if (returnS.ing_orderStatus === order_waiting && returnS.ing_partial > 0 && returnS.ing_partial > ingOrderData.ing_partial) {
-            ingOrderData.ing_partial = returnS.ing_partial;
+        if (ingOrderData.ing_orderStatus === order_waiting && ingOrderData.ing_partial > 0 && ingOrderData.ing_partial > ingOrderData.ing_partial) {
+            ingOrderData.ing_partial = ingOrderData.ing_partial;
             const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(ingOrderData[v]) ? ingOrderData[v] : ingOrderData[v] || NA);
             w_toUpdateRangeList.push({
                 range: toGCPData.ingOrderLine,
@@ -1663,7 +1661,7 @@ const TradeBot = {
             ingOrderStatusChange = true;
         }
 
-        if (returnS.ing_orderStatus === order_cancel) {
+        if (ingOrderData.ing_orderStatus === order_cancel) {
             w_toClearRangeSet.add(toGCPData.ingOrderLine);
             this.AddAlertMessage(this.alertMessageSet, (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order canceled");
 

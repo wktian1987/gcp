@@ -17,6 +17,7 @@ import {
 } from "./utility.js";
 
 import { CV } from "./handleTV.js";
+import { maxHeaderSize } from "node:http";
 
 
 
@@ -303,6 +304,8 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
 
     // 如果需要撤单的话, 先去撤单
     // DELETE /futures/{settle}/orders/{order_id}
+    // 如果有成交的话, 标记confirm, 并修改下单量
+    // 只有完全没有成交的情况才会返回order_cancel
     if ( isStrictTrue(ingOrderData.ifWaitingThenCancel) ) {
         const path_cancel   =  '/futures/' + brokerSymbol.settle + '/orders/' + ingOrderData.ing_orderID ;
         const fetchBody_cancel = new GateFetchBody(ingOrderData.isReal, 'DELETE', path_cancel, null, 200, {text: ingOrderData.ing_orderID}) ;
@@ -310,33 +313,41 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
         if (!fetchBody_cancel.isOK) {throw new Error(fetchBody_cancel.errMessage)}
         const data_cancel = fetchBody_cancel.resData ;
 
-
-
-        ////////////////////////////
-        //////  关于n cancel 下面的逻辑 还需要再次检查
-
-        ingOrderData.ing_orderStatus        = data_cancel.status === 'finished' && data_cancel.left === 0 ? CV.order_confirm : CV.order_cancel      ;
-        ingOrderData.ing_confirmTimestamp   = Math.floor( ( data_confirm.finish_time || (Date.now()/1000) ) * 1000)                                 ;
-        ingOrderData.ing_confirmDate		= GetTimeStringWithOffset(8, ingOrderData.ing_confirmTimestamp)                                         ;
-        ingOrderData.ing_confirmPrice		= data_confirm.fill_price                                                                               ;
-        ingOrderData.ing_pXq                = ingOrderData.ing_confirmPrice * ingOrderData.ing_qty                                                  ; // 实际上只取买单成交的值, 对于卖单成交, 即使算出来也不关注
-
-    } else { // 如果不撤单单的话, 去查看是否有新的成交记录
-        // GET  '/futures/{settle}/orders/{order_id}'
-        const path_confirm      =  '/futures/' + brokerSymbol.settle + '/orders/' + ingOrderData.ing_orderID ;
-        const resp_confirm      =  await GATE_Fetch(ingOrderData.isReal, 'GET', path_confirm)    ;
-        const data_confirm      =  CleanObjToNumBoolStr( await resp_confirm.json() ) ;
-        if (resp_confirm.status !== 200) {throw new Error(`order ${ingOrderData.ing_orderID} 查询失败 1`) }
-        if (data_confirm.text !== ingOrderData.ing_orderID) {throw new Error(`order ${ingOrderData.ing_orderID} 查询失败 2` ) }
-
-        if ( data_confirm.status === 'open' && Math.abs(data_confirm.left) < Math.abs(data_confirm.size) ) {
-            ingOrderData.ing_orderStatus =  CV.order_partial ;
-            ingOrderData.ing_partial     =  (Math.abs(data_confirm.size) - Math.abs(data_confirm.left)) / Math.abs(data_confirm.size) ;
-            return ingOrderData ;
+        const abs_left = Math.abs(data_cancel.left) ;
+        const abs_size = Math.abs(data_cancel.size) ;
+        if (abs_left < abs_size) {
+            ingOrderData.ing_orderStatus        = CV.order_confirm                                                          ;
+            ingOrderData.ing_qty                = ingOrderData.ing_qty * (abs_size-abs_left) / abs_size                     ;
+            ingOrderData.ing_confirmTimestamp   = Math.floor( ( data_confirm?.finish_time??(Date.now()/1000) ) * 1000)      ;
+            ingOrderData.ing_confirmDate		= GetTimeStringWithOffset(8, ingOrderData.ing_confirmTimestamp)             ;
+            ingOrderData.ing_confirmPrice		= data_confirm.fill_price                                                   ;
+            ingOrderData.ing_pXq                = ingOrderData.ing_confirmPrice * ingOrderData.ing_qty                      ; // 实际上只取买单成交的值, 对于卖单成交, 即使算出来也不关注
+        } else {
+            ingOrderData.ing_orderStatus        = CV.order_cancel                                                           ; // 对于撤单只有这个值是有意义的
+            ingOrderData.ing_qty                = 0                                                                         ; // 这个值无意义
+            ingOrderData.ing_confirmTimestamp   = Date.now()                                                                ; // 这个值无意义
+            ingOrderData.ing_confirmDate		= GetTimeStringWithOffset(8, ingOrderData.ing_confirmTimestamp)             ; // 这个值无意义
+            ingOrderData.ing_confirmPrice		= data_confirm.fill_price                                                   ; // 可能是0, 反正这个值也无意义
+            ingOrderData.ing_pXq                = ingOrderData.ing_confirmPrice * ingOrderData.ing_qty                      ; // 这个值必然是0或undefined, 无意义
         }
 
+    } else { 
+        // 如果不撤单单的话, 去查看是否有新的成交记录
+        // GET  '/futures/{settle}/orders/{order_id}'
+        const path_confirm      =  '/futures/' + brokerSymbol.settle + '/orders/' + ingOrderData.ing_orderID ;
+        const fetchBody_confirm =  new GateFetchBody(ingOrderData.isReal, 'GET', path_confirm, null, 200, {text: ingOrderData.ing_orderID}) ;
+        await GATE_Fetch(fetchBody_confirm) ;
+        if (!fetchBody_confirm.isOK) {throw new Error(fetchBody_confirm.errMessage)}
+        const data_confirm = fetchBody_confirm.resData ;
+
+        const abs_left = Math.abs(data_confirm.left) ;
+        const abs_size = Math.abs(data_confirm.size) ;
+        if ( data_confirm.status === 'open' && abs_left < abs_size )  {
+            ingOrderData.ing_orderStatus =  CV.order_partial                    ;
+            ingOrderData.ing_partial     =  (abs_size - abs_left) / abs_size    ;
+        }
         if (data_confirm.status === 'finished') {
-            ingOrderData.ing_orderStatus		= CV.order_confirm                                                 ;
+            ingOrderData.ing_orderStatus		= CV.order_confirm                                              ;
             ingOrderData.ing_confirmTimestamp   = Math.floor(data_confirm.finish_time * 1000)                   ;
             ingOrderData.ing_confirmDate		= GetTimeStringWithOffset(8, ingOrderData.ing_confirmTimestamp) ;
             ingOrderData.ing_confirmPrice		= data_confirm.fill_price                                       ;
@@ -354,10 +365,10 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
     // » pnl_fund	    string	已实现盈亏中的资金费结算盈亏
     // » pnl_fee	    string	已实现盈亏中的总手续费支出
     const path_position  =  '/futures/' + brokerSymbol.settle + '/positions/' + brokerSymbol.contract ;
-    const resp_position  =  await GATE_Fetch(ingOrderData.isReal, 'GET', path_position) ;
-    const data_position  =  CleanObjToNumBoolStr( await resp_position.json() ) ;
-    if (resp_position.status !== 200) {throw new Error(`position ${brokerSymbol.contract} 查询失败 1`) }
-    if (data_position.contract !== brokerSymbol.contract) {throw new Error(`position ${brokerSymbol.contract} 查询失败 2`) }
+    const fetchBody_position = new GateFetchBody(ingOrderData.isReal, 'GET', path_position, null, 200, {contract: brokerSymbol.contract}) ;
+    await GATE_Fetch(fetchBody_position) ;
+    if (!fetchBody_position.isOK) {throw new Error(fetchBody_position.errMessage)}
+    const data_position = fetchBody_position.resData ;
 
     ingOrderData.ing_getProfit      =  data_position.pnl_pnl - ingOrderData.lst_allGotProfit                                                                    ;
     ingOrderData.ing_tradeFee       =  data_position.pnl_fee - ingOrderData.lst_allTradeFee                                                                     ;
