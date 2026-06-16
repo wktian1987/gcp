@@ -1486,8 +1486,8 @@ export const TradeBot = {
         try {
             const mainData              = this.mainData                     ;
             const tvData                = this.tvData                       ;
-            const tradeHistoryTitleA    = this.tradeHistoryTitleA           ;
-            const tradeHistoryRange     = this.toGCPData.tradeHistoryRange  ;
+            const tradeHistoryTitleA    = this.tradeHistoryTitleA           ; // array
+            const tradeHistoryRange     = this.toGCPData.tradeHistoryRange  ; // string
 
             let toCheckFundFee = false;
             if (isStrictNumber(mainData.lstFundTime)) {
@@ -1515,13 +1515,13 @@ export const TradeBot = {
             fund.sheets           = this.sheets                                                                            ;
             fund.spreadsheetID    = this.spreadsheetID                                                                     ;
 
-            const returnS = await CheckFundFee(fund, mainData.isReal, tvData.TradingSymbol, this.sheets, this.spreadsheetID);
+            await CheckFundFee(fund);
 
-            const newFundHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(returnS[v]) ? returnS[v] : (returnS[v] || NA));
+            const newFundHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(fund[v]) ? fund[v] : (fund[v] || NA));
 
             await AppendGS(this.sheets, this.spreadsheetID, tradeHistoryRange, [newFundHistoryA]);
 
-            this.AddAlertMessage(this.alertMessageSet, "New fund fee: " + String(returnS.fund_fundFee));
+            this.AddAlertMessage(this.alertMessageSet, "New fund fee: " + String(fund.fund_fundFee));
 
             return true;
         } catch (e) { 

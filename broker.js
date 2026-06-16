@@ -12,7 +12,8 @@ import {
     ClearGS,
     BatchClearUpdateGS,
     ObjToA2dNumBoolStr,
-    A2dToCleanObj
+    A2dToCleanObj,
+    isPlainObject
 } from "./utility.js";
 
 import { CV } from "./handleTV.js";
@@ -77,16 +78,16 @@ export async function CheckOrderConfirm(ingOrderData, isReal, TradingSymbol, she
 }
 
 export async function CheckFundFee(fund) {
-    if (!isStrictFalse(fund.isReal) && fund.TradingSymbol.startsWith("GATE:")) {return await GATE_CheckFundFee(fund) ;}
+    if (!isStrictFalse(fund.isReal) && fund.TradingSymbol.startsWith("GATE:")) { await GATE_CheckFundFee(fund); return; }
 
-    const res = CleanObjToNumBoolStr(Object.fromEntries(await GetGS(fund.sheets, fund.spreadsheetID, 'simBroker!A1:B29')));
-    fund.fund_fundFee           =  typeof res.fundFee === 'number'  ?  res.fundFee  :  0   ;
-    fund.fund_confirmDate       =  fund.fund_orderDate        ;
-    fund.fund_confirmTimestamp  =  fund.fund_orderTimestamp   ;
-    fund.fund_allFund           =  res.allFund + fund.fund_fundFee  ;
-    fund.fund_allCoin           =  fund.fund_allFund / res.BaseCoinPrice  ;
+    const simRange_01 = 'simBroker!A1:B29';
+    const resFund = CleanObjToNumBoolStr(Object.fromEntries(await GetGS(fund.sheets, fund.spreadsheetID, simRange_01)));
 
-    return fund  ;
+    fund.fundFee           =  isStrictNumber(resFund.fundFee) ? resFund.fundFee : 0     ;
+    fund.confirmDate       =  fund.orderDate                                            ;
+    fund.confirmTimestamp  =  fund.orderTimestamp                                       ;
+    fund.allFund           =  resFund.allFund + fund.fundFee                            ;
+    fund.allCoin           =  fund.allFund / resFund.BaseCoinPrice                      ;
 }
 
 //#endregion
@@ -121,14 +122,35 @@ function tvSymbol_TO_GATE_Symbol(tvSymbol) {
     };
 }
 
+class GateFetchBody {
+    constructor(isReal = false, method = 'GET', path = '', body = null, resOK = 200, dataCheck = {contract : 'BTC_USDT'}) {
+        if (!isPlainObject(dataCheck)) {throw new Error('GateFetchBody输入的dataCheck不是标准的可验证对象')}
+        // 每一个实例在诞生之初，就在自己的地盘上锁死了独立的变量空间
+        this.isReal     = isReal    ;
+        this.method     = method    ;
+        this.path       = path      ;
+        this.body       = body      ;
+        this.resOK      = resOK     ;
+        this.dataCheck  = dataCheck ;
+        this.isOK       = false     ;
+        this.resData    = undefined ;
+        this.errMessage = undefined ;
+    }
+}
+
 /**
  * 签名并网发送信息到交易所（GATE唯一请求入口）
- * @param {*} isReal - 是否是实盘交易, 只有isStrictTrue(isReal)是实盘交易, 其他全是模拟盘
- * @param {string} method - REST 铁血动词 ('GET', 'POST', 'DELETE')
- * @param {string} path - 交易所物理路径 (例如 '/api/v4/futures/usdt/orders')
- * @param {Object|null} body - 传给交易所的 JSON 参数对象 (GET 请求传 null)
+ * @param {GateFetchBody} fetchBody 
+ * @returns 无返回值, 直接在传入的对象上进行修改
  */
-async function GATE_Fetch(isReal, method, path, body = null) {
+async function GATE_Fetch(fetchBody) {
+    const isReal        =  fetchBody.isReal         ;
+    const method        =  fetchBody.method         ;
+    const path          =  fetchBody.path           ;
+    const body          =  fetchBody.body           ;
+    const resOK         =  fetchBody.resOK          ;
+    const dataCheck     =  fetchBody.dataCheck      ;
+
     // const { crypto } = await import('node:crypto');
     const crypto = (await import('node:crypto')).default || await import('node:crypto');
 
@@ -188,14 +210,26 @@ async function GATE_Fetch(isReal, method, path, body = null) {
     if (method !== 'GET' && bodyString) { options.body = bodyString }
 
     // 3. 原生大炮轰鸣出海
-    const response = await fetch(url, options);
-    
-    if (response.status === 400) {throw new Error(`GATE_Fetch Error: 无效请求`      ) }
-    if (response.status === 401) {throw new Error(`GATE_Fetch Error: 认证失败`      ) }
-    if (response.status === 404) {throw new Error(`GATE_Fetch Error: 未找到`        ) }
-    if (response.status === 429) {throw new Error(`GATE_Fetch Error: 请求过于频繁`  ) }
-    if (response.status >=  400 && response.status < 500) {throw new Error(`GATE_Fetch Error: 未知错误`) }
-    if (response.status >=  500) {throw new Error(`GATE_Fetch Error: 服务器错误`) }
+    try {
+        const resp = await fetch(url, options);
+        const data = CleanObjToNumBoolStr(await resp.json() )    ; //这里必须需要await
+
+        if (resp.status === 400) { throw new Error(`GATE_Fetch Error: 无效请求`) }
+        if (resp.status === 401) { throw new Error(`GATE_Fetch Error: 认证失败`) }
+        if (resp.status === 404) { throw new Error(`GATE_Fetch Error: 未找到`) }
+        if (resp.status === 429) { throw new Error(`GATE_Fetch Error: 请求过于频繁`) }
+        if (resp.status >= 400 && resp.status < 500) { throw new Error(`GATE_Fetch Error: 未知错误`) }
+        if (resp.status >= 500) { throw new Error(`GATE_Fetch Error: 服务器错误`) }
+        if (resp.status !== resOK) {throw new Error(`GATE_Fetch Error: 未知错误`)}
+        if (resp.status === resOK) {
+            Object.keys(dataCheck).forEach( (k) => { if (data[k] !== dataCheck[k]) {throw new Error(`从交易所获取到的数据验证不通过: ${k} = ${data[k]}, != ${dataCheck[k]}`)} } ) ; 
+            fetchBody.isOK     = true ;
+            fetchBody.resData  = data ;
+        }
+    } catch (e) {
+        fetchBody.isOK          =  false            ;
+        fetchBody.errMessage    =  e.message.trim() ;
+    }
 
     return response; // 将满血的回执抛给上游具体业务去解包
 }
@@ -335,13 +369,11 @@ async function GATE_CheckFundFee(fund) {
     if (resp_position.status !== 200) {throw new Error(`position ${contract} 查询失败 1`) }
     if (data_position.contract !== contract) {throw new Error(`position ${contract} 查询失败 2`) }
 
-    fund.fund_fundFee           =  ToStrictNumber(data_position.pnl_fund, 0) -  fund.fund_lst_allFundFee  ;
-    fund.fund_confirmTimestamp  =  Date.now()                                                          ;
-    fund.fund_confirmDate       =  GetTimeStringWithOffset(8, fund.fund_confirmTimestamp)                 ;
-    fund.fund_allFund	         =  fund.fund_inFund + ToStrictNumber(data_position.unrealised_pnl, 0) + ToStrictNumber(data_position.realised_pnl, 0) + fund.fund_inCoin * fund.fund_BaseCoinPrice ;
-    fund.fund_allCoin	         =  fund.fund_allFund / fund.fund_BaseCoinPrice                               ;
-
-    return fund  ;
+    fund.fundFee            =  ToStrictNumber(data_position.pnl_fund, 0) -  fund.fund_lst_allFundFee                                                                            ;
+    fund.confirmTimestamp   =  Date.now()                                                                                                                                       ;
+    fund.confirmDate        =  GetTimeStringWithOffset(8, fund.confirmTimestamp)                                                                                                ;
+    fund.allFund	        =  fund.inFund + ToStrictNumber(data_position.unrealised_pnl, 0) + ToStrictNumber(data_position.realised_pnl, 0) + fund.inCoin * fund.BaseCoinPrice ;
+    fund.allCoin	        =  fund.allFund / fund.BaseCoinPrice                                                                                                                ;
 }
 
 
