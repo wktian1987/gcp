@@ -851,89 +851,100 @@ const TradeBot = {
     */
     async ToSell() {
         if (!isStrictTrue(this.canSell)) { return true }
-        
-        const uncloseOrdersA2d      =  this.uncloseOrdersA2d         ;
-        const uncloseOrdersTitleA   =  this.uncloseOrdersTitleA      ;
-        const ingOrderTitleA        =  this.ingOrderTitleA           ;
-        const ingOrderLine          =  this.toGCPData.ingOrderLine   ;
 
-        let toSell = false;
-        let toSellOrderA;
-        const S = {};
+        try {
+            
+            const uncloseOrdersA2d      =  this.uncloseOrdersA2d         ;
+            const uncloseOrdersTitleA   =  this.uncloseOrdersTitleA      ;
+            const ingOrderTitleA        =  this.ingOrderTitleA           ;
+            const ingOrderLine          =  this.toGCPData.ingOrderLine   ;
 
-        const idx_orderID       = uncloseOrdersTitleA.indexOf('orderID')        ;
-        const idx_serial        = uncloseOrdersTitleA.indexOf('serial')         ;
-        const idx_confirmPrice  = uncloseOrdersTitleA.indexOf('confirmPrice')   ;
-        const idx_qty           = uncloseOrdersTitleA.indexOf('qty')            ;
+            let toSell = false;
+            let toSellOrderA;
+            const S = {};
 
-        // touch targetHgh
-        if ((this.TradingSymbolPrice > (1 + this.waveUpChg) * this.lowBuyPriceUnclose) && this.markTouchTargetHgh) {
-            toSell = true;
-            toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.lowBuySerialUnclose));
-            S.ing_orderPrice = this.lstRcdTargetHgh;
-            S.ing_reason = 'touchTargetHgh';
+            const idx_orderID       = uncloseOrdersTitleA.indexOf('orderID')        ;
+            const idx_serial        = uncloseOrdersTitleA.indexOf('serial')         ;
+            const idx_confirmPrice  = uncloseOrdersTitleA.indexOf('confirmPrice')   ;
+            const idx_qty           = uncloseOrdersTitleA.indexOf('qty')            ;
+
+            // touch targetHgh
+            if ((this.TradingSymbolPrice > (1 + this.waveUpChg) * this.lowBuyPriceUnclose) && this.markTouchTargetHgh) {
+                toSell = true;
+                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.lowBuySerialUnclose));
+                S.ing_orderPrice = this.lstRcdTargetHgh;
+                S.ing_reason = 'touchTargetHgh';
+            }
+            // mustSellProfitStep
+            if ((this.TradingSymbolPrice > Math.pow((1 + this.waveUpChg), this.mustSellProfitStep) * Math.max(this.lowBuyPriceUnclose, this.avgBuyPriceUnclose))) {
+                toSell = true;
+                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.lowBuySerialUnclose));
+                S.ing_reason = 'must sell Profit';
+            }
+            // cut too high buy order
+            if ((this.hghBuyPriceUnclose / this.TradingSymbolPrice > this.roundHgh / this.roundLow) && (this.hghBuyPriceUnclose > (1 + this.waveUpChg) * this.TradingSymbolPrice)) {
+                toSell = true;
+                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
+                S.ing_reason = 'cut too hgh buy order';
+            }
+            // cut due to stopC
+            if (this.TradingSymbolPrice < this.stopPriceC) {
+                toSell = true;
+                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
+                S.ing_reason = 'cut due to stopC';
+            }
+            // cut due to stopF
+            if (this.TradingSymbolPrice < this.stopPriceF) {
+                toSell = true;
+                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
+                S.ing_reason = 'cut due to stopF';
+            }
+            // cut to prevent liquidate
+            if (this.TradingSymbolPrice < (1 + this.mustSellToPreventLiq / 100) * this.liquidatePrice) {
+                toSell = true;
+                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
+                S.ing_reason = 'cut to prevent liquidate';
+            }
+
+            if (isStrictFalse(toSell)) { return true }
+
+            S.ing_orderID           = toSellOrderA[idx_orderID].trim().replace('B', 'S')    ;
+            S.ing_orderTimestamp    = Date.now()                                            ;
+            S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp)      ;
+            S.ing_serial            = -1 * toSellOrderA[idx_serial]                         ;
+            S.ing_buysell           = CV.order_SELL                                         ;
+            S.ing_triggerPrice      = this.TradingSymbolPrice                               ;
+            S.ing_orderType         = CV.order_T_LMT                                        ;
+            S.ing_orderPrice        = S.ing_orderPrice || S.ing_triggerPrice                ;
+            S.ing_boughtPrice       = toSellOrderA[idx_confirmPrice]                        ;
+            S.ing_qty               = -1 * toSellOrderA[idx_qty]                            ;
+            S.ing_orderStatus       = CV.order_pending                                      ;
+            S.isReal                = this.isReal                                           ;
+            S.TradingSymbol         = this.TradingSymbol                                    ;
+            S.spreadsheetID         = this.spreadsheetID                                    ;
+
+            await SendOrderToBroker(S);
+            // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
+
+            const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(S[v]) ? S[v] : (S[v] || NA));
+
+            this.toUpdateRangeList.push({
+                range: ingOrderLine,
+                values: [new_ingOrderLineA]
+            });
+
+            AddSetMessage(this.alertMessageSet, "New sell order, waiting confirmed");
+
+            this.canBuy = false;
+            AddSetMessage(this.alertMessageSet, 'cant buy: just a new sellOrder sent');
+
+            return true;
+        } catch(e) {
+            // 这是核心错误, 不能解锁, 需要手动查看
+            const errMessage = `核心错误: ${e.message}`.trim() ;
+            this.AddRunningWellMessage(errMessage) ;
+            throw new Error(errMessage) ;
         }
-        // mustSellProfitStep
-        if ((this.TradingSymbolPrice > Math.pow((1 + this.waveUpChg), this.mustSellProfitStep) * Math.max(this.lowBuyPriceUnclose, this.avgBuyPriceUnclose))) {
-            toSell = true;
-            toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.lowBuySerialUnclose));
-            S.ing_reason = 'must sell Profit';
-        }
-        // cut too high buy order
-        if ((this.hghBuyPriceUnclose / this.TradingSymbolPrice > this.roundHgh / this.roundLow) && (this.hghBuyPriceUnclose > (1 + this.waveUpChg) * this.TradingSymbolPrice)) {
-            toSell = true;
-            toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
-            S.ing_reason = 'cut too hgh buy order';
-        }
-        // cut due to stopC
-        if (this.TradingSymbolPrice < this.stopPriceC) {
-            toSell = true;
-            toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
-            S.ing_reason = 'cut due to stopC';
-        }
-        // cut due to stopF
-        if (this.TradingSymbolPrice < this.stopPriceF) {
-            toSell = true;
-            toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
-            S.ing_reason = 'cut due to stopF';
-        }
-        // cut to prevent liquidate
-        if (this.TradingSymbolPrice < (1 + this.mustSellToPreventLiq / 100) * this.liquidatePrice) {
-            toSell = true;
-            toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
-            S.ing_reason = 'cut to prevent liquidate';
-        }
-
-        if (isStrictFalse(toSell)) { return true }
-
-        S.ing_orderID           = toSellOrderA[idx_orderID].trim().replace('B', 'S')    ;
-        S.ing_orderTimestamp    = Date.now()                                            ;
-        S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp)      ;
-        S.ing_serial            = -1 * toSellOrderA[idx_serial]                         ;
-        S.ing_buysell           = CV.order_SELL             ;
-        S.ing_triggerPrice      = this.TradingSymbolPrice;
-        S.ing_orderType         = CV.order_T_LMT;
-        S.ing_orderPrice        = S.ing_orderPrice || S.ing_triggerPrice;
-        S.ing_boughtPrice       = toSellOrderA[idx_confirmPrice];
-        S.ing_qty               = -1 * toSellOrderA[idx_qty];
-        S.ing_orderStatus       = CV.order_pending;
-
-        const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.spreadsheetID);
-        // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
-
-        const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(returnS[v]) ? returnS[v] : (returnS[v] || NA));
-
-        this.toUpdateRangeList.push({
-            range: ingOrderLine,
-            values: [new_ingOrderLineA]
-        });
-
-        AddSetMessage(this.alertMessageSet, "New sell order, waiting confirmed");
-
-        this.canBuy = false;
-        AddSetMessage(this.alertMessageSet, 'cant buy: just a new sellOrder sent');
-
-        return true;
 
     },
 
