@@ -30,7 +30,7 @@ import { maxHeaderSize } from "node:http"; // 这一行是干嘛的??? 为什么
  * @returns 直接在传入的对象上进行数据修改, 不会另外返回数据
  */
 export async function SendOrderToBroker(S) {
-    if (!isStrictFalse(S.isReal) && S.TradingSymbol.startsWith("GATE:")) { await GATE_SendOrderToBroker(S.isReal, S, S.TradingSymbol); return; }
+    if (!isStrictFalse(S.isReal) && S.TradingSymbol.startsWith("GATE:")) { await GATE_SendOrderToBroker(S); return; }
 
     const simRange_00 = 'simBroker!A30:B'   ;
     const simRange_01 = 'simBroker!A1:B29'  ;
@@ -249,13 +249,18 @@ async function GATE_Fetch(fetchBody) {
 // 当有了上面那个无缝签名的 gateProtectedFetch 大闸后，
 // 你在外面的发单、对账、查统一账户资产的函数，瞬间变得像喝水一样简单利落：
 
-async function GATE_SendOrderToBroker(isReal, S, TradingSymbol) {
-    const brokerSymbol  =  tvSymbol_TO_GATE_Symbol(TradingSymbol) ;
+/**
+ * 
+ * @param {object} S 
+ * @returns 会抛出错误
+ */
+async function GATE_SendOrderToBroker(S) {
+    const brokerSymbol  =  tvSymbol_TO_GATE_Symbol(S.TradingSymbol) ;
     const contract      =  brokerSymbol.basecurrency + '_' + brokerSymbol.currency ;
 
     // Get quanto_multiplier = 0.01
     const path_contract     = '/futures/' + brokerSymbol.settle + '/contracts/' + contract ;
-    const resp_contract     = await GATE_Fetch (isReal, 'GET', path_contract) ;
+    const resp_contract     = await GATE_Fetch (S.isReal, 'GET', path_contract) ;
     const data_contract     = await resp_contract.json() ;
     const quanto_multiplier   = ToStrictNumber(data_contract.quanto_multiplier) ;
     const order_price_round   = ToStrictNumber(data_contract.order_price_round) ;
@@ -266,7 +271,7 @@ async function GATE_SendOrderToBroker(isReal, S, TradingSymbol) {
     const size = ToStrictString(Math.floor(S.ing_qty / quanto_multiplier)) ;
     ///////////////
     ////这里应该要检查当前保证金余额
-    //
+    ///////////////
 
     const orderID   =  S.ing_buysell === CV.order_BUY ? 't-' + S.ing_orderID.replaceAll(':', '_') : S.ing_orderID ;
     const price_mul = S.ing_orderPrice/order_price_round ;
@@ -284,7 +289,7 @@ async function GATE_SendOrderToBroker(isReal, S, TradingSymbol) {
     // 合约交易下单:
     // POST /futures/{settle}/orders
     const path_order  =  '/futures/' + brokerSymbol.settle + '/orders'  ;
-    const resp_order  =  await GATE_Fetch(isReal, 'POST', path_order, orderBody)  ;
+    const resp_order  =  await GATE_Fetch(S.isReal, 'POST', path_order, orderBody)  ;
     const data_order  =  CleanObjToNumBoolStr(await resp_order.json() )    ; //这里必须需要await
     if (resp_order.status !== 201)   {throw new Error(`order ${orderID} 下单失败 1`)}
     if (data_order.text !== orderID) {throw new Error(`order ${orderID} 下单失败 2`)}
