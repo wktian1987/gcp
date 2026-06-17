@@ -99,7 +99,7 @@ const TradeBot = {
         // 在全局中设runningWell
         if (!Object.hasOwn(TradeBot, this.RunningWellName)) {TradeBot[this.RunningWellName] = new Set() }
         // 在全局中有报错的话, 直接退出
-        if (this.isRunningWell()) {return '发现之前的运行中有错误, 本次信号没必要再处理, 提前退出, 以前的错误为: ' + StrFromSetMessage(TradeBot[this.RunningWellName]) }
+        if (!this.isRunningWell()) {return '发现之前的运行中有错误, 本次信号没必要再处理, 提前退出, 以前的错误为: ' + StrFromSetMessage(TradeBot[this.RunningWellName]) }
 
         // 在全局中设锁
         if (!Object.hasOwn(TradeBot, this.LockTimeName) || TradeBot[this.LockTimeName] === null) { TradeBot[this.LockTimeName] = this.LockTime }
