@@ -58,6 +58,7 @@ app.post('/tradingview', json(), async (req, res) => {
     }
 
     // 用tradingview信号来激活查看邮件的操作
+    await new Promise(resolve => setTimeout(resolve, 100)) ;
     console.log(`tradingview信号处理完毕, 开始处理HandleUnreadGmails()`);
     try {
         const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");

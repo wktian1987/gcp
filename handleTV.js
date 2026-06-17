@@ -68,7 +68,7 @@ export async function HandleAllPrice(tvData) {
 }
 
 
-const TradeBot = {
+export const TradeBot = {
     /**
      * 为大对象和子对象创建基本的运行参数 ;
      * 每次子对象创建后, 必须运行这个函数 ;
@@ -95,6 +95,8 @@ const TradeBot = {
             delete TradeBot[this.RunningWellName    ]   ;
             delete TradeBot[this.SpreadsheetIDName  ]   ;
         }
+        // 也可以通过tgbot发来信号来reset 
+        // 相关代码在HandleTgBot中
 
         // 在全局中设runningWell
         if (!Object.hasOwn(TradeBot, this.RunningWellName)) {TradeBot[this.RunningWellName] = new Set() }

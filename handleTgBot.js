@@ -8,8 +8,11 @@ import {
     isStrictString,
     A2dToCleanObj,
     Sleep,
-    AddMessage
+    AddMessage,
+    StrFromSetMessage
 } from "./utility.js";
+
+import {TradeBot} from './handleTV.js';
 
 export async function HandleTgBot(msg) {
     const myTgID            = process.env.myTgID        ;
@@ -38,6 +41,21 @@ export async function HandleTgBot(msg) {
     if (!isStrictString(botNumber) || !botNumber.startsWith(botNumber_start)) {
         await SendTG("消息格式错误", "请检查", chat_id);
         throw new Error("消息格式错误, 请检查") ;
+    }
+
+    if (txt.toUpperCase().includes('RESET')) {
+        let resetMessage = '' ;
+        LockTimeName       =  botNumber + '_lockTime'       ; // 全局中的锁名
+        RunningWellName    =  botNumber + '_runningWell'    ; // 全局中的出错名
+        SpreadsheetIDName  =  botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID, 避免每次重新读取
+        resetMessage = AddMessage(resetMessage, '收到RESET信号') ;
+        resetMessage = AddMessage(resetMessage, '属性删除前的值为:') ;
+        resetMessage = AddMessage(resetMessage, '_lockTime: \n' + TradeBot[LockTimeName]) ;
+        resetMessage = AddMessage(resetMessage, '_runningWell: \n' + StrFromSetMessage(TradeBot[RunningWellName])) ;
+        resetMessage = AddMessage(resetMessage, '_spreadsheetID: \n' + TradeBot[SpreadsheetIDName]) ;
+        delete TradeBot[LockTimeName       ]   ;
+        delete TradeBot[RunningWellName    ]   ;
+        delete TradeBot[SpreadsheetIDName  ]   ;        
     }
 
     const spreadsheetID = await GetSpreadsheetID(botNumber);
