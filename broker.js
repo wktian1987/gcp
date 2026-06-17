@@ -155,6 +155,7 @@ class GateFetchBody {
  * 签名并网发送信息到交易所（GATE唯一请求入口）
  * @param {GateFetchBody} fetchBody 
  * @returns 因为try/catch, 不会抛出错误, 无论执行是否成功都会在传入的fetchBody上进行数据修改
+ * @returns 修改后的数据已经是clean形式
  */
 async function GATE_Fetch(fetchBody) {
     const isReal        =  fetchBody.isReal         ;
@@ -256,51 +257,51 @@ async function GATE_Fetch(fetchBody) {
  */
 async function GATE_SendOrderToBroker(S) {
     const brokerSymbol  =  tvSymbol_TO_GATE_Symbol(S.TradingSymbol) ;
-    const contract      =  brokerSymbol.basecurrency + '_' + brokerSymbol.currency ;
 
-    // Get quanto_multiplier = 0.01
-    const path_contract     = '/futures/' + brokerSymbol.settle + '/contracts/' + contract ;
-    const resp_contract     = await GATE_Fetch (S.isReal, 'GET', path_contract) ;
-    const data_contract     = await resp_contract.json() ;
+    // Get quanto_multiplier,  order_price_round
+    const path_contract     = '/futures/' + brokerSymbol.settle + '/contracts/' + brokerSymbol.contract ;
+    const fetchBody_contract = new GateFetchBody(S.isReal, 'GET', path_contract, null, 200, {name: brokerSymbol.contract}) ;
+    await GATE_Fetch(fetchBody_contract) ;
+    if (!fetchBody_contract.isOK) {throw new Error(fetchBody_contract.errMessage)}
+    const data_contract = fetchBody_cancel.resData ;
     const quanto_multiplier   = ToStrictNumber(data_contract.quanto_multiplier) ;
     const order_price_round   = ToStrictNumber(data_contract.order_price_round) ;
     if (!isStrictNumber(quanto_multiplier) || quanto_multiplier <= 0) { throw new Error('did not get right quanto_multiplier')}
-    const sizeNumber = Math.floor(S.ing_qty / quanto_multiplier) ;
-    S.ing_qty   =  sizeNumber * quanto_multiplier ;
-    if (Math.abs(sizeNumber) <= 0) {throw new Error('ing_qty is too small, cant trade')}
-    const size = ToStrictString(Math.floor(S.ing_qty / quanto_multiplier)) ;
+    if (!isStrictNumber(order_price_round) || order_price_round <= 0) { throw new Error('did not get right order_price_round')}
+
     ///////////////
     ////这里应该要检查当前保证金余额
     ///////////////
 
-    const orderID   =  S.ing_buysell === CV.order_BUY ? 't-' + S.ing_orderID.replaceAll(':', '_') : S.ing_orderID ;
-    const price_mul = S.ing_orderPrice/order_price_round ;
-    const price     =  ToStrictString( S.ing_buysell === CV.order_BUY ? order_price_round * Math.floor(price_mul) : order_price_round * Math.ceil(price_mul)) ;
+    const text  =  S.ing_buysell === CV.order_BUY ? 't-' + S.ing_orderID.replaceAll(':', '_') : S.ing_orderID ;
+    const size  =  S.ing_buysell === CV.order_BUY ? Math.floor( S.ing_qty / quanto_multiplier) : -1 * Math.round( Math.abs(S.ing_qty) / quanto_multiplier) ;
+    if ( Math.abs(size) < 1 ) {throw new Error('ing_qty is too small, cant trade')}
+    S.ing_qty   =  S.ing_buysell === CV.order_BUY ? size * quanto_multiplier : S.ing_qty ;
+    const price_mul =  S.ing_orderPrice / order_price_round ;
+    S.ing_orderPrice = S.ing_buysell === CV.order_BUY ? order_price_round * Math.floor(price_mul) : order_price_round * Math.ceil(price_mul) ;
+    const price = ToStrictString(S.ing_orderPrice) ;
 
     const orderBody = {} ;
-    orderBody.contract  =  contract     ;
-    orderBody.size      =  size         ;
-    orderBody.price     =  price        ;
-    if (S.ing_orderType === CV.order_T_MKT) {orderBody.price = '0'}
-    if (S.ing_buysell.includes('S')) {orderBody.reduce_only = true}
-    if (S.ing_orderType === CV.order_T_MKT) {orderBody.tif = 'ioc'}
-    orderBody.text      =  orderID      ;
+    orderBody.text      =  text                         ;
+    orderBody.contract  =  brokerSymbol.contract        ;
+    orderBody.size      =  size                         ;
+    orderBody.price     =  price                        ;
+    if (S.ing_orderType === CV.order_T_MKT) {orderBody.price        = '0'   }
+    if (S.ing_orderType === CV.order_T_MKT) {orderBody.tif          = 'ioc' }
+    if (S.ing_buysell   === CV.order_SELL ) {orderBody.reduce_only  = true  }
 
     // 合约交易下单:
     // POST /futures/{settle}/orders
     const path_order  =  '/futures/' + brokerSymbol.settle + '/orders'  ;
-    const resp_order  =  await GATE_Fetch(S.isReal, 'POST', path_order, orderBody)  ;
-    const data_order  =  CleanObjToNumBoolStr(await resp_order.json() )    ; //这里必须需要await
-    if (resp_order.status !== 201)   {throw new Error(`order ${orderID} 下单失败 1`)}
-    if (data_order.text !== orderID) {throw new Error(`order ${orderID} 下单失败 2`)}
+    const fetchBody_order = new GateFetchBody(S.isReal, 'POST', path_order, orderBody, 201, {text}) ;
+    await GATE_Fetch(fetchBody_order) ;
+    if (!fetchBody_order.isOK) {throw new Error('下单失败: ' + fetchBody_order.errMessage)}
+    const data_order = fetchBody_order.resData ;
 
     S.ing_orderID		    = data_order.text               ;
     S.ing_orderTimestamp    = Math.floor(data_order.create_time * 1000) ;
     S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp) ;    
     S.ing_orderStatus		= CV.order_waiting      ; // 按照现在的逻辑, 下单成功后, 暂时先不管交易所真实返回的订单状态, 一律按照waiting来记录
-    S.ing_partial           = 0  ;
-
-    return S ;
 }
 
 /**
@@ -330,7 +331,7 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
         if (toSet_confirm) {
             ingOrderData.ing_orderStatus        = CV.order_confirm                                                          ;
             ingOrderData.ing_qty                = ingOrderData.ing_qty * ingOrderData.ing_partial                           ;
-            ingOrderData.ing_isPartial          = ingOrderData.ing_partial                                                  ;
+            ingOrderData.ing_isPartial          = data_cancel.status === 'finished' ? undefined : ingOrderData.ing_partial  ;
             ingOrderData.ing_confirmTimestamp   = Math.floor( ( data_confirm?.finish_time??(Date.now()/1000) ) * 1000)      ;
             ingOrderData.ing_confirmDate		= GetTimeStringWithOffset(8, ingOrderData.ing_confirmTimestamp)             ;
             ingOrderData.ing_confirmPrice		= data_confirm.fill_price                                                   ;

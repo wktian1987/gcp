@@ -502,6 +502,7 @@ const TradeBot = {
             // 如果传入了撤单命令, 但是订单有成交的话, 返回的订单状态为order_confirm, 但是ing_qty参数做了修改
             // 如果ifWaitingThenCancel = false,  只修改ing_orderStatus一个变量
             // 如果ifWaitingThenCancel = true ,  当做confirm来判断
+            // 需要注意的是卖单, 如果部分成交的话, 不能简单地将uncloseOrders中的那个订单删掉, 需要修改那一行, 而不是删掉那一行
 
             if (ingOrderData.ing_orderStatus === CV.order_confirm ) {
 
@@ -511,7 +512,14 @@ const TradeBot = {
                 }
                 if (ingOrderData.ing_buysell === CV.order_SELL) {
                     const indexOfSerial = uncloseOrdersTitleA.indexOf('serial');
-                    if (indexOfSerial > -1) { uncloseOrdersA2d = uncloseOrdersA2d.filter(row => String(row[indexOfSerial]) !== String(Math.abs(ingOrderData.ing_serial))) }
+                    if (indexOfSerial < 0) {throw new Error('uncloseOrdersTitleA 错误')}
+
+                    if (isStrictNumber(ingOrderData.ing_isPartial)) //////////////
+                    ///////////////////////////
+                    /////////////////////////////
+                    //////////////////
+
+                    uncloseOrdersA2d = uncloseOrdersA2d.filter(row => String(row[indexOfSerial]) !== String(Math.abs(ingOrderData.ing_serial)));
                 }
 
                 w_toClearRangeSet.add(toGCPData.ingOrderLine);
@@ -524,8 +532,8 @@ const TradeBot = {
 
                 if (uncloseOrdersA2d.length > 0) { w_toUpdateRangeList.push({ range: toGCPData.uncloseOrdersRange, values: uncloseOrdersA2d }) }
 
-                const thisMessage = isStrictNumber(ingOrderData.isPartial) ?
-                    (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + `Order partially ${Math.round(1000*ingOrderData.isPartial)/10}% confirmed` :
+                const thisMessage = isStrictNumber(ingOrderData.ing_isPartial) ?
+                    (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + `Order partially ${Math.round(1000*ingOrderData.ing_isPartial)/10}% confirmed, but order canceled` :
                     (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + `Order fully confirmed`;
 
                 AddSetMessage(this.alertMessageSet, thisMessage) ;
