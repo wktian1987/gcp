@@ -43,19 +43,31 @@ export async function HandleTgBot(msg) {
         throw new Error("消息格式错误, 请检查") ;
     }
 
-    if (txt.toUpperCase().includes('RESET')) {
+    if (text.toUpperCase().includes('RESET')) {
+
+
         let resetMessage = '' ;
         LockTimeName       =  botNumber + '_lockTime'       ; // 全局中的锁名
         RunningWellName    =  botNumber + '_runningWell'    ; // 全局中的出错名
         SpreadsheetIDName  =  botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID, 避免每次重新读取
-        resetMessage = AddMessage(resetMessage, '收到RESET信号') ;
-        resetMessage = AddMessage(resetMessage, '属性删除前的值为:') ;
-        resetMessage = AddMessage(resetMessage, '_lockTime: \n' + TradeBot[LockTimeName]) ;
-        resetMessage = AddMessage(resetMessage, '_runningWell: \n' + StrFromSetMessage(TradeBot[RunningWellName])) ;
-        resetMessage = AddMessage(resetMessage, '_spreadsheetID: \n' + TradeBot[SpreadsheetIDName]) ;
-        delete TradeBot[LockTimeName       ]   ;
-        delete TradeBot[RunningWellName    ]   ;
-        delete TradeBot[SpreadsheetIDName  ]   ;        
+
+
+        if (Date.now() - TradeBot[LockTimeName] < 5 * 60 *1000) {
+            resetMessage = AddMessage(resetMessage, '当前机器人正在运行, 或者未超时, 请等待5分钟后再解锁') ;
+            resetMessage = AddMessage(resetMessage, '_runningWell: \n' + StrFromSetMessage(TradeBot[RunningWellName])) ;
+        } else {
+            resetMessage = AddMessage(resetMessage, '属性删除前的值为:') ;
+            resetMessage = AddMessage(resetMessage, '_lockTime: \n' + TradeBot[LockTimeName]) ;
+            resetMessage = AddMessage(resetMessage, '_runningWell: \n' + StrFromSetMessage(TradeBot[RunningWellName])) ;
+            resetMessage = AddMessage(resetMessage, '_spreadsheetID: \n' + TradeBot[SpreadsheetIDName]) ;
+            delete TradeBot[LockTimeName       ]   ;
+            delete TradeBot[RunningWellName    ]   ;
+            delete TradeBot[SpreadsheetIDName  ]   ;
+            resetMessage = AddMessage(resetMessage, '属性删除成功');
+        }
+
+        await SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id) ;
+
     }
 
     const spreadsheetID = await GetSpreadsheetID(botNumber);
