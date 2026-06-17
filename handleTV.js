@@ -1179,8 +1179,6 @@ export async function HandleTradeBot(tvData) {
 
     console.log(bot.cLogHead + resultMessage_TG_Email) ;
 
-
-
     const r_ReleaseLockOfGS = await bot.ReleaseLockOfGS();
     if (isStrictString(r_ReleaseLockOfGS)) { 
         // 无法为GS解锁, 是严重错误, 需要手动解锁
