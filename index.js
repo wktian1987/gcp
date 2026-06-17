@@ -16,20 +16,15 @@ app.listen(process.env.PORT || 8080, () => {
 // );
 
 app.post('/tgBot', json(), async (req, res) => {
-    console.log("✔ 收到/tgBot连接");
-    const { HandleTgBot } = await import("./handleTgBot.js");
-
+    console.log("收到/tgBot连接");
     res.status(200).send("ACK");
 
-    const msg   = req.body.message  ;
-
     try {
+        const msg = req.body.message;
+        const { HandleTgBot } = await import("./handleTgBot.js");
         await HandleTgBot(msg);
-    } catch (e) {
-        console.error("✘ TgBot消息处理失败: ", e.message) ;
-
-
-    }
+        console.log(`✔ HandleTgBot()处理成功`);
+    } catch (e) { console.error("✘ HandleTgBot()处理失败: ", e.message) }
 }
 );
 
@@ -60,14 +55,15 @@ app.post('/tradingview', json(), async (req, res) => {
             console.log(`✔ HandleAllPrice()处理成功`);
         } catch (e) {console.error(`✘ HandleAllPrice()处理失败: ` + e.message) }
 
-        // 用AllPrice信号来激活查看邮件的操作
-        console.log(`HandleAllPrice()处理完毕, 开始处理HandleUnreadGmails()`) ;
-        try {
-            const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
-            await HandleUnreadGmails(req, res);
-            console.log(`✔ HandleUnreadGmails()处理成功`);
-        } catch (e) {console.error(`✘ HandleUnreadGmails()处理失败: ` + e.message)}
     }
+
+    // 用tradingview信号来激活查看邮件的操作
+    console.log(`tradingview信号处理完毕, 开始处理HandleUnreadGmails()`);
+    try {
+        const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
+        await HandleUnreadGmails();
+        console.log(`✔ HandleUnreadGmails()处理成功`);
+    } catch (e) { console.error(`✘ HandleUnreadGmails()处理失败: ` + e.message) }
 
 }  )  ;
 

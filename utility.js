@@ -1,3 +1,7 @@
+import { google } from 'googleapis';
+const auth = new google.auth.GoogleAuth({ scopes: ['https://www.googleapis.com/auth/spreadsheets'] } ) ;
+const sheets = google.sheets({ version: 'v4', auth });
+
 export function isStrictNumber  (val) { return typeof val === 'number' && Number.isFinite(val)          }
 export function isStrictBoolean (val) { return typeof val === "boolean"                                 }
 export function isStrictTrue    (val) { return isStrictBoolean(val) && val                              }
@@ -327,33 +331,31 @@ export function ConvertRowsToHtmlTable(rows) {
  * 从 "0" 号核心配置表中精准提取指定键的原生高精度类型值
  * @async
  * @param {string} keyName - 期望读取的配置项键名（例如："IS_BOT_OPEN", "MAX_SLIPPAGE"）
- * @param {object} sheets - 已初始化的 Google Sheets API 实例 (google.sheets.v4.Sheets)
  * @returns {Promise<string|number|boolean>} 返回底层未经格式化的原生 JS 类型数据（字符串、数字或布尔值）
  * @throws {Error} 当 keyName 类型非法、process.env.SHEET_ID 缺失或表格中找不到该配置项时抛出致命异常
  */
-export async function GetKeyValueFrom0(keyName, sheets) {
+export async function GetKeyValueFrom0(keyName) {
     if (!isStrictString(keyName)) {throw new Error('GetKeyValueFrom0 参数错误: keyName 只能是字符串')}
     const TradingBot_00_ID  =   process.env.SHEET_ID  ;
     if (!TradingBot_00_ID) {throw new Error('GetKeyValueFrom0 参数错误: keyName 或 process.env.SHEET_ID 环境变量不能为空') }
-    const keyvalues =  CleanObjToNumBoolStr ( Object.fromEntries( await GetGS(sheets, TradingBot_00_ID, "0!A:B") ) )  ;
+    const keyvalues =  CleanObjToNumBoolStr ( Object.fromEntries( await GetGS(TradingBot_00_ID, "0!A:B") ) )  ;
     if (keyvalues[keyName] !== undefined) { return String(keyvalues[keyName]) } 
     throw new Error(`not find value for ${keyName}`) ;
 }
 
-export async function GetSpreadsheetID(botNumber, sheets) {return await GetKeyValueFrom0(botNumber, sheets) } 
+export async function GetSpreadsheetID(botNumber) {return await GetKeyValueFrom0(botNumber) } 
 
 /**
  * 精准检测特定工作表(Tab)是否存在，支持不存在时自动原子创建
  * @async
  * @function CheckIfSheetExists
- * @param {object} sheets - 已初始化的 Google Sheets API 实例 (google.sheets.v4.Sheets)
  * @param {string} spreadsheetID - 电子表格 ID
  * @param {string} sheetTitle - 期望检查或创建的工作表名称（如："MAIN", "LOG_2026"）
  * @param {boolean} [ifNoThenNew=false] - 可选：若为 true 且表格不存在时，自动触发原子创建操作
  * @returns {Promise<boolean>} 返回最终是否存在（或是否成功创建）的布尔标志
  * @throws {Error} 当入参非法或网络请求失败时向外层抛出原始异常
  */
-export async function CheckIfSheetExists(sheets, spreadsheetID, sheetTitle, ifNoThenNew = false) {
+export async function CheckIfSheetExists(spreadsheetID, sheetTitle, ifNoThenNew = false) {
     // 🛡️ 哨兵防线：基础输入严格拦截
     if (!spreadsheetID || !isStrictString(sheetTitle)) {
         throw new Error('CheckIfSheetExists 参数错误: spreadsheetID 不能为空且 sheetTitle 必须是严格字符串');
@@ -392,20 +394,19 @@ export async function CheckIfSheetExists(sheets, spreadsheetID, sheetTitle, ifNo
  * 精准扫描指定工作表，计算并返回含有任何有效数据（数字、字符串、布尔值等）的最小闭环 A1 范围边界
  * @async
  * @function GetActiveDataRange
- * @param {object} sheets - 已初始化的 Google Sheets API 实例 (google.sheets.v4.Sheets)
  * @param {string} spreadsheetID - 电子表格 ID
  * @param {string} sheetTitle - 工作表名称
  * @returns {Promise<string|null>} 返回 A1 表示法的全域范围字符串（例如 "MAIN!A1:E25"），若全表完全为空则返回 null
  * @throws {Error} 当参数非法或网络底座请求崩溃时抛出原始异常
  */
-export async function GetActiveDataRange(sheets, spreadsheetID, sheetTitle) {
+export async function GetActiveDataRange(spreadsheetID, sheetTitle) {
     // 🛡️ 哨兵防线：严格基础入参校验
     if (!spreadsheetID || !isStrictString(sheetTitle)) {
         throw new Error('GetActiveDataRange 参数错误: spreadsheetID 不能为空且 sheetTitle 必须是严格字符串');
     }
 
     // 1. 临门一脚：调用高精度 GetGS 底座，拿回原生全要素二维数组
-    const rows = await GetGS(sheets, spreadsheetID, sheetTitle);
+    const rows = await GetGS(spreadsheetID, sheetTitle);
 
     if (rows.length === 0) {
         return null;
@@ -462,13 +463,12 @@ export async function GetActiveDataRange(sheets, spreadsheetID, sheetTitle) {
 /**
  * 从固定区域读取数据 ; 
  * 如果只有 "A!A1:B5" 这个区域内有数据的话，用"A!A:B" 会比"A!A1:B5" 效率不会差很多，可以不考虑
- * @param {*} sheets 
  * @param {string} spreadsheetID 
  * @param {string} fullRange
  * @param {string} [read_calculate='calculate'] 默认值是calculate, 除了'read'其他值包括不输入值都是默认值, 表示从GS中取到的数据都是原始值
  * @returns  返回一个二维数组 ; 
  */
-export async function GetGS(sheets, spreadsheetID, fullRange, read_calculate = 'calculate') {
+export async function GetGS(spreadsheetID, fullRange, read_calculate = 'calculate') {
     if (!spreadsheetID || !fullRange) {throw new Error('GetDataFromSheet 参数错误: spreadsheetID 或 fullRange 不能为空')}
     const valueRenderOption = read_calculate === 'read' ? 'FORMATTED_VALUE' : 'UNFORMATTED_VALUE' ;
     const response = await sheets.spreadsheets.values.get(  {
@@ -485,11 +485,10 @@ export async function GetGS(sheets, spreadsheetID, fullRange, read_calculate = '
 
 /**
  * 擦除指定区域的数据（单项原子清空）
- * @param {object} sheets - Google Sheets API 实例
  * @param {string} spreadsheetID - 电子表格 ID
  * @param {string} fullRange - 想要清空的单区域，例如 'MAIN!A2:D'
  */
-export async function ClearGS(sheets, spreadsheetID, fullRange) {
+export async function ClearGS(spreadsheetID, fullRange) {
     // 哨兵防线：前置白名单拦截
     if (!spreadsheetID || !fullRange) {
         throw new Error('ClearGS 参数错误: spreadsheetID 或 fullRange 不能为空');
@@ -504,12 +503,11 @@ export async function ClearGS(sheets, spreadsheetID, fullRange) {
 
 /**
  * 往指定区域写入数据（单项原子覆盖/写入）
- * @param {object} sheets - Google Sheets API 实例
  * @param {string} spreadsheetID - 电子表格 ID
  * @param {string} fullRange - 想要写入的单区域，例如 'MAIN!A23:23' 或 'MAIN!A11:D'
  * @param {Array<Array>} values - 期望写入的二维数组数据
  */
-export async function UpdateGS(sheets, spreadsheetID, fullRange, values) {
+export async function UpdateGS(spreadsheetID, fullRange, values) {
     // 短路验证（基础非空 ➔ 数组判定 ➔ 空数组探测 ➔ 二维深度抽查）
     if (!isStrictString(spreadsheetID) || !isStrictString(fullRange) || !Array.isArray(values) || values.length === 0 || !Array.isArray(values[0])) {
         throw new Error('UpdateGS 参数错误: 输入结构非法或 values 不是合法的非空二维数组');
@@ -524,12 +522,11 @@ export async function UpdateGS(sheets, spreadsheetID, fullRange, values) {
 
 /**
  * 往指定区域最下行追加数据
- * @param {object} sheets - Google Sheets API 实例
  * @param {string} spreadsheetID - 电子表格 ID
  * @param {string} fullRange - 想要写入的单区域, 如tradeHistory!$A$24:Z
  * @param {Array<Array>} values - 期望写入的二维数组数据
  */
-export async function AppendGS(sheets, spreadsheetID, fullRange, values) {
+export async function AppendGS(spreadsheetID, fullRange, values) {
     // 短路验证（基础非空 ➔ 数组判定 ➔ 空数组探测 ➔ 二维深度抽查）
     if (!isStrictString(spreadsheetID) || !isStrictString(fullRange) || !Array.isArray(values) || values.length === 0 || !Array.isArray(values[0])) {
         throw new Error('UpdateGS 参数错误: 输入结构非法或 values 不是合法的非空二维数组');
@@ -545,12 +542,11 @@ export async function AppendGS(sheets, spreadsheetID, fullRange, values) {
 /**
  * 批量读取多个区域内容（多区域打包，类型对齐，精度不失）
  * @async
- * @param {object} sheets - Google Sheets API 实例
  * @param {string} spreadsheetID - 电子表格 ID
  * @param {Array<string>} rangesList - 想要读取的区域数组，例如 ['MAIN!A:B', 'LOG!C:D']
  * @returns {Array<Array<Array>>} 返回一个三维数组，顺序对应 rangesList 中每个区域的二维数据
  */
-export async function BatchGetGS(sheets, spreadsheetID, rangesList) {
+export async function BatchGetGS(spreadsheetID, rangesList) {
     // 哨兵防线 1：鉴别大外壳是否为数组，且不能为空
     if (!Array.isArray(rangesList) || rangesList.length === 0) {
         throw new Error('BatchGetGS @param rangesList 输入错误，期望非空数组');
@@ -585,7 +581,7 @@ export async function BatchGetGS(sheets, spreadsheetID, rangesList) {
  * @returns 
  * 无返回值，只要正确运行就说明操作成功
  */
-export async function BatchClearGS(sheets, spreadsheetID, toClearRangeList) {
+export async function BatchClearGS(spreadsheetID, toClearRangeList) {
     if (!Array.isArray(toClearRangeList) ) { throw new Error('BatchClearGS @param toClearRangeList 输入错误') }
     if (toClearRangeList.length === 0    ) { return }
     await sheets.spreadsheets.values.batchClear(    {
@@ -604,7 +600,7 @@ export async function BatchClearGS(sheets, spreadsheetID, toClearRangeList) {
  * 例如[{range: 'MAIN!A:B', values:[[3,4],[5,6]]}, {range: 'MAIN2!A:B', values:[['A','B'],['C','D']]}]
  * @returns 无返回值，只要正确运行就说明操作成功
  */
-export async function BatchClearUpdateGS(sheets, spreadsheetID, toUpdateRangeList) {
+export async function BatchClearUpdateGS(spreadsheetID, toUpdateRangeList) {
     if (!Array.isArray(toUpdateRangeList) ) { throw new Error('BatchClearUpdateGS @param toUpdateRangeList 输入错误') }
     if (toUpdateRangeList.length === 0    ) { return }
     const toClearListSet    = new Set() ;
@@ -618,9 +614,9 @@ export async function BatchClearUpdateGS(sheets, spreadsheetID, toUpdateRangeLis
         toClearUpdateList.push( {range , values     } )    ;
     });
 
-    await BatchClearGS(sheets, spreadsheetID, Array.from(toClearListSet) ) ;
+    await BatchClearGS(spreadsheetID, Array.from(toClearListSet) ) ;
 
-    await Sleep(500) ;
+    await Sleep(100) ;
 
     await sheets.spreadsheets.values.batchUpdate(   {
         spreadsheetId   :   spreadsheetID  ,
@@ -629,20 +625,15 @@ export async function BatchClearUpdateGS(sheets, spreadsheetID, toUpdateRangeLis
             data                : toClearUpdateList }   }   )   ;
 }
 
-export async function SendSplitTGMessages(botToken, chatId, subject, text) {
-    const CHUNK_SIZE = 3800;
+export async function SendTG(subject, text, toChatID = process.env.TG_CHAT_ID) {
+    const TG_TOKEN = process.env.TG_TOKEN;
 
-    if (!botToken || !chatId) {
-        console.error("✘ 发送tg消息错误: TG_TOKEN 或 TG_CHAT_ID 为空！");
-        return;
-    }
+    const CHUNK_SIZE = 3800;
 
     // 先准备好原始的全文本（不转义）
     const fullRawText = subject + "\n" + "------------------" + "\n\n" + text;
 
-    // 考虑到 HTML 标签 <pre> 的长度，实际内容的 MAX_LENGTH 应略小于 4096
-    // 建议先分段，再转义，防止转义字符被切断导致 HTML 报错
-
+    // 先分段，再转义，防止转义字符被切断导致 HTML 报错
     let messageTimes = 1;
     let isManyMessages = false;
     if (fullRawText.length > CHUNK_SIZE) {
@@ -664,28 +655,24 @@ export async function SendSplitTGMessages(botToken, chatId, subject, text) {
         const formattedChunk = `<pre>${escapedChunk}</pre>`;
 
         const payload = {
-            "chat_id": chatId,
+            "chat_id": toChatID,
             "text": formattedChunk,
             "parse_mode": "HTML"
         };
 
-        try {
-            const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+        const response = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
 
-            const result = await response.json(); // 必须加上这一行，否则 result 是 undefined
+        const result = await response.json(); // 必须加上这一行，否则 result 是 undefined
 
-            if (! response.ok) {
-                throw new error(`TG消息发送失败: [${result.error_code}] , ${result.description}`);
-            }
-        } catch (err) {
-            throw new Error(`✘ TG消息发送失败: ${err.message}`);
+        if (!response.ok) {
+            throw new error(`TG消息发送失败: [${result.error_code}] , ${result.description}`);
         }
 
-        await new Promise(res => setTimeout(res, 1000));
+        await Sleep(1000);
     }
 }
 
@@ -695,21 +682,17 @@ export async function SendSplitTGMessages(botToken, chatId, subject, text) {
  * @param {String} mail_subject 
  * @param {String} mail_content 
  */
-export async function SendEmail(mail_subject, mail_content) {
-    const mailUser = process.env.GMAIL_USER         ;
-    const mailPass = process.env.GMAIL_APP_PASS     ;
-    const receiver = process.env.RECEIVER_EMAIL     ;
+export async function SendEmail(mail_subject, mail_content, mailReceiver = process.env.RECEIVER_EMAIL) {
+    const mailUser = process.env.GMAIL_USER                         ;
+    const mailPass = process.env.GMAIL_APP_PASS                     ;
 
     const { createTransport } = await import('nodemailer');
-    const transporter = createTransport({
-        service: 'gmail',
-        auth: { user: mailUser, pass: mailPass }
-    });
+    const transporter = createTransport({ service: 'gmail', auth: { user: mailUser, pass: mailPass } });
 
     // 构建邮件选项
     const mailOptions = {
         from: `"GCP Router" <${mailUser}>`,
-        to: receiver,
+        to: mailReceiver,
         subject: mail_subject,
         html: mail_content // 传入你生成的 HTML Table 字符串
     };
@@ -726,11 +709,13 @@ export async function SendEmail(mail_subject, mail_content) {
  */
 export function Sleep(ms) { return new Promise(resolve => setTimeout(resolve, isStrictNumber(ms) ? ms : 1000)) }
 
-export const ResultWithErrMessage = {
-    AddResult(r) {this.result = r} ,
-    AddErrMessage(eMsg) { this.errMessage = AddMessage(this.errMessage, ToStrictString(eMsg, 'unkownErr')) } ,
-    noError() {return (!Object.hasOwn(this, 'errMessage'))}
-} ;
-// const RwE = Object.create(ResultWithErrMessage) ;
-// RwE.AddResult({s:12, d:14}) ;
-// RwE.AddErrMessage('there err') ;
+
+export class ResultWithErrMessage {
+    constructor({result, errMessage}={}) {
+        this.result     = result        ;
+        this.errMessage = errMessage    ;
+    }
+    AddResult(result) {this.result = result}
+    AddErrMessage(errMessage) { this.errMessage = AddMessage(this.errMessage, ToStrictString(errMessage, 'unkownErr')) }
+    noError() {return !isStrictString(this.errMessage) }
+}

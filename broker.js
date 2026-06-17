@@ -17,21 +17,21 @@ import {
 } from "./utility.js";
 
 import { CV } from "./handleTV.js";
-import { maxHeaderSize } from "node:http";
 
+import { maxHeaderSize } from "node:http"; // 这一行是干嘛的??? 为什么我的代码里莫名其妙出现这一行
 
 
 //#region - Basic Broker interface
 
-export async function SendOrderToBroker(S, isReal, TradingSymbol, sheets, spreadsheetID) {
+export async function SendOrderToBroker(S, isReal, TradingSymbol, spreadsheetID) {
     if (!isStrictFalse(isReal) && TradingSymbol.startsWith("GATE:")) {return await GATE_SendOrderToBroker(isReal, S, TradingSymbol) }
 
     const simRange_00 = 'simBroker!A30:B'   ;
     const simRange_01 = 'simBroker!A1:B29'  ;
 
-    await BatchClearUpdateGS(sheets, spreadsheetID, [{range:simRange_00, values: ObjToA2dNumBoolStr(S)}]) ; // 发送交易
+    await BatchClearUpdateGS(spreadsheetID, [{range:simRange_00, values: ObjToA2dNumBoolStr(S)}]) ; // 发送交易
     
-    const res_broker    =  A2dToCleanObj(await GetGS(sheets, spreadsheetID, simRange_01 ) )  ; //交易状态返回
+    const res_broker    =  A2dToCleanObj(await GetGS(spreadsheetID, simRange_01 ) )  ; //交易状态返回
 
     S.ing_orderID		    = res_broker.orderID        ;
     S.ing_orderStatus		= res_broker.orderStatus    ;
@@ -54,7 +54,7 @@ export async function CheckOrderConfirm(ingOrderData) {
 
     // 无论是要取消交易, 都要首先查看现在的交易状态
     // 在模拟交易中, 没有 部分成交 这种情况 
-    const res   = CleanObjToNumBoolStr(Object.fromEntries(await GetGS(ingOrderData.sheets, ingOrderData.spreadsheetID, simRange_01 ))) ;
+    const res   = CleanObjToNumBoolStr(Object.fromEntries(await GetGS(ingOrderData.spreadsheetID, simRange_01 ))) ;
     if (res.orderStatus === "confirm")  {
         ingOrderData.ing_orderID		    = res.orderID                                           ;
         ingOrderData.ing_confirmTimestamp   = res.confirmTimestamp                                  ;
@@ -68,12 +68,12 @@ export async function CheckOrderConfirm(ingOrderData) {
         ingOrderData.ing_orderStatus		= res.orderStatus                                       ;
         ingOrderData.ing_pXq                = ingOrderData.ing_confirmPrice * ingOrderData.ing_qty  ;
 
-        await ClearGS(ingOrderData.sheets, ingOrderData.spreadsheetID, simRange_00) ;
+        await ClearGS(ingOrderData.spreadsheetID, simRange_00) ;
     } 
 
     // 在模拟交易中, 没有 部分成交 这种情况 
     if ( isStrictTrue(ingOrderData.ifWaitingThenCancel) && res.orderStatus !== "confirm") {
-        await ClearGS(ingOrderData.sheets, ingOrderData.spreadsheetID, simRange_00) ;
+        await ClearGS(ingOrderData.spreadsheetID, simRange_00) ;
         ingOrderData.ing_orderStatus = CV.order_cancel;
     }
 }
@@ -88,7 +88,7 @@ export async function CheckFundFee(fund) {
     if (!isStrictFalse(fund.isReal) && fund.TradingSymbol.startsWith("GATE:")) { await GATE_CheckFundFee(fund); return; }
 
     const simRange_01 = 'simBroker!A1:B29';
-    const resFund = CleanObjToNumBoolStr(Object.fromEntries(await GetGS(fund.sheets, fund.spreadsheetID, simRange_01)));
+    const resFund = CleanObjToNumBoolStr(Object.fromEntries(await GetGS(fund.spreadsheetID, simRange_01)));
 
     fund.fundFee           =  isStrictNumber(resFund.fundFee) ? resFund.fundFee : 0     ;
     fund.confirmDate       =  fund.orderDate                                            ;

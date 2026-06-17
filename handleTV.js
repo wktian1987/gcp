@@ -18,7 +18,7 @@ import {
     ObjToA2dNumBoolStr,
     AddMessage,
     GetTimeStringWithOffset,
-    SendSplitTGMessages,
+    SendTG,
     FormatMatrixToString,
     GetSpreadsheetID,
     GetGS,
@@ -33,17 +33,8 @@ import {
     Sleep
 } from "./utility.js";
 
-import {
-    SendOrderToBroker,
-    CheckOrderConfirm,
-    CheckFundFee
-} from "./broker.js";
+import { SendOrderToBroker, CheckOrderConfirm, CheckFundFee } from "./broker.js";
 
-import { google } from 'googleapis';
-const auth = new google.auth.GoogleAuth({
-    scopes: ['https://www.googleapis.com/auth/spreadsheets']
-});
-const sheets = google.sheets({ version: 'v4', auth });
 
 export const CV = {
     noLOCK          : "noLOCK"          ,
@@ -59,10 +50,12 @@ export const CV = {
     order_waiting   : "waiting"         ,
     order_confirm   : "confirm"         ,
     order_partial   : 'partial'         ,
-    order_cancel    : "cancel"          }
+    order_cancel    : "cancel"          } ;
+
 
 export async function HandleAllPrice(tvData) {
-    const allP
+    const RangeAllPrices = "fromTV!A2:B" ;
+
     // 清洗来自TV的数据
     Object.keys(tvData).forEach(key => {
         tvData[key] = ToStrictNumBoolStr(tvData[key], 'notAvailableValueFromTV') ;
@@ -71,9 +64,8 @@ export async function HandleAllPrice(tvData) {
 
     const spreadsheetID = process.env.SHEET_ID              ;
     const toWriteArray  = ObjToA2dNumBoolStr(tvData)        ;
-    await UpdateGS(sheets, spreadsheetID, "AllPricesFromTV!A1:B", toWriteArray) ;
+    await UpdateGS(spreadsheetID, RangeAllPrices, toWriteArray) ;
 }
-
 
 
 const TradeBot = {
@@ -90,7 +82,6 @@ const TradeBot = {
         this.cLogHead           =  tvData.botNumber + ": "      ;
         this.LockTime           =  tvData.timestamp             ;
         this.lockName           =  'T' + String(this.LockTime)  ;
-        this.sheets             =  sheets                       ;
         this.toUpdateRangeList  =  []                           ;
         this.toClearRangeSet    =  new Set()                    ;
         this.alertMessageSet    =  new Set()                    ;
@@ -126,7 +117,7 @@ const TradeBot = {
 
         if (!Object.hasOwn(TradeBot, this.SpreadsheetIDName)) {
             try {
-                TradeBot[this.SpreadsheetIDName] = await GetSpreadsheetID(tvData.botNumber, sheets);
+                TradeBot[this.SpreadsheetIDName] = await GetSpreadsheetID(tvData.botNumber);
             } catch (e) {
                 let errMessage = e.message + '\n' ;
                 const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
@@ -145,7 +136,7 @@ const TradeBot = {
             if (TradeBot[this.LockTimeName] !== this.LockTime) {return '临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去' }
             if (currentLock !== CV.noLOCK) {return '大TradeBot锁被释放的情况下, GS锁未被释放' }
             if (currentLock === CV.noLOCK) {
-                await UpdateGS(this.sheets, this.spreadsheetID, toGCPData.lockRange, [[this.lockName]]);
+                await UpdateGS(this.spreadsheetID, toGCPData.lockRange, [[this.lockName]]);
                 await Sleep(100); // 等0.1后再确认是否成功,防止GS频繁写入读取限制
                 toGCPData   = await this.Get_toGCPData() ;
                 currentLock = toGCPData.LOCK ;
@@ -208,7 +199,7 @@ const TradeBot = {
      * 获取当前toGCPData
      * @returns {Promise<Object>}
      */
-    async Get_toGCPData() { return A2dToCleanObj(await GetGS(this.sheets, this.spreadsheetID, CV.toGCPRanges)) },
+    async Get_toGCPData() { return A2dToCleanObj(await GetGS(this.spreadsheetID, CV.toGCPRanges)) },
 
     /**
      * 检测当前GS中分布式锁的真实归属,
@@ -241,7 +232,7 @@ const TradeBot = {
             while (attempt <= MAX_Attempts) {
                 // 之所以用try是为了最大可能尝试解锁, 而不是仅仅报错
                 try {
-                    await UpdateGS(this.sheets, this.spreadsheetID, toGCPData.lockRange, [[noLOCK]]);
+                    await UpdateGS(this.spreadsheetID, toGCPData.lockRange, [[noLOCK]]);
                     await Sleep(100);
                     // 验证是否真正安全归还
                     const lockNameAfterAttempt = await this.CheckLockFromGS();
@@ -279,7 +270,7 @@ const TradeBot = {
                                     toGCPData.tradeHistoryTitleLine    ,       // 3
                                     toGCPData.uncloseOrdersTitleLine   ,       // 4
                                     toGCPData.ingOrderTitleLine        ] ;     // 5
-            const valuesArray   = await BatchGetGS(this.sheets, this.spreadsheetID, rangesList);
+            const valuesArray   = await BatchGetGS(this.spreadsheetID, rangesList);
 
             const raw_mainData  = valuesArray[0];
             if (!Array.isArray(raw_mainData) || !Array.isArray(raw_mainData[0]) ) {throw new Error('didnt get available data, 1') }
@@ -370,9 +361,9 @@ const TradeBot = {
                 range   : this.toGCPData.HghLowRange     ,
                 values  : newHghLowV                } ) ;
 
-            await BatchClearGS(this.sheets, this.spreadsheetID, Array.from(i_toClearRangeSet));
+            await BatchClearGS(this.spreadsheetID, Array.from(i_toClearRangeSet));
             await Sleep(100) ;
-            await BatchClearUpdateGS(this.sheets, this.spreadsheetID, i_toUpdateRangeList);
+            await BatchClearUpdateGS(this.spreadsheetID, i_toUpdateRangeList);
             await Sleep(100) ;
 
             const r_Get_gsData = await this.Get_gsData() ;
@@ -432,14 +423,13 @@ const TradeBot = {
             fund.BaseCoinPrice    = ToStrictNumber(tvData.BaseCoinPrice    , mainData.BaseCoinPrice  )                     ;
             fund.isReal           = mainData.isReal                                                                        ;
             fund.TradingSymbol    = tvData.TradingSymbol                                                                   ;
-            fund.sheets           = this.sheets                                                                            ;
             fund.spreadsheetID    = this.spreadsheetID                                                                     ;
 
             await CheckFundFee(fund);
 
             const newFundHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(fund[v]) ? fund[v] : (fund[v] || NA));
 
-            await AppendGS(this.sheets, this.spreadsheetID, tradeHistoryRange, [newFundHistoryA]);
+            await AppendGS(this.spreadsheetID, tradeHistoryRange, [newFundHistoryA]);
 
             const r_Get_gsData = await this.Get_gsData() ;
             if (isStrictString(r_Get_gsData)) {throw new Error('Get_gsData() 失败: \n' + r_Get_gsData)}
@@ -489,7 +479,6 @@ const TradeBot = {
 
             ingOrderData.isReal             = mainData.isReal                                                       ;
             ingOrderData.TradingSymbol      = tvData.TradingSymbol                                                  ;
-            ingOrderData.sheets             = this.sheets                                                           ;
             ingOrderData.spreadsheetID      = this.spreadsheetID                                                    ;
             ingOrderData.lst_allGotProfit   = ToStrictNumber(mainData.allGotProfit  , 0                      )      ;
             ingOrderData.lst_allTradeFee    = ToStrictNumber(mainData.allTradeFee   , 0                      )      ;
@@ -553,9 +542,9 @@ const TradeBot = {
                 AddSetMessage(this.alertMessageSet, (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order canceled");
             }
 
-            await BatchClearGS(this.sheets, this.spreadsheetID, Array.from(w_toClearRangeSet));
-            await BatchClearUpdateGS(this.sheets, this.spreadsheetID, w_toUpdateRangeList);
-            if (isStrictTrue(w_toAppendTradeHistory.toAppend)) { await AppendGS(this.sheets, this.spreadsheetID, w_toAppendTradeHistory.range, w_toAppendTradeHistory.values) }
+            await BatchClearGS(this.spreadsheetID, Array.from(w_toClearRangeSet));
+            await BatchClearUpdateGS(this.spreadsheetID, w_toUpdateRangeList);
+            if (isStrictTrue(w_toAppendTradeHistory.toAppend)) { await AppendGS(this.spreadsheetID, w_toAppendTradeHistory.range, w_toAppendTradeHistory.values) }
 
             // 交易记录更新后, 需要重新获取GS数据
             const r_Get_gsData = await this.Get_gsData() ;
@@ -934,7 +923,7 @@ const TradeBot = {
             S.ing_qty = -1 * toSellOrderA[idx_qty];
             S.ing_orderStatus = order_pending;
 
-            const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID);
+            const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.spreadsheetID);
             // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
 
             const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(returnS[v]) ? returnS[v] : (returnS[v] || NA));
@@ -988,7 +977,7 @@ const TradeBot = {
                 S.ing_qty               =  this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin*this.leverage/S.ing_orderPrice/this.minEnExPosition/(this.MaxGrid - this.gridNum)) )   ;
                 S.ing_orderStatus       =  order_pending                                                                                                                                        ;
 
-                const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.sheets, this.spreadsheetID) ;
+                const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.spreadsheetID) ;
                 // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
 
                 const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(returnS[v]) ? returnS[v] : (returnS[v] || NA) ) ;
@@ -1009,7 +998,7 @@ const TradeBot = {
          */
         async WriteToGS(toGCPData) {
 
-            await BatchClearGS(this.sheets, this.spreadsheetID, Array.from(this.toClearRangeSet));
+            await BatchClearGS(this.spreadsheetID, Array.from(this.toClearRangeSet));
 
             if (this.runningWellSet .size === 0 ) { this.runningWell  = true } 
             if (this.runningWellSet .size >   0 ) { this.runningWell  = [...this.runningWellSet ].join('\n') }
@@ -1038,7 +1027,7 @@ const TradeBot = {
                 range   : toGCPData.toWriteMainRange    ,
                 values  : ObjToA2dNumBoolStr(this)      }  )  ;
 
-            await BatchClearUpdateGS(this.sheets, this.spreadsheetID, this.toUpdateRangeList);
+            await BatchClearUpdateGS(this.spreadsheetID, this.toUpdateRangeList);
 
             return true ;
 
@@ -1049,7 +1038,7 @@ const TradeBot = {
          * @param {String} toReadRange 
          */
         async SendToTG(toReadRange) {
-            const rawMessagesA2d = (await GetGS(this.sheets, this.spreadsheetID, toReadRange, 'X')).map(v => CleanArrayToNumStrBool(v)) ;
+            const rawMessagesA2d = (await GetGS(this.spreadsheetID, toReadRange, 'read')).map(v => CleanArrayToNumStrBool(v)) ;
             const messageString  = FormatMatrixToString(rawMessagesA2d) ;
 
             const TG_TOKEN = process.env.TG_TOKEN;
@@ -1057,14 +1046,14 @@ const TradeBot = {
 
             const subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime) ;
 
-            await SendSplitTGMessages(TG_TOKEN, TG_CHAT_ID, subject, messageString) ;
+            await SendTG(TG_TOKEN, TG_CHAT_ID, subject, messageString) ;
         } ,
 
         /**
          * @param {String} toEmailRange 
          */
         async SendToEmail(toEmailRange) {
-            const rawMessagesA2d = (await GetGS(this.sheets, this.spreadsheetID, toEmailRange, 'X')).map(v => CleanArrayToNumStrBool(v)) ;
+            const rawMessagesA2d = (await GetGS(this.spreadsheetID, toEmailRange, 'read')).map(v => CleanArrayToNumStrBool(v)) ;
             const messageHTML    =  ConvertRowsToHtmlTable(rawMessagesA2d) ;
             const mail_subject   = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime) ;
             await SendEmail(mail_subject, messageHTML) ;
