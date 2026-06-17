@@ -211,6 +211,7 @@ const TradeBot = {
      * 释放分布式排他锁
      * @param {number} [MAX_Attempts=99] 最多尝试解锁次数
      * @param {string} [NotGotLockValueTo='NotGotLockValue'] 未从GS中获取到锁状态时的默认值, 保持默认即可
+     * @returns 因为try/catch, 不会抛错
      * @returns {Promise<boolean>} true:   解锁成功返回
      * @returns {Promise<string>}  string: 解锁失败原因
      */
@@ -963,130 +964,149 @@ const TradeBot = {
             // 这是核心错误, 不能解锁, 需要手动查看
             const errMessage = `核心错误: ${e.message}`.trim() ;
             this.AddRunningWellMessage(errMessage) ;
-            throw new Error(errMessage) ;
+            return errMessage ;
         }
 
     },
 
-        /**
-         * 判断是否要发出买单, 并实际下单
-         * 只有当实际买入信号发出时，才会返回true
-         * @param {Array<String>} ingOrderTitleA 
-         * @param {String} ingOrderLine 
-         * @returns true: 表示买入信号发出, 且收到了交易所的回复
-         * @returns false: 经判断不能买入, 没有信号发生
-         */
-        async ToBuy(ingOrderTitleA, ingOrderLine) {
-            if (!isStrictTrue(this.canBuy)) {return true}
+    /**
+     * 判断是否要发出买单, 并实际下单
+     * @returns 因为有try/catch, 不会抛出错误
+     * @returns true: 执行完毕, 可能执行买入, 也可能不执行, 只是整个流程没有遇到问题
+     * @returns string: 执行错误信息
+    */
+    async ToBuy(ingOrderTitleA, ingOrderLine) {
+        if (!isStrictTrue(this.canBuy)) { return true }
 
-            let toBuy = false ;
+        try {
+            const ingOrderTitleA = this.ingOrderTitleA          ;
+            const ingOrderLine   = this.toGCPData.ingOrderLine  ;
+
+            let toBuy = false;
             const S = {};
 
             if (isStrictTrue(this.markTouchTargetLow)) {
-                toBuy = true ;
-                S.ing_orderPrice = this.lstRcdTargetLow ;
-                S.ing_reason = 'touchTargetLow' ;
+                toBuy = true;
+                S.ing_orderPrice = this.lstRcdTargetLow;
+                S.ing_reason = 'touchTargetLow';
             }
 
-            if ( isStrictFalse(toBuy) ) {return false}
+            if (isStrictFalse(toBuy)) { return true }
 
-            if ( isStrictTrue(toBuy) ) {
-                S.ing_orderID           =  'B-' + GetTimeStringWithOffset(8, this.timestamp)                                                                                                    ;
-                S.ing_orderTimestamp    =  Date.now()                                                                                                                                           ;
-                S.ing_orderDate         =  GetTimeStringWithOffset(8, S.ing_orderTimestamp)                                                                                                     ;
-                S.ing_serial            =  ToStrictNumber(this.lstBuySerial, 0) + 1                                                                                                             ;
-                S.ing_buysell           =  order_BUY                                                                                                                                            ;
-                S.ing_triggerPrice      =  this.TradingSymbolPrice                                                                                                                              ;
-                S.ing_orderType         =  order_T_LMT                                                                                                                                          ;
-                S.ing_orderPrice        =  S.ing_orderPrice || S.ing_triggerPrice                                                                                                               ;
-                S.ing_qty               =  this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin*this.leverage/S.ing_orderPrice/this.minEnExPosition/(this.MaxGrid - this.gridNum)) )   ;
-                S.ing_orderStatus       =  order_pending                                                                                                                                        ;
+            S.ing_orderID           = 'B-' + GetTimeStringWithOffset(8, this.timestamp)                                                                                                             ;
+            S.ing_orderTimestamp    = Date.now()                                                                                                                                                    ;
+            S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp)                                                                                                              ;
+            S.ing_serial            = ToStrictNumber(this.lstBuySerial, 0) + 1                                                                                                                      ;
+            S.ing_buysell           = CV.order_BUY                                                                                                                                                  ;
+            S.ing_triggerPrice      = this.TradingSymbolPrice                                                                                                                                       ;
+            S.ing_orderType         = CV.order_T_LMT                                                                                                                                                ;
+            S.ing_orderPrice        = S.ing_orderPrice || S.ing_triggerPrice                                                                                                                        ;
+            S.ing_qty               = this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin * this.leverage / S.ing_orderPrice / this.minEnExPosition / (this.MaxGrid - this.gridNum)))     ;
+            S.ing_orderStatus       = CV.order_pending                                                                                                                                              ;
+            S.isReal                = this.isReal                                                                                                                                                   ;
+            S.TradingSymbol         = this.TradingSymbol                                                                                                                                            ;
+            S.spreadsheetID         = this.spreadsheetID                                                                                                                                            ;
 
-                const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.spreadsheetID) ;
-                // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
+            await SendOrderToBroker(S);
+            // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
 
-                const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(returnS[v]) ? returnS[v] : (returnS[v] || NA) ) ;
+            const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(S[v]) ? S[v] : (S[v] || NA));
 
-                this.toUpdateRangeList.push({
-                    range   : ingOrderLine          ,
-                    values  : [new_ingOrderLineA]   } ) ;
+            this.toUpdateRangeList.push({
+                range: ingOrderLine,
+                values: [new_ingOrderLineA]
+            });
 
-                AddSetMessage(this.alertMessageSet, "New buy order: waiting confirmed") ;
+            AddSetMessage(this.alertMessageSet, "New buy order: waiting confirmed");
 
-                return true ;
-            }
-        } ,
+            this.canSell = false;
+            AddSetMessage(this.alertMessageSet, 'cant sell: just a new buyOrder sent');
 
-        /**
-         * 将this大对象中的数据写入GS
-         * @returns true表示写入成功
-         */
-        async WriteToGS(toGCPData) {
+            return true;
 
+        } catch (e) {
+            // 这是核心错误, 不能解锁, 需要手动查看
+            const errMessage = `核心错误: ${e.message}`.trim() ;
+            this.AddRunningWellMessage(errMessage) ;
+            return errMessage ;
+        }
+    },
+
+    /**
+     * 将this大对象中的数据写入GS
+     * @returns 因为有try/catch, 不会抛出错误
+     * @returns true表示写入成功
+     * @returns string: 具体的出错信息
+     */
+    async WriteToGS(toGCPData) {
+        try {
             await BatchClearGS(this.spreadsheetID, Array.from(this.toClearRangeSet));
-
-            if (this.runningWellSet .size === 0 ) { this.runningWell  = true } 
-            if (this.runningWellSet .size >   0 ) { this.runningWell  = [...this.runningWellSet ].join('\n') }
-            if (this.alertMessageSet.size >   0 ) { this.alertMessage = [...this.alertMessageSet].join('\n') }
+            if (this.alertMessageSet.size > 0) { this.alertMessage = StrFromSetMessage(this.alertMessageSet) }
 
             this.gcpWriteTime = Date.now();
 
             if (isStrictTrue(this.toWriteHghLow)) {
-                const newHghLowV    = [ [this.initiated             ]    ,
-                                        [this.initiateTime          ]    ,
-                                        [this.inTradingSymbolPrice  ]    ,
-                                        [this.inBaseCoinPrice       ]    ,
-                                        [this.initialFund           ]    ,
-                                        [this.hghestFund            ]    ,
-                                        [this.lowestFund            ]    ,
-                                        [this.initialCoin           ]    ,
-                                        [this.hghestCoin            ]    ,
-                                        [this.lowestCoin            ]    ]   ;
+                const newHghLowV = [[this.initiated],
+                [this.initiateTime],
+                [this.inTradingSymbolPrice],
+                [this.inBaseCoinPrice],
+                [this.initialFund],
+                [this.hghestFund],
+                [this.lowestFund],
+                [this.initialCoin],
+                [this.hghestCoin],
+                [this.lowestCoin]];
 
-                this.toUpdateRangeList.push(  {
-                    range   : toGCPData.HghLowRange     ,
-                    values  : newHghLowV                } ) ;
+                this.toUpdateRangeList.push({
+                    range: toGCPData.HghLowRange,
+                    values: newHghLowV
+                });
             }
 
-            this.toUpdateRangeList.push(    {
-                range   : toGCPData.toWriteMainRange    ,
-                values  : ObjToA2dNumBoolStr(this)      }  )  ;
+            this.toUpdateRangeList.push({
+                range: toGCPData.toWriteMainRange,
+                values: ObjToA2dNumBoolStr(this)
+            });
 
             await BatchClearUpdateGS(this.spreadsheetID, this.toUpdateRangeList);
 
-            return true ;
+            return true;
+        } catch (e) {
+            // 这是核心错误, 不能解锁, 需要手动查看
+            const errMessage = `核心错误: ${e.message}`.trim();
+            this.AddRunningWellMessage(errMessage);
+            return errMessage;
+        }
 
-        } ,
+    },
 
-        /**
-         * 
-         * @param {String} toReadRange 
-         */
-        async SendToTG(toReadRange) {
-            const rawMessagesA2d = (await GetGS(this.spreadsheetID, toReadRange, 'read')).map(v => CleanArrayToNumStrBool(v)) ;
-            const messageString  = FormatMatrixToString(rawMessagesA2d) ;
+    /**
+     * 发送TG
+     * @returns 会抛出错误, 但无返回值
+     */
+    async SendToTG() {
+        const toReadRange = this.toGCPData.toReadRange;
+        const rawMessagesA2d = (await GetGS(this.spreadsheetID, toReadRange, 'read')).map(v => CleanArrayToNumStrBool(v));
+        const messageString = FormatMatrixToString(rawMessagesA2d);
 
-            const TG_TOKEN = process.env.TG_TOKEN;
-            const TG_CHAT_ID = process.env.TG_CHAT_ID;
+        const subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime);
 
-            const subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime) ;
+        await SendTG(subject, messageString);
+    },
 
-            await SendTG(TG_TOKEN, TG_CHAT_ID, subject, messageString) ;
-        } ,
-
-        /**
-         * @param {String} toEmailRange 
-         */
-        async SendToEmail(toEmailRange) {
-            const rawMessagesA2d = (await GetGS(this.spreadsheetID, toEmailRange, 'read')).map(v => CleanArrayToNumStrBool(v)) ;
-            const messageHTML    =  ConvertRowsToHtmlTable(rawMessagesA2d) ;
-            const mail_subject   = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime) ;
-            await SendEmail(mail_subject, messageHTML) ;
-        } ,
+    /**
+     * 发送Email
+     * @returns 会抛出错误, 但无返回值
+     */
+    async SendToEmail() {
+        const toEmailRange = this.toGCPData.toEmailRange;
+        const rawMessagesA2d = (await GetGS(this.spreadsheetID, toEmailRange, 'read')).map(v => CleanArrayToNumStrBool(v));
+        const messageHTML = ConvertRowsToHtmlTable(rawMessagesA2d);
+        const mail_subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime);
+        await SendEmail(mail_subject, messageHTML);
+    },
 
     }   ;
-
-
 
 
 export async function HandleTradeBot(tvData) {
@@ -1135,5 +1155,49 @@ export async function HandleTradeBot(tvData) {
     const r_ToBuy = await bot.ToBuy();
     if (isStrictString(r_ToBuy)) { throw new Error('ToBuy() 失败: \n' + r_ToBuy) }
     if (isStrictTrue(r_ToBuy)) { console.log(bot.cLogHead + 'ToBuy() success') }
+
+    const r_WriteToGS = await bot.WriteToGS();
+    if (isStrictString(r_WriteToGS)) { throw new Error('WriteToGS() 失败: \n' + r_WriteToGS) }
+    if (isStrictTrue(r_WriteToGS)) { console.log(bot.cLogHead + 'WriteToGS() success') }
+
+    const task_SendToTG    = bot.SendToTG()     ;
+    const task_SendToEmail = bot.SendToEmail()  ;
+
+    // 执行并发任务
+    const handleResults = await Promise.allSettled([task_SendToTG, task_SendToEmail]);
+    let thereTaskErr_TG_Email       = false    ;
+    let resultMessage_TG_Email      = ''       ;
+    handleResults.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+            resultMessage_TG_Email += (index === 0 ? "发送TG" : "发送Email") + '成功';
+        }
+        if (result.status !== "fulfilled") {
+            thereTaskErr_TG_Email = true;
+            resultMessage_TG_Email += (index === 0 ? "发送TG" : "发送Email") + '失败';
+        }
+    });
+
+    console.log(bot.cLogHead + resultMessage_TG_Email) ;
+
+
+
+    const r_ReleaseLockOfGS = await bot.ReleaseLockOfGS();
+    if (isStrictString(r_ReleaseLockOfGS)) { 
+        // 无法为GS解锁, 是严重错误, 需要手动解锁
+        bot.AddRunningWellMessage('程序运行到最后, 无法为GS解锁, 是严重错误, 需要手动解锁: \n' + r_ReleaseLockOfGS) ;
+        throw new Error('ReleaseLockOfGS() 失败: \n' + r_ReleaseLockOfGS)  ;
+    }
+    if (isStrictTrue(r_ReleaseLockOfGS)) { console.log(bot.cLogHead + 'ReleaseLockOfGS() success') }
+
+    const r_ReleaseTradeBotLOCK = await bot.ReleaseTradeBotLOCK();
+    if (isStrictString(r_ReleaseTradeBotLOCK)) { 
+        // 无法为GS解锁, 是严重错误, 需要手动解锁
+        bot.AddRunningWellMessage('程序运行到最后, 无法为TradeBot解锁, 是严重错误, 需要手动解锁: \n' + r_ReleaseTradeBotLOCK) ;
+        throw new Error('ReleaseTradeBotLOCK() 失败: \n' + r_ReleaseTradeBotLOCK)  ;
+    }
+    if (isStrictTrue(r_ReleaseTradeBotLOCK)) { console.log(bot.cLogHead + 'ReleaseTradeBotLOCK() success') }
+
+
+    if (thereTaskErr_TG_Email) {throw new Error(resultMessage_TG_Email)}
 
 }
