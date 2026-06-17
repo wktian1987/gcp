@@ -511,15 +511,27 @@ const TradeBot = {
                     uncloseOrdersA2d.push(newUncloseOrderLine);
                 }
                 if (ingOrderData.ing_buysell === CV.order_SELL) {
-                    const indexOfSerial = uncloseOrdersTitleA.indexOf('serial');
-                    if (indexOfSerial < 0) {throw new Error('uncloseOrdersTitleA 错误')}
+                    const index_orderID         =  uncloseOrdersTitleA.indexOf('orderID')       ;
+                    const index_serial          =  uncloseOrdersTitleA.indexOf('serial')        ;
+                    const index_confirmPrice    =  uncloseOrdersTitleA.indexOf('confirmPrice')  ;
+                    const index_qty             =  uncloseOrdersTitleA.indexOf('qty')           ;
+                    const index_pXq             =  uncloseOrdersTitleA.indexOf('pXq')           ;
 
-                    if (isStrictNumber(ingOrderData.ing_isPartial)) //////////////
-                    ///////////////////////////
-                    /////////////////////////////
-                    //////////////////
-
-                    uncloseOrdersA2d = uncloseOrdersA2d.filter(row => String(row[indexOfSerial]) !== String(Math.abs(ingOrderData.ing_serial)));
+                    // 卖单部分成交的情况, 相对比较复杂
+                    if (isStrictNumber(ingOrderData.ing_isPartial) && ingOrderData.ing_isPartial < 1) {
+                        let indexOfBoughtOrder = 0  ;
+                        const thisSellSerial = -1 * ingOrderData.ing_serial ;
+                        uncloseOrdersA2d.forEach( (orderA, indexA) => {
+                            if ( Math.abs(orderA[index_serial] - thisSellSerial) < 0.1) {indexOfBoughtOrder  = indexA }
+                        } ) ;
+                        const theBoughtOrder = uncloseOrdersA2d[indexOfBoughtOrder] ;
+                        theBoughtOrder[index_orderID]   =  'PB-' + GetTimeStringWithOffset(8, this.timestamp)               ;
+                        theBoughtOrder[index_qty]       =  (1-ingOrderData.ing_isPartial) * theBoughtOrder[index_qty]       ;
+                        theBoughtOrder[index_pXq]       =  theBoughtOrder[index_confirmPrice] * theBoughtOrder[index_qty]   ;
+                        uncloseOrdersA2d[indexOfBoughtOrder] = theBoughtOrder ;
+                    } else {
+                        uncloseOrdersA2d = uncloseOrdersA2d.filter(row => String(row[index_serial]) !== String(Math.abs(ingOrderData.ing_serial)));
+                    }
                 }
 
                 w_toClearRangeSet.add(toGCPData.ingOrderLine);
