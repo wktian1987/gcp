@@ -6,6 +6,7 @@ import {
     GetSpreadsheetID            ,
     CheckIfSheetExists          ,
     SendTG,         
+    SendEmail,
     GetGS,
     UpdateGS} from './utility.js';
 
@@ -308,12 +309,13 @@ export async function HandleUnreadGmails() {
             });
             processedHtml = `<div style="font-family: monospace; white-space: pre-wrap; font-size: 1em;">${processedHtml.replace(/\n/g, '<br>')}</div>`;
 
-            const sendMailTask = transporter.sendMail({
-                from: `"GCP Router" <${process.env.GMAIL_USER}>`,
-                to: process.env.RECEIVER_EMAIL,
-                subject: `tv${subject}`,
-                html: processedHtml
-            });
+            // const sendMailTask = transporter.sendMail({
+            //     from: `"GCP Router" <${process.env.GMAIL_USER}>`,
+            //     to: process.env.RECEIVER_EMAIL,
+            //     subject: `tv${subject}`,
+            //     html: processedHtml
+            // });
+            const sendMailTask = SendEmail(`tv${subject}`, processedHtml) ;
 
             // 2. 执行并发任务
             const handleResults = await Promise.allSettled([sendTGTask, sendMailTask]);
