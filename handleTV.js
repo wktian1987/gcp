@@ -849,26 +849,22 @@ const TradeBot = {
      * @returns true: 执行完毕, 可能卖出, 也可能不卖出, 只是整个流程没有遇到问题
      * @returns string: 执行错误信息
     */
-    async ToSell(uncloseOrdersA2d, uncloseOrdersTitleA, ingOrderTitleA, ingOrderLine) {
+    async ToSell() {
         if (!isStrictTrue(this.canSell)) { return true }
         
-        const uncloseOrdersA2d      = this.uncloseOrdersA2d         ;
-        const uncloseOrdersTitleA   = this.uncloseOrdersTitleA      ;
-        const ingOrderTitleA        = this.ingOrderTitleA           ;
-        const ingOrderLine          = this.toGCPData.ingOrderLine   ;
-
-
+        const uncloseOrdersA2d      =  this.uncloseOrdersA2d         ;
+        const uncloseOrdersTitleA   =  this.uncloseOrdersTitleA      ;
+        const ingOrderTitleA        =  this.ingOrderTitleA           ;
+        const ingOrderLine          =  this.toGCPData.ingOrderLine   ;
 
         let toSell = false;
         let toSellOrderA;
         const S = {};
 
-        // orderID	confirmDate	serial	triggerPrice	confirmPrice	qty	P×Q	reason
-        // 0        1           2       3               4               5   6   7
-        const idx_orderID = uncloseOrdersTitleA.indexOf('orderID');
-        const idx_serial = uncloseOrdersTitleA.indexOf('serial');
-        const idx_confirmPrice = uncloseOrdersTitleA.indexOf('confirmPrice');
-        const idx_qty = uncloseOrdersTitleA.indexOf('qty');
+        const idx_orderID       = uncloseOrdersTitleA.indexOf('orderID')        ;
+        const idx_serial        = uncloseOrdersTitleA.indexOf('serial')         ;
+        const idx_confirmPrice  = uncloseOrdersTitleA.indexOf('confirmPrice')   ;
+        const idx_qty           = uncloseOrdersTitleA.indexOf('qty')            ;
 
         // touch targetHgh
         if ((this.TradingSymbolPrice > (1 + this.waveUpChg) * this.lowBuyPriceUnclose) && this.markTouchTargetHgh) {
@@ -908,38 +904,36 @@ const TradeBot = {
             S.ing_reason = 'cut to prevent liquidate';
         }
 
-        if (isStrictFalse(toSell)) { return false }
+        if (isStrictFalse(toSell)) { return true }
 
-        if (isStrictTrue(toSell)) {
-            S.ing_orderID = toSellOrderA[idx_orderID].trim().replace('B', 'S');
-            S.ing_orderTimestamp = Date.now();
-            S.ing_orderDate = GetTimeStringWithOffset(8, S.ing_orderTimestamp);
-            S.ing_serial = -1 * toSellOrderA[idx_serial];
-            S.ing_buysell = order_SELL;
-            S.ing_triggerPrice = this.TradingSymbolPrice;
-            S.ing_orderType = order_T_LMT;
-            S.ing_orderPrice = S.ing_orderPrice || S.ing_triggerPrice;
-            S.ing_boughtPrice = toSellOrderA[idx_confirmPrice];
-            S.ing_qty = -1 * toSellOrderA[idx_qty];
-            S.ing_orderStatus = order_pending;
+        S.ing_orderID           = toSellOrderA[idx_orderID].trim().replace('B', 'S')    ;
+        S.ing_orderTimestamp    = Date.now()                                            ;
+        S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp)      ;
+        S.ing_serial            = -1 * toSellOrderA[idx_serial]                         ;
+        S.ing_buysell           = CV.order_SELL             ;
+        S.ing_triggerPrice      = this.TradingSymbolPrice;
+        S.ing_orderType         = CV.order_T_LMT;
+        S.ing_orderPrice        = S.ing_orderPrice || S.ing_triggerPrice;
+        S.ing_boughtPrice       = toSellOrderA[idx_confirmPrice];
+        S.ing_qty               = -1 * toSellOrderA[idx_qty];
+        S.ing_orderStatus       = CV.order_pending;
 
-            const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.spreadsheetID);
-            // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
+        const returnS = await SendOrderToBroker(S, this.isReal, this.TradingSymbol, this.spreadsheetID);
+        // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
 
-            const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(returnS[v]) ? returnS[v] : (returnS[v] || NA));
+        const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(returnS[v]) ? returnS[v] : (returnS[v] || NA));
 
-            this.toUpdateRangeList.push({
-                range: ingOrderLine,
-                values: [new_ingOrderLineA]
-            });
+        this.toUpdateRangeList.push({
+            range: ingOrderLine,
+            values: [new_ingOrderLineA]
+        });
 
-            AddSetMessage(this.alertMessageSet, "New sell order, waiting confirmed");
+        AddSetMessage(this.alertMessageSet, "New sell order, waiting confirmed");
 
-            this.canBuy = false;
-            AddSetMessage(this.alertMessageSet, 'cant buy: just a new sellOrder sent');
+        this.canBuy = false;
+        AddSetMessage(this.alertMessageSet, 'cant buy: just a new sellOrder sent');
 
-            return true;
-        }
+        return true;
 
     },
 
@@ -952,7 +946,7 @@ const TradeBot = {
          * @returns false: 经判断不能买入, 没有信号发生
          */
         async ToBuy(ingOrderTitleA, ingOrderLine) {
-            if (!isStrictTrue(this.canBuy)) {return false}
+            if (!isStrictTrue(this.canBuy)) {return true}
 
             let toBuy = false ;
             const S = {};
@@ -1103,7 +1097,12 @@ export async function HandleTradeBot(tvData) {
     bot.ReNew()                                     ;
     console.log(bot.cLogHead + 'ReNew() success')   ;
 
+    const r_ToSell = await bot.ToSell();
+    if (isStrictString(r_ToSell)) { throw new Error('ToSell() 失败: \n' + r_ToSell) }
+    if (isStrictTrue(r_ToSell)) { console.log(bot.cLogHead + 'ToSell() success') }
 
-
+    const r_ToBuy = await bot.ToBuy();
+    if (isStrictString(r_ToBuy)) { throw new Error('ToBuy() 失败: \n' + r_ToBuy) }
+    if (isStrictTrue(r_ToBuy)) { console.log(bot.cLogHead + 'ToBuy() success') }
 
 }
