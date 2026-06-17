@@ -1,24 +1,16 @@
-import { createTransport } from 'nodemailer';
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
-import { google } from 'googleapis';
 
 import {
     GetTimeStringWithOffset     ,
     GetSpreadsheetID            ,
     CheckIfSheetExists          ,
-    SendSplitTGMessages         } from './utility.js';
+    SendTG,         
+    GetGS,
+    UpdateGS} from './utility.js';
 
-
-const TG_TOKEN      =   process.env.TG_TOKEN;
-const TG_CHAT_ID    =   process.env.TG_CHAT_ID;
 
 const FolderName = "tradingview";
-
-const auth = new google.auth.GoogleAuth({
-    scopes: ['https://www.googleapis.com/auth/spreadsheets']
-});
-const sheets = google.sheets({ version: 'v4', auth });
 
 const transporter = createTransport({
     service: 'gmail',
@@ -205,12 +197,10 @@ function convertToTextTable(rawContent) {
     return `<pre>${tableText}</pre>`; // 必须用 <pre> 标签包围
 }
 
-export async function HandleUnreadGmails(req, res) {
-    if (!res.writableEnded) res.status(200).send('ACK'); // 立即返回响应防止超时
+export async function HandleUnreadGmails() {
 
-    const SPREADSHEET_ID =  await GetSpreadsheetID("TradingBot_00", sheets);
+    const SPREADSHEET_ID =  await GetSpreadsheetID("TradingBot_00");
     const handledEmailsSheetTitle = "handledEmails";
-    // await CheckIfSheetExists(sheets, SPREADSHEET_ID, handledEmailsSheetTitle, true);
     let lock = null;
     let client = null;
 
@@ -255,11 +245,7 @@ export async function HandleUnreadGmails(req, res) {
         }
 
         // 优化：一次性获取已处理 ID 列表，转为 Set 提高查询效率
-        const handledEmails = await sheets.spreadsheets.values.get({
-            spreadsheetId: SPREADSHEET_ID,
-            range: `${handledEmailsSheetTitle}!A2:F`,
-        }); // handledEmails得到的是一个标准的JS对象吗
-        let handledEmailsData = handledEmails.data.values || [];
+        const handledEmailsData = await GetGS(SPREADSHEET_ID, `${handledEmailsSheetTitle}!A2:F`) ;
 
         const handledEmailsID = new Set(
             handledEmailsData
@@ -315,7 +301,7 @@ export async function HandleUnreadGmails(req, res) {
                 .replace(/<[^>]+>/g, ""); // 移除 HTML 标签（或保留基础的 <b> 等）
 
             // 1. 准备发送任务 (不带 IIFE，直接获取 Promise)
-            const sendTGTask = SendSplitTGMessages(TG_TOKEN, TG_CHAT_ID, subject, tgText);
+            const sendTGTask = SendTG(subject, tgText);
 
             let processedHtml = finalBody.replace(/<TBL>([\s\S]*?)<\/TBL>/gi, (match, content) => {
                 return makePrettyTable(content.trim());
@@ -364,23 +350,13 @@ export async function HandleUnreadGmails(req, res) {
             ]);
         }
 
-        if (handledEmailsData.length > 99) {
-            handledEmailsData.length = 99;
-        }
+        if (handledEmailsData.length > 99) { handledEmailsData.length = 99 }
         // 邮件状态更改，防止反复操作
         try {
-            await sheets.spreadsheets.values.update({
-                spreadsheetId: SPREADSHEET_ID,
-                range: `${handledEmailsSheetTitle}!A2`, // 从 A2 开始写入，保护 A1 表头
-                valueInputOption: 'USER_ENTERED',
-                requestBody: {
-                    values: handledEmailsData
-                }
-            });
+            await UpdateGS(SPREADSHEET_ID,`${handledEmailsSheetTitle}!A2`, handledEmailsData)
             console.log(`✔ 当前处理邮件${messages.length}封写入GoogleSheets "${handledEmailsSheetTitle}"成功`);
-        }
-        catch (sheetErr) {
-            console.error(`✘ 当前处理邮件${messages.length}封写入GoogleSheets "${handledEmailsSheetTitle}"失败: ` + sheetErr.message);
+        } catch (e) {
+            console.error(`✘ 当前处理邮件${messages.length}封写入GoogleSheets "${handledEmailsSheetTitle}"失败: ` + e.message);
         }
 
     } catch (err) {
