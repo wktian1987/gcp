@@ -13,14 +13,6 @@ import {
 
 const FolderName = "tradingview";
 
-const transporter = createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASS
-    }
-});
-
 // 同步 Pine Script 的 SwapChars
 function swapChars(src, idx1, idx2) {
     if (idx1 === idx2) return src;
