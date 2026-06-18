@@ -27,7 +27,7 @@ app.post('/tgBot', json(), async (req, res) => {
     } catch (e) {
         console.error({
             severity: "ERROR", // 强制涂红
-            message: "✘ HandleTgBot()处理失败: \n", e.message,
+            message: `✘ HandleTgBot()处理失败\n` + e.message
         });
     }
 }
@@ -40,7 +40,7 @@ app.post('/tradingview', json(), async (req, res) => {
         console.log("收到TradingView webhook Message, botGate: " + body.botGate);
         res.status(200).json({ status: 'success' });
     } else {
-        console.log("✘ 收到未校验的TradingView Webhook Message:" ); 
+        console.log("? 收到未校验的TradingView Webhook Message:" ); 
         // 虽然未验证的消息，但是仍然给发送者发送“我已经收到了”
         return res.status(200).json({ status: 'success' });
     }
@@ -53,7 +53,7 @@ app.post('/tradingview', json(), async (req, res) => {
         } catch (e) {
             console.error({
                 severity: "ERROR", // 强制涂红
-                message: `✘ ${body.botNumber}: HandleTradeBot()处理失败\n` + e.message,
+                message: `✘ ${body.botNumber}: HandleTradeBot()处理失败\n` + e.message
             });
         }
     }
@@ -66,7 +66,7 @@ app.post('/tradingview', json(), async (req, res) => {
         } catch (e) {
             console.error({
                 severity: "ERROR", // 强制涂红
-                message: `✘ HandleAllPrice()处理失败: \n` + e.message,
+                message: `✘ HandleAllPrice()处理失败: \n` + e.message
             });
         }
     }
@@ -81,7 +81,7 @@ app.post('/tradingview', json(), async (req, res) => {
     } catch (e) {
         console.error({
             severity: "ERROR", // 强制涂红
-            message: `✘ HandleUnreadGmails()处理失败: \n` + e.message,
+            message: `✘ HandleUnreadGmails()处理失败: \n` + e.message
         });
     }
 
