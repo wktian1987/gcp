@@ -297,7 +297,7 @@ export const TradeBot = {
             this.ingOrderTitleA         =  ingOrderTitleA       ;
             this.uncloseOrdersA2d       =  uncloseOrdersA2d     ;
             this.uncloseOrdersTitleA    =  uncloseOrdersTitleA  ;
-            this.tradeHistoryTitleA     =  uncloseOrdersTitleA  ;
+            this.tradeHistoryTitleA     =  tradeHistoryTitleA   ;
         } catch(e) { 
         // 这里的错误是非核心错误, 可以在释放两个锁后, 抛出错误退出
             let errMessage = e.message + '\n' ;
