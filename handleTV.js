@@ -1126,24 +1126,24 @@ export async function HandleTradeBot(tvData) {
     const bot = Object.create(TradeBot);
 
     const r_CreateBasicAttr = await bot.CreateBasicAttr(tvData);
-    if (isStrictString(r_CreateBasicAttr)) { throw new Error('CreateBasicAttr() 失败: \n' + r_CreateBasicAttr) }
-    if (isStrictTrue(r_CreateBasicAttr)) { console.log(bot.cLogHead + 'CreateBasicAttr() success') }
+    if (!r_CreateBasicAttr || isStrictString(r_CreateBasicAttr)) { throw new Error('CreateBasicAttr() 失败: \n' + r_CreateBasicAttr) }
+    // if (isStrictTrue(r_CreateBasicAttr)) { console.log(bot.cLogHead + 'CreateBasicAttr() success') }
 
     const r_Get_gsData = await bot.Get_gsData();
-    if (isStrictString(r_Get_gsData)) { throw new Error('Get_gsData() 失败: \n' + r_Get_gsData) }
-    if (isStrictTrue(r_Get_gsData)) { console.log(bot.cLogHead + 'Get_gsData() success') }
+    if (!r_Get_gsData || isStrictString(r_Get_gsData)) { throw new Error('Get_gsData() 失败: \n' + r_Get_gsData) }
+    // if (isStrictTrue(r_Get_gsData)) { console.log(bot.cLogHead + 'Get_gsData() success') }
 
     const r_ToCheckInitiate = await bot.ToCheckInitiate();
-    if (isStrictString(r_ToCheckInitiate)) { throw new Error('ToCheckInitiate() 失败: \n' + r_ToCheckInitiate) }
-    if (isStrictTrue(r_ToCheckInitiate)) { console.log(bot.cLogHead + 'ToCheckInitiate() success') }
+    if (!r_ToCheckInitiate || isStrictString(r_ToCheckInitiate)) { throw new Error('ToCheckInitiate() 失败: \n' + r_ToCheckInitiate) }
+    // if (isStrictTrue(r_ToCheckInitiate)) { console.log(bot.cLogHead + 'ToCheckInitiate() success') }
 
     const r_ToCheckFundFee = await bot.ToCheckFundFee();
-    if (isStrictString(r_ToCheckFundFee)) { throw new Error('ToCheckFundFee() 失败: \n' + r_ToCheckFundFee) }
-    if (isStrictTrue(r_ToCheckFundFee)) { console.log(bot.cLogHead + 'ToCheckFundFee() success') }
+    if (!r_ToCheckFundFee || isStrictString(r_ToCheckFundFee)) { throw new Error('ToCheckFundFee() 失败: \n' + r_ToCheckFundFee) }
+    // if (isStrictTrue(r_ToCheckFundFee)) { console.log(bot.cLogHead + 'ToCheckFundFee() success') }
 
     const r_ToCheckWaitingOrder = await bot.ToCheckWaitingOrder();
-    if (isStrictString(r_ToCheckWaitingOrder)) { throw new Error('ToCheckWaitingOrder() 失败: \n' + r_ToCheckWaitingOrder) }
-    if (isStrictTrue(r_ToCheckWaitingOrder)) { console.log(bot.cLogHead + 'ToCheckWaitingOrder() success') }
+    if (!r_ToCheckWaitingOrder || isStrictString(r_ToCheckWaitingOrder)) { throw new Error('ToCheckWaitingOrder() 失败: \n' + r_ToCheckWaitingOrder) }
+    // if (isStrictTrue(r_ToCheckWaitingOrder)) { console.log(bot.cLogHead + 'ToCheckWaitingOrder() success') }
 
     // 将 mainData 和 tvData 写入到this大对象中
     // 必须先写入mainData, 再写入tvData
@@ -1156,16 +1156,16 @@ export async function HandleTradeBot(tvData) {
     console.log(bot.cLogHead + 'ReNew() success')   ;
 
     const r_ToSell = await bot.ToSell();
-    if (isStrictString(r_ToSell)) { throw new Error('ToSell() 失败: \n' + r_ToSell) }
-    if (isStrictTrue(r_ToSell)) { console.log(bot.cLogHead + 'ToSell() success') }
+    if (!r_ToSell || isStrictString(r_ToSell)) { throw new Error('ToSell() 失败: \n' + r_ToSell) }
+    // if (isStrictTrue(r_ToSell)) { console.log(bot.cLogHead + 'ToSell() success') }
 
     const r_ToBuy = await bot.ToBuy();
-    if (isStrictString(r_ToBuy)) { throw new Error('ToBuy() 失败: \n' + r_ToBuy) }
-    if (isStrictTrue(r_ToBuy)) { console.log(bot.cLogHead + 'ToBuy() success') }
+    if (!r_ToBuy || isStrictString(r_ToBuy)) { throw new Error('ToBuy() 失败: \n' + r_ToBuy) }
+    // if (isStrictTrue(r_ToBuy)) { console.log(bot.cLogHead + 'ToBuy() success') }
 
     const r_WriteToGS = await bot.WriteToGS();
-    if (isStrictString(r_WriteToGS)) { throw new Error('WriteToGS() 失败: \n' + r_WriteToGS) }
-    if (isStrictTrue(r_WriteToGS)) { console.log(bot.cLogHead + 'WriteToGS() success') }
+    if (!r_WriteToGS || isStrictString(r_WriteToGS)) { throw new Error('WriteToGS() 失败: \n' + r_WriteToGS) }
+    // if (isStrictTrue(r_WriteToGS)) { console.log(bot.cLogHead + 'WriteToGS() success') }
 
     const task_SendToTG    = bot.SendToTG()     ;
     const task_SendToEmail = bot.SendToEmail()  ;
@@ -1176,31 +1176,31 @@ export async function HandleTradeBot(tvData) {
     let resultMessage_TG_Email      = ''       ;
     handleResults.forEach((result, index) => {
         if (result.status === "fulfilled") {
-            resultMessage_TG_Email += (index === 0 ? "发送TG" : "发送Email") + '成功';
+            resultMessage_TG_Email += (index === 0 ? "发送TG" : "发送Email") + '成功 ';
         }
         if (result.status !== "fulfilled") {
             thereTaskErr_TG_Email = true;
-            resultMessage_TG_Email += (index === 0 ? "发送TG" : "发送Email") + '失败';
+            resultMessage_TG_Email += (index === 0 ? "发送TG" : "发送Email") + '失败 ';
         }
     });
 
-    console.log(bot.cLogHead + resultMessage_TG_Email) ;
+    console.log(bot.cLogHead + resultMessage_TG_Email.trim()) ;
 
     const r_ReleaseLockOfGS = await bot.ReleaseLockOfGS();
-    if (isStrictString(r_ReleaseLockOfGS)) { 
+    if (!r_ReleaseLockOfGS || isStrictString(r_ReleaseLockOfGS)) { 
         // 无法为GS解锁, 是严重错误, 需要手动解锁
         bot.AddRunningWellMessage('程序运行到最后, 无法为GS解锁, 是严重错误, 需要手动解锁: \n' + r_ReleaseLockOfGS) ;
         throw new Error('ReleaseLockOfGS() 失败: \n' + r_ReleaseLockOfGS)  ;
     }
-    if (isStrictTrue(r_ReleaseLockOfGS)) { console.log(bot.cLogHead + 'ReleaseLockOfGS() success') }
+    // if (isStrictTrue(r_ReleaseLockOfGS)) { console.log(bot.cLogHead + 'ReleaseLockOfGS() success') }
 
     const r_ReleaseTradeBotLOCK = await bot.ReleaseTradeBotLOCK();
-    if (isStrictString(r_ReleaseTradeBotLOCK)) { 
+    if (!r_ReleaseTradeBotLOCK || isStrictString(r_ReleaseTradeBotLOCK)) { 
         // 无法为GS解锁, 是严重错误, 需要手动解锁
         bot.AddRunningWellMessage('程序运行到最后, 无法为TradeBot解锁, 是严重错误, 需要手动解锁: \n' + r_ReleaseTradeBotLOCK) ;
         throw new Error('ReleaseTradeBotLOCK() 失败: \n' + r_ReleaseTradeBotLOCK)  ;
     }
-    if (isStrictTrue(r_ReleaseTradeBotLOCK)) { console.log(bot.cLogHead + 'ReleaseTradeBotLOCK() success') }
+    // if (isStrictTrue(r_ReleaseTradeBotLOCK)) { console.log(bot.cLogHead + 'ReleaseTradeBotLOCK() success') }
 
 
     if (thereTaskErr_TG_Email) {throw new Error(resultMessage_TG_Email)}
