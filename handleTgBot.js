@@ -73,9 +73,9 @@ export async function HandleTgBot(msg) {
             if (isStrictNumber(TradeBot[LockTimeName]) && Date.now() - TradeBot[LockTimeName] >= 5 * 60 *1000) {
                 TradeBot[tgResetName] = true ;
                 resetMessage = AddMessage(resetMessage, '属性RESET前全局中的值为:') ;
-                resetMessage = AddMessage(resetMessage, '_lockTime: \n' + TradeBot[LockTimeName] + '\n' + GetTimeStringWithOffset(8, TradeBot[LockTimeName])) ;
-                resetMessage = AddMessage(resetMessage, '_runningWell: \n' + StrFromSetMessage(TradeBot[RunningWellName])) ;
-                resetMessage = AddMessage(resetMessage, '_spreadsheetID: \n' + TradeBot[SpreadsheetIDName]) ;
+                resetMessage = AddMessage(resetMessage, 'lockTime: \n' + TradeBot[LockTimeName] + '\n' + GetTimeStringWithOffset(8, TradeBot[LockTimeName])) ;
+                resetMessage = AddMessage(resetMessage, 'runningWell: \n' + StrFromSetMessage(TradeBot[RunningWellName])) ;
+                resetMessage = AddMessage(resetMessage, 'spreadsheetID: \n' + TradeBot[SpreadsheetIDName]) ;
                 resetMessage = AddMessage(resetMessage, 'RESET信号已创建, 等待TradeBot接收');
             }
 

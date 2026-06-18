@@ -237,11 +237,11 @@ export const TradeBot = {
             while (attempt <= MAX_Attempts) {
                 // 之所以用try是为了最大可能尝试解锁, 而不是仅仅报错
                 try {
-                    await UpdateGS(this.spreadsheetID, toGCPData.lockRange, [[noLOCK]]);
+                    await UpdateGS(this.spreadsheetID, toGCPData.lockRange, [[CV.noLOCK]]);
                     await Sleep(100);
                     // 验证是否真正安全归还
                     const lockNameAfterAttempt = await this.CheckLockFromGS();
-                    if (lockNameAfterAttempt === noLOCK) {
+                    if (lockNameAfterAttempt === CV.noLOCK) {
                         console.log(`第${attempt}次解锁成功`)
                         return true;
                     }
@@ -286,9 +286,9 @@ export const TradeBot = {
 
             const uncloseOrdersA2d      = isStrictTrue(mainData.therePosition) ? (valuesArray[1]).map(lines => CleanArrayToNumStrBool(lines)) : [] ;
 
-            const ingOrderLineA         = mainData.ing_orderStatus === order_waiting ? CleanArrayToNumStrBool(valuesArray[2][0]) : [] ;
+            const ingOrderLineA         = mainData.ing_orderStatus === CV.order_waiting ? CleanArrayToNumStrBool(valuesArray[2][0]) : [] ;
             const ingOrderTitleA        = CleanArrayToNumStrBool(valuesArray[5][0]) ;
-            const ingOrderData          = mainData.ing_orderStatus === order_waiting ? A2LinesToCleanObj([ingOrderTitleA, ingOrderLineA]) : null ;
+            const ingOrderData          = mainData.ing_orderStatus === CV.order_waiting ? A2LinesToCleanObj([ingOrderTitleA, ingOrderLineA]) : null ;
 
             const uncloseOrdersTitleA   = CleanArrayToNumStrBool(valuesArray[4][0]) ;
 
@@ -434,7 +434,7 @@ export const TradeBot = {
 
             await CheckFundFee(fund);
 
-            const newFundHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(fund[v]) ? fund[v] : (fund[v] || NA));
+            const newFundHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(fund[v]) ? fund[v] : (fund[v] || CV.NA));
 
             await AppendGS(this.spreadsheetID, tradeHistoryRange, [newFundHistoryA]);
 
@@ -514,7 +514,7 @@ export const TradeBot = {
             if (ingOrderData.ing_orderStatus === CV.order_confirm ) {
 
                 if (ingOrderData.ing_buysell === CV.order_BUY) {
-                    const newUncloseOrderLine = uncloseOrdersTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || NA));
+                    const newUncloseOrderLine = uncloseOrdersTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || CV.NA));
                     uncloseOrdersA2d.push(newUncloseOrderLine);
                 }
                 if (ingOrderData.ing_buysell === CV.order_SELL) {
@@ -544,7 +544,7 @@ export const TradeBot = {
                 w_toClearRangeSet.add(toGCPData.ingOrderLine);
                 w_toClearRangeSet.add(toGCPData.uncloseOrdersRange);
 
-                const newTradeHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || NA));
+                const newTradeHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || CV.NA));
                 w_toAppendTradeHistory.toAppend     = true;
                 w_toAppendTradeHistory.range        = toGCPData.tradeHistoryRange;
                 w_toAppendTradeHistory.values       = [newTradeHistoryA];
@@ -559,14 +559,14 @@ export const TradeBot = {
             }
 
             if (ingOrderData.ing_orderStatus === CV.order_partial && ingOrderData.ing_partial - ingOrderData.lst_partial> 0.1 ) {
-                const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(ingOrderData[v]) ? ingOrderData[v] : ingOrderData[v] || NA);
+                const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(ingOrderData[v]) ? ingOrderData[v] : ingOrderData[v] || CV.NA);
                 w_toUpdateRangeList.push({ range: toGCPData.ingOrderLine, values: [new_ingOrderLineA] });
-                AddSetMessage(this.alertMessageSet, (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order more partial confirmed");
+                AddSetMessage(this.alertMessageSet, (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + "Order more partial confirmed");
             }
 
-            if (ingOrderData.ing_orderStatus === order_cancel) {
+            if (ingOrderData.ing_orderStatus === CV.order_cancel) {
                 w_toClearRangeSet.add(toGCPData.ingOrderLine);
-                AddSetMessage(this.alertMessageSet, (ingOrderData.ing_buysell === order_BUY ? "buy" : "sell") + "Order canceled");
+                AddSetMessage(this.alertMessageSet, (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + "Order canceled");
             }
 
             await BatchClearGS(this.spreadsheetID, Array.from(w_toClearRangeSet));
@@ -707,9 +707,9 @@ export const TradeBot = {
      * 除了修改的数据之外, 认为这些数据是绝对正确的
      */
     ReNew() {
-        this.openProfit     = isStrictTrue(this.therePosition) ? this.allPosition * (this.TradingSymbolPrice - this.avgBuyPrice) : NA       ;
+        this.openProfit     = isStrictTrue(this.therePosition) ? this.allPosition * (this.TradingSymbolPrice - this.avgBuyPrice) : CV.NA       ;
         this.allProfit      = ToStrictNumber(this.netProfit, 0) + ToStrictNumber(this.openProfit, 0)                                        ;
-        this.usedMargin     = isStrictTrue(this.therePosition) ? this.allPosition * this.TradingSymbolPrice / this.leverage : NA            ;
+        this.usedMargin     = isStrictTrue(this.therePosition) ? this.allPosition * this.TradingSymbolPrice / this.leverage : CV.NA            ;
         this.crtFund        = this.inFund + ToStrictNumber(this.netProfit, 0) + ToStrictNumber(this.openProfit, 0)                          ;
         this.crtCoin        = this.inCoin                                                                                                   ;
         this.freeMargin     = this.crtFund + this.crtCoin * this.BaseCoinPrice * this.BaseCoinHairCut - ToStrictNumber(this.usedMargin, 0)  ;
@@ -744,11 +744,11 @@ export const TradeBot = {
 
 
         [this.liquidatePrice, this.stopPriceC, this.stopPriceF] = this.GetLiquidateStopPrice();
-        this.liquidatePrice = isStrictTrue(this.therePosition) ? this.liquidatePrice : NA ;
-        this.stopPriceC     = isStrictTrue(this.therePosition) ? this.stopPriceC     : NA ;
-        this.stopPriceF     = isStrictTrue(this.therePosition) ? this.stopPriceF     : NA ;
+        this.liquidatePrice = isStrictTrue(this.therePosition) ? this.liquidatePrice : CV.NA ;
+        this.stopPriceC     = isStrictTrue(this.therePosition) ? this.stopPriceC     : CV.NA ;
+        this.stopPriceF     = isStrictTrue(this.therePosition) ? this.stopPriceF     : CV.NA ;
 
-        this.ifOrderWaiting = this.ing_orderStatus === order_waiting;
+        this.ifOrderWaiting = this.ing_orderStatus === CV.order_waiting;
 
 
         // 账户状态判断
@@ -900,60 +900,71 @@ export const TradeBot = {
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.lowBuySerialUnclose));
                 S.ing_orderPrice = this.lstRcdTargetHgh;
+                S.ing_orderType  = CV.order_T_LMT ;
                 S.ing_reason = 'touchTargetHgh';
             }
             // mustSellProfitStep
             if ((this.TradingSymbolPrice > Math.pow((1 + this.waveUpChg), this.mustSellProfitStep) * Math.max(this.lowBuyPriceUnclose, this.avgBuyPriceUnclose))) {
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.lowBuySerialUnclose));
+                S.ing_orderPrice = this.TradingSymbolPrice ;
+                S.ing_orderType  = CV.order_T_LMT ;
                 S.ing_reason = 'must sell Profit';
             }
             // cut too high buy order
             if ((this.hghBuyPriceUnclose / this.TradingSymbolPrice > this.roundHgh / this.roundLow) && (this.hghBuyPriceUnclose > (1 + this.waveUpChg) * this.TradingSymbolPrice)) {
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
+                S.ing_orderPrice = 0;
+                S.ing_orderType = CV.order_T_MKT; 
                 S.ing_reason = 'cut too hgh buy order';
             }
             // cut due to stopC
             if (this.TradingSymbolPrice < this.stopPriceC) {
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
+                S.ing_orderPrice = 0;
+                S.ing_orderType = CV.order_T_MKT; 
                 S.ing_reason = 'cut due to stopC';
             }
             // cut due to stopF
             if (this.TradingSymbolPrice < this.stopPriceF) {
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
+                S.ing_orderPrice = 0;
+                S.ing_orderType = CV.order_T_MKT; 
                 S.ing_reason = 'cut due to stopF';
             }
             // cut to prevent liquidate
             if (this.TradingSymbolPrice < (1 + this.mustSellToPreventLiq / 100) * this.liquidatePrice) {
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
+                S.ing_orderPrice = 0;
+                S.ing_orderType = CV.order_T_MKT; 
                 S.ing_reason = 'cut to prevent liquidate';
             }
 
             if (isStrictFalse(toSell)) { return true }
 
-            S.ing_orderID           = toSellOrderA[idx_orderID].trim().replace('B', 'S')    ;
-            S.ing_orderTimestamp    = Date.now()                                            ;
-            S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp)      ;
-            S.ing_serial            = -1 * toSellOrderA[idx_serial]                         ;
-            S.ing_buysell           = CV.order_SELL                                         ;
-            S.ing_triggerPrice      = this.TradingSymbolPrice                               ;
-            S.ing_orderType         = CV.order_T_LMT                                        ;
-            S.ing_orderPrice        = S.ing_orderPrice || S.ing_triggerPrice                ;
-            S.ing_boughtPrice       = toSellOrderA[idx_confirmPrice]                        ;
-            S.ing_qty               = -1 * toSellOrderA[idx_qty]                            ;
-            S.ing_orderStatus       = CV.order_pending                                      ;
-            S.isReal                = this.isReal                                           ;
-            S.TradingSymbol         = this.TradingSymbol                                    ;
-            S.spreadsheetID         = this.spreadsheetID                                    ;
+            S.ing_orderID           = toSellOrderA[idx_orderID].trim().replace('B', 'S')                        ;
+            S.ing_orderTimestamp    = Date.now()                                                                ;
+            S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp)                          ;
+            S.ing_serial            = -1 * toSellOrderA[idx_serial]                                             ;
+            S.ing_buysell           = CV.order_SELL                                                             ;
+            S.ing_triggerPrice      = this.TradingSymbolPrice                                                   ;
+            S.ing_orderType         = S.ing_orderType  || CV.order_T_LMT                                        ;
+            S.ing_orderPrice        = isStrictNumber(S.ing_orderPrice) ? S.ing_orderPrice : S.ing_triggerPrice  ;
+            S.ing_boughtPrice       = toSellOrderA[idx_confirmPrice]                                            ;
+            S.ing_qty               = -1 * toSellOrderA[idx_qty]                                                ;
+            S.ing_orderStatus       = CV.order_pending                                                          ;
+            S.isReal                = this.isReal                                                               ;
+            S.TradingSymbol         = this.TradingSymbol                                                        ;
+            S.spreadsheetID         = this.spreadsheetID                                                        ;
 
             await SendOrderToBroker(S);
             // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
 
-            const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(S[v]) ? S[v] : (S[v] || NA));
+            const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(S[v]) ? S[v] : (S[v] || CV.NA));
 
             this.toUpdateRangeList.push({
                 range: ingOrderLine,
@@ -994,6 +1005,7 @@ export const TradeBot = {
             if (isStrictTrue(this.markTouchTargetLow)) {
                 toBuy = true;
                 S.ing_orderPrice = this.lstRcdTargetLow;
+                S.ing_orderType = CV.order_T_LMT;
                 S.ing_reason = 'touchTargetLow';
             }
 
@@ -1005,8 +1017,8 @@ export const TradeBot = {
             S.ing_serial            = ToStrictNumber(this.lstBuySerial, 0) + 1                                                                                                                      ;
             S.ing_buysell           = CV.order_BUY                                                                                                                                                  ;
             S.ing_triggerPrice      = this.TradingSymbolPrice                                                                                                                                       ;
-            S.ing_orderType         = CV.order_T_LMT                                                                                                                                                ;
-            S.ing_orderPrice        = S.ing_orderPrice || S.ing_triggerPrice                                                                                                                        ;
+            S.ing_orderType         = S.ing_orderType || CV.order_T_LMT                                                                                                                             ;
+            S.ing_orderPrice        = isStrictNumber(S.ing_orderPrice) ? S.ing_orderPrice : S.ing_triggerPrice                                                                                      ;
             S.ing_qty               = this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin * this.leverage / S.ing_orderPrice / this.minEnExPosition / (this.MaxGrid - this.gridNum)))     ;
             S.ing_orderStatus       = CV.order_pending                                                                                                                                              ;
             S.isReal                = this.isReal                                                                                                                                                   ;
@@ -1016,7 +1028,7 @@ export const TradeBot = {
             await SendOrderToBroker(S);
             // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
 
-            const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(S[v]) ? S[v] : (S[v] || NA));
+            const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(S[v]) ? S[v] : (S[v] || CV.NA));
 
             this.toUpdateRangeList.push({
                 range: ingOrderLine,
