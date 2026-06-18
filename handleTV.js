@@ -109,7 +109,7 @@ export const TradeBot = {
 
         if (TradeBot[this.LockTimeName] > this.LockTime) {return '当前正在处理更新的信号, 本信号丢弃' }
         // 正常情况下一个信号运行绝对不会超过5分钟; 一旦发生这种情况, 肯定是发生了不可挽回的错误, 直接抛错退出当前信号处理就可以了
-        if (Date.now() - TradeBot[this.LockTimeName] > 5 * 60 * 1000) {return '上一个信号长时间未解锁, 肯定遇到了无法挽回的错误, 但错误未被记录, 本信号不再处理, 需手动检查' }
+        if (isStrictNumber(TradeBot[this.LockTimeName]) && Date.now() - TradeBot[this.LockTimeName] > 5 * 60 * 1000) {return '上一个信号长时间未解锁, 肯定遇到了无法挽回的错误, 但错误未被记录, 本信号不再处理, 需手动检查' }
         // 如果现在有锁的话, 等待当前正在处理的信号完成, 当信号已经过去60s后, 不再处理
         while (TradeBot[this.LockTimeName] !== null && Date.now() - this.LockTime < 60 * 1000) { await Sleep(1000) }
         // 已经超过60s, 或者大锁被释放
