@@ -86,25 +86,27 @@ export const TradeBot = {
         this.toClearRangeSet    =  new Set()                    ;
         this.alertMessageSet    =  new Set()                    ;
         AddSetMessage(this.alertMessageSet, tvData.thisAlertMessage) ;
+
+        this.tgResetName        =  tvData.botNumber + '_tgReset'        ; // 全局中的归零信号名
         this.LockTimeName       =  tvData.botNumber + '_lockTime'       ; // 全局中的锁名
         this.RunningWellName    =  tvData.botNumber + '_runningWell'    ; // 全局中的出错名
         this.SpreadsheetIDName  =  tvData.botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID, 避免每次重新读取
-        // 可以通过TV信号来重置全局锁 和 报错信息
-        if (isStrictTrue(tvData.RESET)) { 
-            delete TradeBot[this.LockTimeName       ]   ;
-            delete TradeBot[this.RunningWellName    ]   ;
-            delete TradeBot[this.SpreadsheetIDName  ]   ;
+        if (!Object.hasOwn(TradeBot, this.tgResetName       )) { TradeBot[this.tgResetName      ] = false       } // 在全局中设置归零信号
+        if (!Object.hasOwn(TradeBot, this.LockTimeName      )) { TradeBot[this.LockTimeName     ] = null        } // 在全局中设锁
+        if (!Object.hasOwn(TradeBot, this.RunningWellName   )) { TradeBot[this.RunningWellName  ] = new Set()   } // 在全局中设runningWell
+        if (!Object.hasOwn(TradeBot, this.SpreadsheetIDName )) { TradeBot[this.SpreadsheetIDName] = null        } // 在全局中设置spreadsheetID
+
+        // 可以通过TG-RESET信号来重置全局锁 和 报错信息
+        if (isStrictTrue(TradeBot[this.tgResetName])) { 
+                TradeBot[this.tgResetName      ] = false       ;
+                TradeBot[this.LockTimeName     ] = null        ;
+                TradeBot[this.RunningWellName  ] = new Set()   ;
+                TradeBot[this.SpreadsheetIDName] = null        ;
         }
-        // 也可以通过tgbot发来信号来reset 
-        // 相关代码在HandleTgBot中
 
-        // 在全局中设runningWell
-        if (!Object.hasOwn(TradeBot, this.RunningWellName)) {TradeBot[this.RunningWellName] = new Set() }
         // 在全局中有报错的话, 直接退出
-        if (!this.isRunningWell()) {return '发现之前的运行中有错误, 本次信号没必要再处理, 提前退出, 以前的错误为: ' + StrFromSetMessage(TradeBot[this.RunningWellName]) }
+        if (!this.isRunningWell()) {return '发现之前的运行中有错误, 本次信号没必要再处理, 提前退出, 以前的错误为: \n' + StrFromSetMessage(TradeBot[this.RunningWellName]) }
 
-        // 在全局中设锁
-        if (!Object.hasOwn(TradeBot, this.LockTimeName) || TradeBot[this.LockTimeName] === null) { TradeBot[this.LockTimeName] = this.LockTime }
         if (TradeBot[this.LockTimeName] > this.LockTime) {return '当前正在处理更新的信号, 本信号丢弃' }
         // 正常情况下一个信号运行绝对不会超过5分钟; 一旦发生这种情况, 肯定是发生了不可挽回的错误, 直接抛错退出当前信号处理就可以了
         if (Date.now() - TradeBot[this.LockTimeName] > 5 * 60 * 1000) {return '上一个信号长时间未解锁, 肯定遇到了无法挽回的错误, 但错误未被记录, 本信号不再处理, 需手动检查' }
@@ -117,7 +119,7 @@ export const TradeBot = {
         // 至此, 已经在大TradeBot对象中, 给当前botNumber上锁, 其他botNumber几乎不可能再抢占到 大TradeBot锁
         // 在GS中上锁前, 会再次检查 大TradeBot 中的锁, 确保万无一失
 
-        if (!Object.hasOwn(TradeBot, this.SpreadsheetIDName)) {
+        if (TradeBot[this.SpreadsheetIDName] === null) {
             try {
                 TradeBot[this.SpreadsheetIDName] = await GetSpreadsheetID(tvData.botNumber);
             } catch (e) {
@@ -127,7 +129,7 @@ export const TradeBot = {
                 return '获取spreadsheetID失败: \n' + errMessage.trim() ;
             }
         }
-        if (Object.hasOwn(TradeBot, this.SpreadsheetIDName)) {this.spreadsheetID = TradeBot[this.SpreadsheetIDName] }
+        if (isStrictString(TradeBot[this.SpreadsheetIDName])) {this.spreadsheetID = TradeBot[this.SpreadsheetIDName] }
 
         // 开始设GS锁
         // 只要进入这一步,说明抢到了 大TradeBot 锁
@@ -319,6 +321,8 @@ export const TradeBot = {
      */
     async ToCheckInitiate() {
         try {
+            if (this.mainData.TradingSymbol !== this.tvData.TradingSymbol ) { throw new Error ('GS和TV中的TradingSymbol不符')}
+                
             if (isStrictTrue(this.mainData.initiated)) {return true}
 
             // 初始化时间不能在GS中预设的交易开始时间之后

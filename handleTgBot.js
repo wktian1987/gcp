@@ -45,27 +45,37 @@ export async function HandleTgBot(msg) {
     }
 
     if (text.toUpperCase().includes('RESET')) {
-        let resetMessage = '' ;
+        const tgResetName        =  botNumber + '_tgReset'        ; // 全局中的RESET名
         const LockTimeName       =  botNumber + '_lockTime'       ; // 全局中的锁名
         const RunningWellName    =  botNumber + '_runningWell'    ; // 全局中的出错名
-        const SpreadsheetIDName  =  botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID, 避免每次重新读取
+        const SpreadsheetIDName  =  botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID
 
-        if (Date.now() - TradeBot[LockTimeName] < 5 * 60 *1000) {
-            resetMessage = AddMessage(resetMessage, '当前机器人正在运行, 或者未超时, 请等待5分钟后再解锁') ;
-            resetMessage = AddMessage(resetMessage, '_runningWell: \n' + StrFromSetMessage(TradeBot[RunningWellName])) ;
-        } else {
-            resetMessage = AddMessage(resetMessage, '属性删除前的值为:') ;
-            resetMessage = AddMessage(resetMessage, '_lockTime: \n' + TradeBot[LockTimeName] + '\n' + GetTimeStringWithOffset(8, TradeBot[LockTimeName])) ;
-            resetMessage = AddMessage(resetMessage, '_runningWell: \n' + StrFromSetMessage(TradeBot[RunningWellName])) ;
-            resetMessage = AddMessage(resetMessage, '_spreadsheetID: \n' + TradeBot[SpreadsheetIDName]) ;
-            delete TradeBot[LockTimeName       ]   ;
-            delete TradeBot[RunningWellName    ]   ;
-            delete TradeBot[SpreadsheetIDName  ]   ;
-            resetMessage = AddMessage(resetMessage, '属性删除成功');
+        let resetMessage = '' ;
+
+        if (!Object.hasOwn(TradeBot, tgResetName)) {
+            resetMessage = `${botNumber}机器人还未创建, 没必要RESET` ;
+            await SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id) ;
+        } 
+
+        if (Object.hasOwn(TradeBot, tgResetName) && TradeBot[tgResetName] === true) {
+            resetMessage = `${botNumber} RESET已设, 但TradeBot还未接收, 没必要重设` ;
+            await SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id) ;
         }
+        
+        if (Object.hasOwn(TradeBot, tgResetName) && TradeBot[tgResetName] === fasle) {
+            if (Date.now() - TradeBot[LockTimeName] < 5 * 60 *1000) {
+                resetMessage = AddMessage(resetMessage, '当前机器人正在运行, 或者未超时, 请等待5分钟后再解锁') ;
+            } else {
+                TradeBot[tgResetName] = true ;
+                resetMessage = AddMessage(resetMessage, '属性RESET前全局中的值为:') ;
+                resetMessage = AddMessage(resetMessage, '_lockTime: \n' + TradeBot[LockTimeName] + '\n' + GetTimeStringWithOffset(8, TradeBot[LockTimeName])) ;
+                resetMessage = AddMessage(resetMessage, '_runningWell: \n' + StrFromSetMessage(TradeBot[RunningWellName])) ;
+                resetMessage = AddMessage(resetMessage, '_spreadsheetID: \n' + TradeBot[SpreadsheetIDName]) ;
+                resetMessage = AddMessage(resetMessage, 'RESET信号已创建, 等待TradeBot接收');
+            }
 
-        await SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id) ;
-
+            await SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id) ;
+        }
     }
 
     const spreadsheetID = await GetSpreadsheetID(botNumber);
