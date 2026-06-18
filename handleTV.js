@@ -222,7 +222,7 @@ export const TradeBot = {
     async ReleaseLockOfGS(MAX_Attempts = 99, NotGotLockValueTo = 'NotGotLockValue') {
         try {
             // 再次确权, 验证要加的锁, 是否与TradeBot中的锁相同
-            if (TradeBot[this.LockTimeName] !== this.LockTime) { return 'TradeBot存放的LockTime与当前写入的不符' }
+            if (TradeBot[this.LockTimeName] !== this.LockTime) { throw new Error('TradeBot存放的LockTime与当前写入的不符') }
 
             // 确权拦截：先看自己现在还有没有解锁的权力（防止自己超时被别人强刷后，误把别人的锁给解了）
             // 这种情况一旦发生, 说明运行有了问题, 需要处理
@@ -231,7 +231,7 @@ export const TradeBot = {
             if (currentLock === CV.noLOCK) { return true } // 因为会多次尝试解锁, 所以可以先判断是否锁已被解
 
             const hasRight = currentLock === this.lockName;
-            if (isStrictFalse(hasRight)) { return '当前锁状态出错, 并不是正在处理轮的锁, 出现系统错误' }
+            if (isStrictFalse(hasRight)) { throw new Error ('当前锁状态出错, 并不是正在处理轮的锁, 出现系统错误') }
 
             let attempt = 1;
             while (attempt <= MAX_Attempts) {
@@ -249,11 +249,11 @@ export const TradeBot = {
                 attempt += 1;
                 await Sleep(1000);
             }
-            return `经过${MAX_Attempts}次尝试, 仍无法解锁` ;
+            throw new Error(`经过${MAX_Attempts}次尝试, 仍无法解锁`) ;
         } catch (e) {
-            let errMessage = e.message;
-            this.AddRunningWellMessage(errMessage);
-            return errMessage ;
+            // 这是核心错误, 需要写入TradeBot runningwell
+            this.AddRunningWellMessage(e.message);
+            return e.message ;
         }
     } ,
 
