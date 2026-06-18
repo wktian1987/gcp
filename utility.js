@@ -259,29 +259,6 @@ export function CleanArrayToNumStrBool(a, notAvailableValueTo) {
 }
 
 /**
- * 将时间戳转换为特定格式: 260423:140155.126
- * @param {number} offsetHours - 例如 东8区，填写8
- * @param {number} timestamp - 毫秒级时间戳
- */
-export function GetTimeStringWithOffset(offsetHours, timestamp) {
-    const dateTs = timestamp > 0 ? timestamp : Date.now();
-    // 加上偏移量后，必须使用 UTC 方法提取，以屏蔽服务器本地时区干扰
-    const date = new Date(dateTs + offsetHours * 3600000);
-
-    const yy = String(date.getUTCFullYear()).slice(-2);
-    const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const dd = String(date.getUTCDate()).padStart(2, '0');
-
-    const hh = String(date.getUTCHours()).padStart(2, '0');
-    const min = String(date.getUTCMinutes()).padStart(2, '0');
-    const ss = String(date.getUTCSeconds()).padStart(2, '0');
-
-    const ms = String(date.getUTCMilliseconds()).padStart(3, '0');
-
-    return `${yy}${mm}${dd}:${hh}${min}${ss}.${ms}`;
-}
-
-/**
  * 将二维数组转换为对齐的表格字符串
  * @param {Array<Array>} matrix - 输入的二维数组
  * @param {number} padding - 列之间的额外空格距离
@@ -727,4 +704,36 @@ export class ResultWithErrMessage {
     AddResult(result) {this.result = result}
     AddErrMessage(errMessage) { this.errMessage = AddMessage(this.errMessage, ToStrictString(errMessage, 'unkownErr')) }
     noError() {return !isStrictString(this.errMessage) }
+}
+
+/**
+ * 将时间戳转换为特定格式: 260423:140155.126
+ * @param {number} offsetHours - 例如 东8区，填写8
+ * @param {number} timestamp - 毫秒级时间戳
+ */
+export function GetTimeStringWithOffset(offsetHours, timestamp) {
+    const dateTs = timestamp > 0 ? timestamp : Date.now();
+    // 加上偏移量后，必须使用 UTC 方法提取，以屏蔽服务器本地时区干扰
+    const date = new Date(dateTs + offsetHours * 3600000);
+
+    const yy = String(date.getUTCFullYear()).slice(-2);
+    const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(date.getUTCDate()).padStart(2, '0');
+
+    const hh = String(date.getUTCHours()).padStart(2, '0');
+    const min = String(date.getUTCMinutes()).padStart(2, '0');
+    const ss = String(date.getUTCSeconds()).padStart(2, '0');
+
+    const ms = String(date.getUTCMilliseconds()).padStart(3, '0');
+
+    return `${yy}${mm}${dd}:${hh}${min}${ss}.${ms}`;
+}
+
+export class DATETIME {
+    constructor(timestamp) {
+        if (timestamp && !isStrictNumber(timestamp)) { throw new Error('input param to DATETIME is not right') }
+        this.timestamp = isStrictNumber(timestamp) ? timestamp : Date.now();
+    }
+    TimeStringWithOffset(offsetHours) { return GetTimeStringWithOffset(offsetHours, this.timestamp) }
+    HowLongToNOW() {return Math.max(0, Date.now() - this.timestamp)}
 }
