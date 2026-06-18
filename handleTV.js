@@ -525,24 +525,17 @@ export const TradeBot = {
                     const index_qty             =  uncloseOrdersTitleA.indexOf('qty')           ;
                     const index_pXq             =  uncloseOrdersTitleA.indexOf('pXq')           ;
 
-                    // 卖单部分成交的情况, 相对比较复杂
                     const thisSellSerial = -1 * ingOrderData.ing_serial;
-                    let indexOfBoughtOrder = -1 ;
-                    uncloseOrdersA2d.forEach((orderA, indexA) => {
-                        if (Math.abs(orderA[index_serial] - thisSellSerial) < 0.1) { indexOfBoughtOrder = indexA }
-                    });
+                    const indexOfBoughtOrder = uncloseOrdersA2d.findIndex(orderA => Math.abs(orderA[index_serial] - thisSellSerial) < 0.1);
                     if (indexOfBoughtOrder < 0) {throw new Error('无法在未成交买单中找到对应的现在的卖单')}
                     if (isStrictNumber(ingOrderData.ing_isPartial) && ingOrderData.ing_isPartial < 1) {
-
+                        // 卖单部分成交的情况, 相对比较复杂
                         const theBoughtOrder = uncloseOrdersA2d[indexOfBoughtOrder] ;
                         theBoughtOrder[index_orderID]   =  'PB-' + GetTimeStringWithOffset(8, this.timestamp)               ;
                         theBoughtOrder[index_qty]       =  (1-ingOrderData.ing_isPartial) * theBoughtOrder[index_qty]       ;
                         theBoughtOrder[index_pXq]       =  theBoughtOrder[index_confirmPrice] * theBoughtOrder[index_qty]   ;
-                        uncloseOrdersA2d[indexOfBoughtOrder] = theBoughtOrder ;
-                    } else {
-                        uncloseOrdersA2d.splice(indexOfBoughtOrder, 1);;
-
-                    }
+                        // uncloseOrdersA2d[indexOfBoughtOrder] = theBoughtOrder ; // 这一行可以去掉, 因为引用的直接是地址
+                    } else {uncloseOrdersA2d.splice(indexOfBoughtOrder, 1)}
                 }
 
                 w_toClearRangeSet.add(toGCPData.ingOrderLine);
