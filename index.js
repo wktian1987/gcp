@@ -24,7 +24,7 @@ app.post('/tgBot', json(), async (req, res) => {
         const { HandleTgBot } = await import("./handleTgBot.js");
         await HandleTgBot(msg);
         console.log(`✔ HandleTgBot()处理成功`);
-    } catch (e) { console.error("✘ HandleTgBot()处理失败: ", e.message) }
+    } catch (e) { console.error("✘ HandleTgBot()处理失败: \n", e.message) }
 }
 );
 
@@ -45,7 +45,7 @@ app.post('/tradingview', json(), async (req, res) => {
             const { HandleTradeBot} = await import("./handleTV.js");
             await HandleTradeBot(body);
             console.log(`✔ ${body.botNumber}: HandleTradeBot()处理成功`);
-        } catch (e) {console.error(`✘ ${body.botNumber}: HandleTradeBot()处理失败: ` + e.message) }
+        } catch (e) {console.error(`✘ ${body.botNumber}: HandleTradeBot()处理失败: \n` + e.message) }
     }
 
     if (body.botGate === "AllPrice") {
@@ -53,7 +53,7 @@ app.post('/tradingview', json(), async (req, res) => {
             const { HandleAllPrice} = await import("./handleTV.js");
             await HandleAllPrice(body);
             console.log(`✔ HandleAllPrice()处理成功`);
-        } catch (e) {console.error(`✘ HandleAllPrice()处理失败: ` + e.message) }
+        } catch (e) {console.error(`✘ HandleAllPrice()处理失败: \n` + e.message) }
 
     }
 
@@ -64,7 +64,7 @@ app.post('/tradingview', json(), async (req, res) => {
         const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
         await HandleUnreadGmails();
         console.log(`✔ HandleUnreadGmails()处理成功`);
-    } catch (e) { console.error(`✘ HandleUnreadGmails()处理失败: ` + e.message) }
+    } catch (e) { console.error(`✘ HandleUnreadGmails()处理失败: \n` + e.message) }
 
 }  )  ;
 

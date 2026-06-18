@@ -62,7 +62,7 @@ export async function HandleTgBot(msg) {
             await SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id) ;
         }
         
-        if (Object.hasOwn(TradeBot, tgResetName) && TradeBot[tgResetName] === fasle) {
+        if (Object.hasOwn(TradeBot, tgResetName) && TradeBot[tgResetName] === false) {
             if (Date.now() - TradeBot[LockTimeName] < 5 * 60 *1000) {
                 resetMessage = AddMessage(resetMessage, '当前机器人正在运行, 或者未超时, 请等待5分钟后再解锁') ;
             } else {
