@@ -239,15 +239,12 @@ export const TradeBot = {
                 try {
                     await UpdateGS(this.spreadsheetID, toGCPData.lockRange, [[CV.noLOCK]]);
                     await Sleep(100);
-                    // 验证是否真正安全归还
                     const lockNameAfterAttempt = await this.CheckLockFromGS();
-                    if (lockNameAfterAttempt === CV.noLOCK) {
-                        console.log(`第${attempt}次解锁成功`)
-                        return true;
-                    }
-                } catch (e) { console.log(`第${attempt}次解锁出错: ${e.message}, 1s后再次尝试解锁`) }
-                attempt += 1;
-                await Sleep(1000);
+                    if (lockNameAfterAttempt === CV.noLOCK) {return true}
+                } catch {
+                    await Sleep(1000);
+                    attempt += 1;
+                }
             }
             throw new Error(`经过${MAX_Attempts}次尝试, 仍无法解锁`) ;
         } catch (e) {
