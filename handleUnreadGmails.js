@@ -2,16 +2,16 @@ import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 
 import {
-    GetTimeStringWithOffset     ,
-    GetSpreadsheetID            ,
-    CheckIfSheetExists          ,
-    SendTG,         
+    GetTimeStringWithOffset,
+    GetSpreadsheetID,
+    CheckIfSheetExists,
+    SendTG,
     SendEmail,
     GetGS,
-    UpdateGS} from './utility.js';
+    UpdateGS,
+    AddMessage
+} from './utility.js';
 
-
-const FolderName = "tradingview";
 
 // 同步 Pine Script 的 SwapChars
 function swapChars(src, idx1, idx2) {
@@ -190,10 +190,8 @@ function convertToTextTable(rawContent) {
     return `<pre>${tableText}</pre>`; // 必须用 <pre> 标签包围
 }
 
+const gmailFolderName = "tradingview";
 export async function HandleUnreadGmails() {
-
-    const SPREADSHEET_ID =  await GetSpreadsheetID("TradingBot_00");
-    const handledEmailsSheetTitle = "handledEmails";
     let lock = null;
     let client = null;
 
@@ -202,57 +200,24 @@ export async function HandleUnreadGmails() {
             host    : 'imap.gmail.com',
             port    : 993,
             secure  : true,
-            auth    : {
-                user: process.env.GMAIL_USER,
-                pass: process.env.GMAIL_APP_PASS
-            },
-            // 关键设置：只输出错误级别的日志
-            logger  : {
-                level: 'error' // 可选值: 'debug', 'info', 'warn', 'error', 'silent'
-            }
+            auth    : { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASS },
+            logger  : { level: 'error'} // 关键设置：只输出错误级别的日志 // 可选值: 'debug', 'info', 'warn', 'error', 'silent'
         };
         client = new ImapFlow(IMAP_CONFIG);
         await client.connect();
-        if (client.authenticated) {
-            console.log("✔ IMAP Client 连接成功");
-        } else {
-            console.log("✘ IMAP Client 连接失败");
-        }
+        if (!client.authenticated) { throw new Error("IMAP Client 连接失败") }
 
         // 必须先进入文件夹，search 才会生效
-        await client.mailboxOpen(FolderName);
-        lock = await client.getMailboxLock(FolderName);
-        if (lock) {
-            console.log("✔ Mail Folder lock 成功");
-        } else {
-            console.log("✘ Mail Folder lock 失败");
-        }
+        await client.mailboxOpen(gmailFolderName);
+        lock = await client.getMailboxLock(gmailFolderName);
+        if (!lock) { throw new Error("Mail Folder lock 失败")}
         // 搜索未读邮件
         const messages = await client.search({ seen: false });
-        // 如果没有未读邮件，则安全退出
-        if (messages.length === 0) {
-            console.log(`✔ [${FolderName}] 无未读邮件`);
-            return;
-        } else {
-            console.log(`✔ [${FolderName}] 有未读邮件 ${messages.length} 封， 开始处理... `);
-        }
 
-        // 优化：一次性获取已处理 ID 列表，转为 Set 提高查询效率
-        const handledEmailsData = await GetGS(SPREADSHEET_ID, `${handledEmailsSheetTitle}!A2:F`) ;
-
-        const handledEmailsID = new Set(
-            handledEmailsData
-                .map(row => row[0])
-                .filter(id => id && id.trim() !== "") // 过滤掉可能的空行或无效数据
-        );
+        // 如果没有未读邮件，则安全退出, 后面还有finally 不用担心 client 和 lock 锁定状态
+        if (messages.length === 0) { return }
 
         for (const uid of messages) {
-            const messageOrder = messages.indexOf(uid) + 1;
-            console.log(`开始处理第 ${messageOrder} 封邮件...`);
-
-            let successTG = "FAIL";
-            let successEmail = "FAIL";
-
             // 下载并解析
             const emailStream = await client.download(uid);
             const parsed = await simpleParser(emailStream.content);
@@ -261,109 +226,58 @@ export async function HandleUnreadGmails() {
             const mailGetTime = parsed.date ? GetTimeStringWithOffset(8, parsed.date.getTime()) : "No date info";
             const rawBody = parsed.text || ""; // 这里的 text 已经去掉了所有邮件头
 
-            // 先检查此未读邮件是否已经被处理过 Google Sheet ---
-            if (handledEmailsID.has(msgId)) {
-                await client.messageFlagsAdd(uid, ['\\Seen']);
-                console.log(`✘ 本邮件已被处理过，重新标记为已读: ${msgId}`);
-                continue;
-            }
-
             const thisEmailMark =
                 "mailGetTime  : " + mailGetTime + "\n" +
                 "subject      : " + subject + "\n" +
                 "msgID        : " + msgId;
 
-            console.log("开始处理新邮件:" + msgId);
-
             let finalBody = rawBody.match(/<tradingviewcode>([\s\S]*?)<\/tradingviewcode>/)     ? // 先判断是否是加密邮件
                 decrypt(rawBody)                                                                :
                 rawBody                                                                         ;
 
-            if (!finalBody) finalBody = "邮件内容为空或解析失败";
+            if (!finalBody) { finalBody = "邮件内容为空或解析失败" }
 
             finalBody = finalBody.replace(/<SHEET[\s\S]*?<\/SHEET>/gi, "").trim();
 
             finalBody = finalBody + "\n\n" + thisEmailMark;
 
             // 准备 Telegram 专用内容（TG 不支持复杂的 CSS，且有长度限制）
-            let tgText = finalBody.replace(/<TBL>([\s\S]*?)<\/TBL>/gi, (match, content) => {
-                return convertToTextTable(content.trim()); // 使用方案一的函数
-            });
+            let tgText = finalBody.replace(/<TBL>([\s\S]*?)<\/TBL>/gi, (match, content) => { return convertToTextTable(content.trim()) });
             tgText = tgText
                 .replace(/<br>/g, "\n")   // 换回换行符
                 .replace(/<[^>]+>/g, ""); // 移除 HTML 标签（或保留基础的 <b> 等）
 
-            // 1. 准备发送任务 (不带 IIFE，直接获取 Promise)
-            const sendTGTask = SendTG(subject, tgText);
+            // 将邮件标记为已读 任务
+            const task_markEmailRead = client.messageFlagsAdd(uid, ['\\Seen']) ;
 
-            let processedHtml = finalBody.replace(/<TBL>([\s\S]*?)<\/TBL>/gi, (match, content) => {
-                return makePrettyTable(content.trim());
-            });
+            // 准备发送任务
+            const task_SendTG = SendTG(subject, tgText);
+
+            let processedHtml = finalBody.replace(/<TBL>([\s\S]*?)<\/TBL>/gi, (match, content) => { return makePrettyTable(content.trim()) });
             processedHtml = `<div style="font-family: monospace; white-space: pre-wrap; font-size: 1em;">${processedHtml.replace(/\n/g, '<br>')}</div>`;
 
-            // const sendMailTask = transporter.sendMail({
-            //     from: `"GCP Router" <${process.env.GMAIL_USER}>`,
-            //     to: process.env.RECEIVER_EMAIL,
-            //     subject: `tv${subject}`,
-            //     html: processedHtml
-            // });
-            const sendMailTask = SendEmail(`tv${subject}`, processedHtml) ;
+            const task_SendEmail = SendEmail(`tv${subject}`, processedHtml) ;
 
-            // 2. 执行并发任务
-            const handleResults = await Promise.allSettled([sendTGTask, sendMailTask]);
-
+            // 执行并发任务
+            const handleResults = await Promise.allSettled([task_markEmailRead, task_SendTG, task_SendEmail]);
+            let task_thereErr = false ;
+            let task_message  = ''    ;
+            let task_name     = ''    ;
             handleResults.forEach((result, index) => {
-                const taskName = index === 0 ? "发送Telegram消息" : "转发邮件";
-                if (result.status === "fulfilled") {
-                    successTG = index === 0 ? "SUCCESS" : successTG;
-                    successEmail = index === 1 ? "SUCCESS" : successEmail;
-                    console.log(`✔ ${taskName}成功`);
-                } else {
-                    successTG = index === 0 ? "FAIL" : successTG;
-                    successEmail = index === 1 ? "FAIL" : successEmail;
-                    console.error(`✘ ${taskName}失败: `, result.reason?.message || result.reason);
+                if (index === 0) {task_name = 'task_markEmailRead'   }
+                if (index === 1) {task_name = 'task_SendTG'          }
+                if (index === 2) {task_name = 'task_SendEmail'       }
+                if (result.status === "fulfilled") { task_message = AddMessage(task_message, task_name + '执行成功')} else {
+                    task_thereErr   =  true                                             ;
+                    task_message    =  AddMessage(task_message, task_name + '执行失败')  ;
                 }
+                if (task_thereErr) {throw new Error(task_message)}
             });
 
-            // --- 标记为已读 ---
-            try {
-                await client.messageFlagsAdd(uid, ['\\Seen']);
-                console.log(`✔ 当前邮件${msgId}标记为已读成功`);
-            } catch (err) {
-                console.error(`✘ 当前邮件${msgId}标记为已读 失败: ` + err.message);
-            }
-
-            // 3. 修复 handledEmailsData 数组操作，直接 unshift，不要对 handledEmailsData 重新赋值
-            handledEmailsData.unshift([
-                msgId,
-                subject,
-                mailGetTime,
-                GetTimeStringWithOffset(8),
-                successTG,
-                successEmail
-            ]);
         }
-
-        if (handledEmailsData.length > 99) { handledEmailsData.length = 99 }
-        // 邮件状态更改，防止反复操作
-        try {
-            await UpdateGS(SPREADSHEET_ID,`${handledEmailsSheetTitle}!A2`, handledEmailsData)
-            console.log(`✔ 当前处理邮件${messages.length}封写入GoogleSheets "${handledEmailsSheetTitle}"成功`);
-        } catch (e) {
-            console.error(`✘ 当前处理邮件${messages.length}封写入GoogleSheets "${handledEmailsSheetTitle}"失败: ` + e.message);
-        }
-
-    } catch (err) {
-        console.error("✘ 未读tradingview邮件处理异常: " + err.message);
-        // 注意：这里不能再调用 res.status()，因为响应已在开头发出
+        
     } finally {
-        if (lock) {
-            await lock.release();
-            console.log("✔ Mail folder lock 已释放");
-        }
-        if (client) {
-            await client.logout();
-            console.log("✔ IMAP Client 已关闭");
-        }
+        if (lock) { await lock.release() }
+        if (client) { await client.logout() }
     }
 }
