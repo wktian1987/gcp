@@ -434,6 +434,7 @@ export const TradeBot = {
             fund.spreadsheetID    = this.spreadsheetID                                                                     ;
 
             await CheckFundFee(fund);
+            if (!fund.respOK) {throw new Error('交易所返回数据不正确')}
 
             const newFundHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(fund[v]) ? fund[v] : (fund[v] || CV.NA));
 
@@ -463,7 +464,7 @@ export const TradeBot = {
             return errMessage.trim() ;
         }
 
-        } ,
+    },
 
     /**
      * 判断waiting 订单状态
@@ -471,7 +472,6 @@ export const TradeBot = {
      * @returns true: 检查成功, 只表示检查过程无误, 可能没有需要检查的订单, 也可能是有订单但没有成交, 也可能是有成交并成功写入
      * @returns string: 具体的出错信息
      */
-
     async ToCheckWaitingOrder() {
         try {
             const tvData                =  this.tvData                  ;
@@ -500,6 +500,7 @@ export const TradeBot = {
 
             // 去交易所查看成交情况
             await CheckOrderConfirm(ingOrderData);
+            if (!ingOrderData.respOK) {throw new Error('交易所返回数据有错')}
 
             const w_toUpdateRangeList       = []            ;
             const w_toClearRangeSet         = new Set()     ;
@@ -530,7 +531,7 @@ export const TradeBot = {
                     if (indexOfBoughtOrder < 0) {throw new Error('无法在未成交买单中找到对应的现在的卖单')}
                     if (isStrictNumber(ingOrderData.ing_isPartial) && ingOrderData.ing_isPartial < 1) {
                         // 卖单部分成交的情况, 相对比较复杂
-                        const theBoughtOrder = uncloseOrdersA2d[indexOfBoughtOrder] ;
+                        const theBoughtOrder = uncloseOrdersA2d[indexOfBoughtOrder] ; // 直接拿到的就是对应的订单的地址, 对他的修改相当于直接修改原始订单
                         theBoughtOrder[index_orderID]   =  'PB-' + GetTimeStringWithOffset(8, this.timestamp)               ;
                         theBoughtOrder[index_qty]       =  (1-ingOrderData.ing_isPartial) * theBoughtOrder[index_qty]       ;
                         theBoughtOrder[index_pXq]       =  theBoughtOrder[index_confirmPrice] * theBoughtOrder[index_qty]   ;
@@ -982,6 +983,7 @@ export const TradeBot = {
             S.spreadsheetID         = this.spreadsheetID                                                        ;
 
             await SendOrderToBroker(S);
+            if (!S.respOK) {throw new Error('交易所返回数据不正确')}
             // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
 
             const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(S[v]) ? S[v] : (S[v] || CV.NA));
@@ -1043,6 +1045,7 @@ export const TradeBot = {
             S.spreadsheetID         = this.spreadsheetID                                                                                                                                            ;
 
             await SendOrderToBroker(S);
+            if (!S.respOK) { throw new Error('交易所返回数据不正确') }
             // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
 
             const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(S[v]) ? S[v] : (S[v] || CV.NA));

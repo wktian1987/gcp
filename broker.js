@@ -44,6 +44,7 @@ export async function SendOrderToBroker(S) {
 
     S.ing_orderID		    = res.orderID        ;
     S.ing_orderStatus		= res.orderStatus    ;
+    S.respOK                = true               ;
 }
 
 /**
@@ -82,6 +83,8 @@ export async function CheckOrderConfirm(ingOrderData) {
         await ClearGS(ingOrderData.spreadsheetID, simRange_00) ;
         ingOrderData.ing_orderStatus = CV.order_cancel;
     }
+
+    ingOrderData.respOK = true ;
 }
 
 /**
@@ -97,10 +100,11 @@ export async function CheckFundFee(fund) {
 
     const res = A2dToCleanObj(await GetGS(fund.spreadsheetID, simRange_01)); //交易状态返回
     fund.fundFee           =  isStrictNumber(res.fundFee) ? res.fundFee : 0     ;
-    fund.confirmDate       =  fund.orderDate                                            ;
-    fund.confirmTimestamp  =  fund.orderTimestamp                                       ;
-    fund.allFund           =  res.allFund + fund.fundFee                            ;
-    fund.allCoin           =  fund.allFund / res.BaseCoinPrice                      ;
+    fund.confirmDate       =  fund.orderDate                                    ;
+    fund.confirmTimestamp  =  fund.orderTimestamp                               ;
+    fund.allFund           =  res.allFund + fund.fundFee                        ;
+    fund.allCoin           =  fund.allFund / res.BaseCoinPrice                  ;
+    fund.respOK            =  true                                              ;
 }
 
 //#endregion
@@ -304,6 +308,7 @@ async function GATE_SendOrderToBroker(S) {
     S.ing_orderTimestamp    = Math.floor(data_order.create_time * 1000) ;
     S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp) ;    
     S.ing_orderStatus		= CV.order_waiting      ; // 按照现在的逻辑, 下单成功后, 暂时先不管交易所真实返回的订单状态, 一律按照waiting来记录
+    S.respOK                = true                  ;
 }
 
 /**
@@ -392,6 +397,7 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
     ingOrderData.ing_avgBuyPrice    =  data_position.entry_price                                                                                                ;
     ingOrderData.ing_allFund	    =  ingOrderData.inFund + ToStrictNumber(data_position.unrealised_pnl, 0) + ToStrictNumber(data_position.realised_pnl, 0) + ingOrderData.inCoin * ingOrderData.BaseCoinPrice  ;
     ingOrderData.ing_allCoin	    =  ingOrderData.ing_allFund / ingOrderData.BaseCoinPrice                                                                    ;
+    ingOrderData.respOK             =  true ;
 }
 
 /**
@@ -422,6 +428,7 @@ async function GATE_CheckFundFee(fund) {
     fund.confirmDate        =  GetTimeStringWithOffset(8, fund.confirmTimestamp)                                                                                                ;
     fund.allFund	        =  fund.inFund + ToStrictNumber(data_position.unrealised_pnl, 0) + ToStrictNumber(data_position.realised_pnl, 0) + fund.inCoin * fund.BaseCoinPrice ;
     fund.allCoin	        =  fund.allFund / fund.BaseCoinPrice                                                                                                                ;
+    fund.respOK             =  true                                                                                                                                             ;
 }
 
 //#endregion
