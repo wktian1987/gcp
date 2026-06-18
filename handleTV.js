@@ -1056,7 +1056,7 @@ export const TradeBot = {
      * @returns true表示写入成功
      * @returns string: 具体的出错信息
      */
-    async WriteToGS(toGCPData) {
+    async WriteToGS() {
         try {
             await BatchClearGS(this.spreadsheetID, Array.from(this.toClearRangeSet));
             if (this.alertMessageSet.size > 0) { this.alertMessage = StrFromSetMessage(this.alertMessageSet) }
@@ -1076,13 +1076,13 @@ export const TradeBot = {
                 [this.lowestCoin]];
 
                 this.toUpdateRangeList.push({
-                    range: toGCPData.HghLowRange,
+                    range: this.toGCPData.HghLowRange,
                     values: newHghLowV
                 });
             }
 
             this.toUpdateRangeList.push({
-                range: toGCPData.toWriteMainRange,
+                range: this.toGCPData.toWriteMainRange,
                 values: ObjToA2dNumBoolStr(this)
             });
 
