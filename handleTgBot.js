@@ -44,13 +44,10 @@ export async function HandleTgBot(msg) {
     }
 
     if (text.toUpperCase().includes('RESET')) {
-
-
         let resetMessage = '' ;
-        LockTimeName       =  botNumber + '_lockTime'       ; // 全局中的锁名
-        RunningWellName    =  botNumber + '_runningWell'    ; // 全局中的出错名
-        SpreadsheetIDName  =  botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID, 避免每次重新读取
-
+        const LockTimeName       =  botNumber + '_lockTime'       ; // 全局中的锁名
+        const RunningWellName    =  botNumber + '_runningWell'    ; // 全局中的出错名
+        const SpreadsheetIDName  =  botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID, 避免每次重新读取
 
         if (Date.now() - TradeBot[LockTimeName] < 5 * 60 *1000) {
             resetMessage = AddMessage(resetMessage, '当前机器人正在运行, 或者未超时, 请等待5分钟后再解锁') ;
