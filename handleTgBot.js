@@ -90,27 +90,31 @@ export async function HandleTgBot(msg) {
 
     const toTGData = await GetGS(spreadsheetID, toGCPData.toReadRange);
     const toTGDataString = FormatMatrixToString(toTGData);
-    const sendTGTask = SendTG(botNumber, toTGDataString, chat_id);
+    const task_SendTG = SendTG(botNumber, toTGDataString, chat_id);
 
     const toEmailData = await GetGS(spreadsheetID, toGCPData.toEmailRange);
     const mail_subject = botNumber;
     const toEmailHtml = ConvertRowsToHtmlTable(toEmailData);
-    const sendMailTask = SendEmail(mail_subject, toEmailHtml);
+    const task_SendEmail = SendEmail(mail_subject, toEmailHtml);
 
     // 执行并发任务
-    const handleResults = await Promise.allSettled([sendTGTask, sendMailTask]);
-    let thereTaskErr = false;
-    let errMessage = '';
+    const handleResults = await Promise.allSettled([task_SendTG, task_SendEmail]);
+    let task_thereErr = false   ;
+    let task_message  = ''      ;
+    let task_name     = ''      ;
     handleResults.forEach((result, index) => {
+        if (index === 0) {task_name = '发送TG'     }
+        if (index === 1) {task_name = '发送Email'  }
+
         if (result.status === "fulfilled") {
-            errMessage += AddMessage(errMessage, (index === 0 ? "发送TG" : "发送Email") + '成功');
+            task_message += AddMessage(task_message, task_name + '成功');
         }
         if (result.status !== "fulfilled") {
-            thereTaskErr = true;
-            errMessage += AddMessage(errMessage, (index === 0 ? "发送TG" : "发送Email") + '失败');
+            task_thereErr = true;
+            task_message += AddMessage(task_message, task_name + '失败');
         }
     });
 
-    if (thereTaskErr) {throw new Error(errMessage)}
+    if (task_thereErr) {throw new Error(task_message)}
 
 }
