@@ -9,7 +9,8 @@ import {
     A2dToCleanObj,
     Sleep,
     AddMessage,
-    StrFromSetMessage
+    StrFromSetMessage,
+    GetTimeStringWithOffset
 } from "./utility.js";
 
 import {TradeBot} from './handleTV.js';
@@ -54,7 +55,7 @@ export async function HandleTgBot(msg) {
             resetMessage = AddMessage(resetMessage, '_runningWell: \n' + StrFromSetMessage(TradeBot[RunningWellName])) ;
         } else {
             resetMessage = AddMessage(resetMessage, '属性删除前的值为:') ;
-            resetMessage = AddMessage(resetMessage, '_lockTime: \n' + TradeBot[LockTimeName]) ;
+            resetMessage = AddMessage(resetMessage, '_lockTime: \n' + TradeBot[LockTimeName] + '\n' + GetTimeStringWithOffset(8, TradeBot[LockTimeName])) ;
             resetMessage = AddMessage(resetMessage, '_runningWell: \n' + StrFromSetMessage(TradeBot[RunningWellName])) ;
             resetMessage = AddMessage(resetMessage, '_spreadsheetID: \n' + TradeBot[SpreadsheetIDName]) ;
             delete TradeBot[LockTimeName       ]   ;
