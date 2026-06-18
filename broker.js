@@ -137,7 +137,7 @@ function tvSymbol_TO_GATE_Symbol(tvSymbol) {
 
 class GateFetchBody {
     constructor(isReal = false, method = 'GET', path = '', body = null, resOK = 200, dataCheck = {contract : 'BTC_USDT'}) {
-        if (!isPlainObject(dataCheck)) {throw new Error('GateFetchBody输入的dataCheck不是标准的可验证对象')}
+        if (!isObjectOfKeyValue(dataCheck)) {throw new Error('GateFetchBody输入的dataCheck不是标准的可验证对象')}
         // 每一个实例在诞生之初，就在自己的地盘上锁死了独立的变量空间
         this.isReal     = isReal    ;
         this.method     = method    ;

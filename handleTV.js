@@ -614,7 +614,7 @@ export const TradeBot = {
      */
     UpdateDataToBot(newData) {
         // 前置安全门禁与类型确权
-        if (!isPlainObject(newData)) {
+        if (!isObjectOfKeyValue(newData)) {
             return 'incoming newData must be a valid plain object';
         }
         Object.keys(newData).forEach(key => {
@@ -966,10 +966,7 @@ export const TradeBot = {
 
             const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(S[v]) ? S[v] : (S[v] || CV.NA));
 
-            this.toUpdateRangeList.push({
-                range: ingOrderLine,
-                values: [new_ingOrderLineA]
-            });
+            this.toUpdateRangeList.push({ range: ingOrderLine, values: [new_ingOrderLineA] });
 
             AddSetMessage(this.alertMessageSet, "New sell order, waiting confirmed");
 
@@ -1030,10 +1027,7 @@ export const TradeBot = {
 
             const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(S[v]) ? S[v] : (S[v] || CV.NA));
 
-            this.toUpdateRangeList.push({
-                range: ingOrderLine,
-                values: [new_ingOrderLineA]
-            });
+            this.toUpdateRangeList.push({ range: ingOrderLine, values: [new_ingOrderLineA] });
 
             AddSetMessage(this.alertMessageSet, "New buy order: waiting confirmed");
 
@@ -1064,27 +1058,21 @@ export const TradeBot = {
             this.gcpWriteTime = Date.now();
 
             if (isStrictTrue(this.toWriteHghLow)) {
-                const newHghLowV = [[this.initiated],
-                [this.initiateTime],
-                [this.inTradingSymbolPrice],
-                [this.inBaseCoinPrice],
-                [this.initialFund],
-                [this.hghestFund],
-                [this.lowestFund],
-                [this.initialCoin],
-                [this.hghestCoin],
-                [this.lowestCoin]];
+                const newHghLowV = [    [this.initiated             ]   ,
+                                        [this.initiateTime          ]   ,
+                                        [this.inTradingSymbolPrice  ]   ,
+                                        [this.inBaseCoinPrice       ]   ,
+                                        [this.initialFund           ]   ,
+                                        [this.hghestFund            ]   ,
+                                        [this.lowestFund            ]   ,
+                                        [this.initialCoin           ]   ,
+                                        [this.hghestCoin            ]   ,
+                                        [this.lowestCoin            ]   ]   ;
 
-                this.toUpdateRangeList.push({
-                    range: this.toGCPData.HghLowRange,
-                    values: newHghLowV
-                });
+                this.toUpdateRangeList.push({ range: this.toGCPData.HghLowRange, values: newHghLowV });
             }
 
-            this.toUpdateRangeList.push({
-                range: this.toGCPData.toWriteMainRange,
-                values: ObjToA2dNumBoolStr(this)
-            });
+            this.toUpdateRangeList.push({ range: this.toGCPData.toWriteMainRange, values: ObjToA2dNumBoolStr(this) });
 
             await BatchClearUpdateGS(this.spreadsheetID, this.toUpdateRangeList);
 

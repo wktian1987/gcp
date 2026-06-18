@@ -19,10 +19,19 @@ export function isStrictNumBoolStr(val) {
     return false ;
 }
 
-export function isPlainObject(val) {
-    if (typeof val !== 'object' || val === null) {return false}
-    const proto = Object.getPrototypeOf(val);
+export function isPlainObject(obj) {
+    if (typeof obj !== 'object' || obj === null) {return false}
+    const proto = Object.getPrototypeOf(obj);
     return proto === null || proto === Object.prototype;
+} // 对于继承自其他对象的对象, 这个会返回true吗 ? // 答案: 会返回false
+// 所以大部分情况，键值对对象, 用下面的函数判断
+/**
+ * 判断一个对象是否是标准的键值对对象 
+ * @param {object} obj 
+ */
+export function isObjectOfKeyValue(obj) {
+    if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {return false}
+    return true ;
 }
 
 /**
@@ -202,7 +211,7 @@ export function A2LinesToCleanObj(a2lines, notAvailableValueTo) {
  */
 export function ObjToA2dNumBoolStr(obj) {
     // 1. 前置安全门禁
-    if (!isPlainObject(obj)) { return false; }
+    if (!isObjectOfKeyValue(obj)) { return false; }
 
     // 2. 动用高效的 Object.keys 管道，一枪流出水
     return Object.keys(obj)
@@ -228,7 +237,7 @@ export function ObjToA2dNumBoolStr(obj) {
  */
 export function CleanObjToNumBoolStr(o, notAvailableValueTo) {
     const notAvailableValue = isStrictString(notAvailableValueTo) ? notAvailableValueTo.trim() : 'notAvailableValue' ;
-    if (!isPlainObject(o)) {return false}
+    if (!isObjectOfKeyValue(o)) {return false}
     const cleanO = {} ;
     Object.keys(o).forEach(key => {
         cleanO[key] = ToStrictNumBoolStr(o[key], notAvailableValueTo);
@@ -594,21 +603,21 @@ export async function BatchClearGS(spreadsheetID, toClearRangeList) {
  * 先清空，后写入;
  * 这个函数使用时，必须保证清空更新范围，必须是一个大的无限类型的区域;
  * 例如: A:B 这样，
- * @param {*} toUpdateRangeList 
+ * @param {Array} toUpdateRangeList 
  * 必须保证输入的toUpdateRangeList是一个数组;
  * 数组中每个元素都是一个对象，对象包括range 和 values两个属性
  * 例如[{range: 'MAIN!A:B', values:[[3,4],[5,6]]}, {range: 'MAIN2!A:B', values:[['A','B'],['C','D']]}]
  * @returns 无返回值，只要正确运行就说明操作成功
  */
 export async function BatchClearUpdateGS(spreadsheetID, toUpdateRangeList) {
-    if (!Array.isArray(toUpdateRangeList) ) { throw new Error('BatchClearUpdateGS @param toUpdateRangeList 输入错误') }
+    if (!Array.isArray(toUpdateRangeList) ) { throw new Error('BatchClearUpdateGS @param toUpdateRangeList 输入错误 type1') }
     if (toUpdateRangeList.length === 0    ) { return }
     const toClearListSet    = new Set() ;
     const toClearUpdateList = []        ;
     toUpdateRangeList.forEach(element => {
         const {range, values} = element ;
         if (!range || !values || !Array.isArray(values) || values.length===0 || !Array.isArray(values[0])) {
-            throw new Error("BatchClearUpdateGS @param toUpdateRangeList 输入错误") ;
+            throw new Error("BatchClearUpdateGS @param toUpdateRangeList 输入错误 type2") ;
         } 
         toClearListSet.add(range)    ;
         toClearUpdateList.push( {range , values     } )    ;
