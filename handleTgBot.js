@@ -10,7 +10,8 @@ import {
     Sleep,
     AddMessage,
     StrFromSetMessage,
-    GetTimeStringWithOffset
+    GetTimeStringWithOffset,
+    isStrictNumber
 } from "./utility.js";
 
 import {TradeBot} from './handleTV.js';
@@ -53,19 +54,23 @@ export async function HandleTgBot(msg) {
         let resetMessage = '' ;
 
         if (!Object.hasOwn(TradeBot, tgResetName)) {
-            resetMessage = `${botNumber}机器人还未创建, 没必要RESET` ;
+            resetMessage = `机器人还未创建, 没必要RESET` ;
             await SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id) ;
         } 
 
         if (Object.hasOwn(TradeBot, tgResetName) && TradeBot[tgResetName] === true) {
-            resetMessage = `${botNumber} RESET已设, 但TradeBot还未接收, 没必要重设` ;
+            resetMessage = `RESET已设, 但TradeBot还未接收, 没必要重设` ;
             await SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id) ;
         }
         
         if (Object.hasOwn(TradeBot, tgResetName) && TradeBot[tgResetName] === false) {
-            if (Date.now() - TradeBot[LockTimeName] < 5 * 60 *1000) {
+            if (TradeBot[LockTimeName] === null) {resetMessage = '当前机器人处于未锁定状态, 无需RESET'}
+
+            if (isStrictNumber(TradeBot[LockTimeName]) && Date.now() - TradeBot[LockTimeName] < 5 * 60 *1000) {
                 resetMessage = AddMessage(resetMessage, '当前机器人正在运行, 或者未超时, 请等待5分钟后再解锁') ;
-            } else {
+            } 
+            
+            if (isStrictNumber(TradeBot[LockTimeName]) && Date.now() - TradeBot[LockTimeName] >= 5 * 60 *1000) {
                 TradeBot[tgResetName] = true ;
                 resetMessage = AddMessage(resetMessage, '属性RESET前全局中的值为:') ;
                 resetMessage = AddMessage(resetMessage, '_lockTime: \n' + TradeBot[LockTimeName] + '\n' + GetTimeStringWithOffset(8, TradeBot[LockTimeName])) ;
