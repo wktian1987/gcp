@@ -14,7 +14,8 @@ import {
     ObjToA2dNumBoolStr,
     A2dToCleanObj,
     isPlainObject,
-    isObjectOfKeyValue
+    isObjectOfKeyValue,
+    UpdateGS
 } from "./utility.js";
 
 import { CV } from "./handleTV.js";
@@ -36,7 +37,7 @@ export async function SendOrderToBroker(S) {
     const simRange_00 = 'simBroker!A30:B'   ;
     const simRange_01 = 'simBroker!A1:B29'  ;
 
-    await BatchClearUpdateGS(S.spreadsheetID, [{range:simRange_00, values: ObjToA2dNumBoolStr(S)}]) ; // 发送交易
+    await UpdateGS(S.spreadsheetID, simRange_00, ObjToA2dNumBoolStr(S)) ;
     await Sleep(100) ;
     
     const res = A2dToCleanObj(await GetGS(S.spreadsheetID, simRange_01)); //交易状态返回
@@ -59,7 +60,7 @@ export async function CheckOrderConfirm(ingOrderData) {
 
     // 无论是要取消交易, 都要首先查看现在的交易状态
     // 在模拟交易中, 没有 部分成交 这种情况 
-    const res   = CleanObjToNumBoolStr(Object.fromEntries(await GetGS(ingOrderData.spreadsheetID, simRange_01 ))) ;
+    const res = A2dToCleanObj(await GetGS(ingOrderData.spreadsheetID, simRange_01)); //交易状态返回
     if (res.orderStatus === "confirm")  {
         ingOrderData.ing_orderID		    = res.orderID                                           ;
         ingOrderData.ing_confirmTimestamp   = res.confirmTimestamp                                  ;
@@ -93,13 +94,13 @@ export async function CheckFundFee(fund) {
     if (!isStrictFalse(fund.isReal) && fund.TradingSymbol.startsWith("GATE:")) { await GATE_CheckFundFee(fund); return; }
 
     const simRange_01 = 'simBroker!A1:B29';
-    const resFund = CleanObjToNumBoolStr(Object.fromEntries(await GetGS(fund.spreadsheetID, simRange_01)));
 
-    fund.fundFee           =  isStrictNumber(resFund.fundFee) ? resFund.fundFee : 0     ;
+    const res = A2dToCleanObj(await GetGS(fund.spreadsheetID, simRange_01)); //交易状态返回
+    fund.fundFee           =  isStrictNumber(res.fundFee) ? res.fundFee : 0     ;
     fund.confirmDate       =  fund.orderDate                                            ;
     fund.confirmTimestamp  =  fund.orderTimestamp                                       ;
-    fund.allFund           =  resFund.allFund + fund.fundFee                            ;
-    fund.allCoin           =  fund.allFund / resFund.BaseCoinPrice                      ;
+    fund.allFund           =  res.allFund + fund.fundFee                            ;
+    fund.allCoin           =  fund.allFund / res.BaseCoinPrice                      ;
 }
 
 //#endregion

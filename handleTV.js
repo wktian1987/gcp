@@ -526,19 +526,22 @@ export const TradeBot = {
                     const index_pXq             =  uncloseOrdersTitleA.indexOf('pXq')           ;
 
                     // 卖单部分成交的情况, 相对比较复杂
+                    const thisSellSerial = -1 * ingOrderData.ing_serial;
+                    let indexOfBoughtOrder = -1 ;
+                    uncloseOrdersA2d.forEach((orderA, indexA) => {
+                        if (Math.abs(orderA[index_serial] - thisSellSerial) < 0.1) { indexOfBoughtOrder = indexA }
+                    });
+                    if (indexOfBoughtOrder < 0) {throw new Error('无法在未成交买单中找到对应的现在的卖单')}
                     if (isStrictNumber(ingOrderData.ing_isPartial) && ingOrderData.ing_isPartial < 1) {
-                        let indexOfBoughtOrder = 0  ;
-                        const thisSellSerial = -1 * ingOrderData.ing_serial ;
-                        uncloseOrdersA2d.forEach( (orderA, indexA) => {
-                            if ( Math.abs(orderA[index_serial] - thisSellSerial) < 0.1) {indexOfBoughtOrder  = indexA }
-                        } ) ;
+
                         const theBoughtOrder = uncloseOrdersA2d[indexOfBoughtOrder] ;
                         theBoughtOrder[index_orderID]   =  'PB-' + GetTimeStringWithOffset(8, this.timestamp)               ;
                         theBoughtOrder[index_qty]       =  (1-ingOrderData.ing_isPartial) * theBoughtOrder[index_qty]       ;
                         theBoughtOrder[index_pXq]       =  theBoughtOrder[index_confirmPrice] * theBoughtOrder[index_qty]   ;
                         uncloseOrdersA2d[indexOfBoughtOrder] = theBoughtOrder ;
                     } else {
-                        uncloseOrdersA2d = uncloseOrdersA2d.filter(row => String(row[index_serial]) !== String(Math.abs(ingOrderData.ing_serial)));
+                        uncloseOrdersA2d.splice(indexOfBoughtOrder, 1);;
+
                     }
                 }
 
@@ -700,6 +703,29 @@ export const TradeBot = {
         return [liquidatePrice, stopPriceC, stopPriceF];
 
     },
+
+    ValueIfChg(chgPct) {
+        let allFund = this.allFund ;
+        let allCoin = this.allCoin ;
+
+        const then_Price    = this.TradingSymbolPrice * (1+chgPct) ;
+        const then_b_chgPct = (chgPct > 0 ? this.Aup2B : this.Adn2B) * chgPct ;
+        const then_b_Price  = this.BaseCoinPrice * (1+then_b_chgPct) ;
+
+        // const then_openProfit = 
+
+
+    } ,
+
+
+
+
+
+
+
+
+
+
 
     /**
      * 对当前账户状态进行更新 ; 
@@ -990,7 +1016,7 @@ export const TradeBot = {
      * @returns true: 执行完毕, 可能执行买入, 也可能不执行, 只是整个流程没有遇到问题
      * @returns string: 执行错误信息
     */
-    async ToBuy(ingOrderTitleA, ingOrderLine) {
+    async ToBuy() {
         if (!isStrictTrue(this.canBuy)) { return true }
 
         try {
@@ -1113,7 +1139,7 @@ export const TradeBot = {
         await SendEmail(mail_subject, messageHTML);
     },
 
-    }   ;
+};
 
 
 export async function HandleTradeBot(tvData) {
