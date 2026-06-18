@@ -730,10 +730,7 @@ export function GetTimeStringWithOffset(offsetHours, timestamp) {
 }
 
 export class DATETIME {
-    constructor(timestamp) {
-        if (timestamp && !isStrictNumber(timestamp)) { throw new Error('input param to DATETIME is not right') }
-        this.timestamp = isStrictNumber(timestamp) ? timestamp : Date.now();
-    }
+    constructor(timestamp) { this.timestamp = ToStrictNumber(timestamp, Date.now()) }
     TimeStringWithOffset(offsetHours) { return GetTimeStringWithOffset(offsetHours, this.timestamp) }
-    HowLongToNOW() {return Math.max(0, Date.now() - this.timestamp)}
+    HowLongToNOW() { return Math.max(0, Date.now() - this.timestamp) }
 }

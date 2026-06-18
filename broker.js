@@ -13,7 +13,8 @@ import {
     BatchClearUpdateGS,
     ObjToA2dNumBoolStr,
     A2dToCleanObj,
-    isPlainObject
+    isPlainObject,
+    isObjectOfKeyValue
 } from "./utility.js";
 
 import { CV } from "./handleTV.js";

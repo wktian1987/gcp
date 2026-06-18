@@ -6,6 +6,7 @@ import {
     isStrictString,
     isStrictSet,
     isPlainObject,
+    isObjectOfKeyValue,
     ToStrictNumber,
     ToStrictString,
     ToStrictNumBoolStr,
