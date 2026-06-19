@@ -107,8 +107,8 @@ export const TradeBot = {
             TradeBot[this.RunningWellName  ] = new Set()   ;
             TradeBot[this.SpreadsheetIDName] = null        ;
 
-            const task_toReplyResetSignal = SendTG('RESET命令已收到', 'RESET已设置', TradeBot[this.tgResetIDName]);
-            promiseArray.push({ taskName: '回复RESET信号', task: task_toReplyResetSignal });
+            const task_toReplyResetSignal = SendTG(`${tvData.botNumber} RESET命令已收到`, 'RESET已设置', TradeBot[this.tgResetIDName]);
+            this.promiseArray.push({ taskName: '回复RESET信号', task: task_toReplyResetSignal });
         }
 
         // 在全局中有报错的话, 直接退出
