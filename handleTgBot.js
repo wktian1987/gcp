@@ -46,6 +46,7 @@ export async function HandleTgBot(msg) {
     }
 
     if (text.toUpperCase().includes('RESET')) {
+        const tgResetIDName      =  botNumber + '_tgID'           ; // 全局中保存的发送命令的ID
         const tgResetName        =  botNumber + '_tgReset'        ; // 全局中的RESET名
         const LockTimeName       =  botNumber + '_lockTime'       ; // 全局中的锁名
         const RunningWellName    =  botNumber + '_runningWell'    ; // 全局中的出错名
@@ -71,7 +72,8 @@ export async function HandleTgBot(msg) {
             } 
             
             if (isStrictNumber(TradeBot[LockTimeName]) && Date.now() - TradeBot[LockTimeName] >= 5 * 60 *1000) {
-                TradeBot[tgResetName] = true ;
+                TradeBot[tgResetIDName] = chat_id   ;
+                TradeBot[tgResetName]   = true      ;
                 resetMessage = AddMessage(resetMessage, '属性RESET前全局中的值为:') ;
                 resetMessage = AddMessage(resetMessage, 'lockTime: \n' + TradeBot[LockTimeName] + '\n' + GetTimeStringWithOffset(8, TradeBot[LockTimeName])) ;
                 resetMessage = AddMessage(resetMessage, 'runningWell: \n' + StrFromSetMessage(TradeBot[RunningWellName])) ;
