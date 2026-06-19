@@ -151,6 +151,7 @@ class GateFetchBody {
         this.body       = body      ;
         this.resOK      = resOK     ;
         this.dataCheck  = dataCheck ;
+        this.status     = 0         ;
         this.isOK       = false     ;
         this.resData    = undefined ;
         this.errMessage = undefined ;
