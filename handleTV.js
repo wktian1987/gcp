@@ -698,16 +698,39 @@ export const TradeBot = {
 
     },
 
-    ValueIfChg(chgPct) {
-        let allFund = this.allFund ;
-        let allCoin = this.allCoin ;
+    valueIfChg(chgPct) {
+        const then_Price        =  this.TradingSymbolPrice * (1+chgPct) ;
+        const then_openProfit   =  this.therePosition ? this.allPosition * (then_Price - this.avgBuyPrice) : 0 ;
+        const then_b_chgPct     =  (chgPct > 0 ? this.Aup2B : this.Adn2B) * chgPct ;
+        const then_b_Price      =  this.BaseCoinPrice * (1+then_b_chgPct) ;
+        const then_allFUnd      =  this.inCoin * then_b_Price + this.inFund + this.netProfit + then_openProfit ;
+        const then_allCoin      =  then_allFUnd / then_b_Price ;
+        return {then_allFUnd, then_allCoin} ;
+    } ,
 
-        const then_Price    = this.TradingSymbolPrice * (1+chgPct) ;
-        const then_b_chgPct = (chgPct > 0 ? this.Aup2B : this.Adn2B) * chgPct ;
-        const then_b_Price  = this.BaseCoinPrice * (1+then_b_chgPct) ;
+    chgPctIfVALUEFchg(valueFchgpct, findUPchgpctLimit = 0.1, findDNchgpctLimit = -1.1) {
+        const then_allFund    = this.allFund * (1+valueFchgpct)    ;
+        const upLimit_allFund = this.valueIfChg(findUPchgpctLimit) ;
+        const dnLimit_allFund = this.valueIfChg(findDNchgpctLimit) ;
 
-        // const then_openProfit = 
+        if (then_allFund > this.allFund && then_allFund < upLimit_allFund && then_allFund < dnLimit_allFund) {return false} 
+        if (then_allFund < this.allFund && then_allFund > upLimit_allFund && then_allFund > dnLimit_allFund) {return false} 
 
+        let found       =   false                       ;
+        let findUp      =   then_allFund > this.allFund ;
+        let fi          =   0                           ;
+        let fchgpctStep =   0.1                         ;
+        let fchgpct     =    findUPchgpctLimit           ;
+        while(!found && fchgpct > findDNchgpctLimit) {
+            fchg = findUPchgpctLimit - fchgstep * fi ;
+            const i_allFund = this.valueIfChg(fchg).then_allFUnd ;
+            // if 
+
+        }
+
+    } ,
+
+    chgpctIfVALUECchg(valueCChg) {
 
     } ,
 
@@ -1172,10 +1195,10 @@ export async function HandleTradeBot(tvData) {
     // 因为mainData包含旧数据
     bot.UpdateDataToBot(bot.mainData)                           ;
     bot.UpdateDataToBot(bot.tvData)                             ;
-    console.log(bot.cLogHead + 'UpdateDataToBot() success')     ;
+    // console.log(bot.cLogHead + 'UpdateDataToBot() success')     ;
 
     bot.ReNew()                                     ;
-    console.log(bot.cLogHead + 'ReNew() success')   ;
+    // console.log(bot.cLogHead + 'ReNew() success')   ;
 
     const r_ToSell = await bot.ToSell();
     if (!r_ToSell || isStrictString(r_ToSell)) { throw new Error('ToSell() 失败: \n' + r_ToSell) }
