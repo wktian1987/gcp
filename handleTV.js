@@ -89,7 +89,7 @@ export const TradeBot = {
         this.alertMessageSet    =  new Set()                    ;
         AddSetMessage(this.alertMessageSet, tvData.thisAlertMessage) ;
 
-        this.tgResetIDName      =  botNumber        + '_tgID'           ; // 全局中保存的发送命令的ID
+        this.tgResetIDName      =  tvData.botNumber + '_tgID'           ; // 全局中保存的发送命令的ID
         this.tgResetName        =  tvData.botNumber + '_tgReset'        ; // 全局中的归零信号名
         this.LockTimeName       =  tvData.botNumber + '_lockTime'       ; // 全局中的锁名
         this.RunningWellName    =  tvData.botNumber + '_runningWell'    ; // 全局中的出错名
