@@ -269,7 +269,7 @@ async function GATE_SendOrderToBroker(S) {
     const fetchBody_contract = new GateFetchBody(S.isReal, 'GET', path_contract, null, 200, {name: brokerSymbol.contract}) ;
     await GATE_Fetch(fetchBody_contract) ;
     if (!fetchBody_contract.isOK) {throw new Error(fetchBody_contract.errMessage)}
-    const data_contract = fetchBody_cancel.resData ;
+    const data_contract = fetchBody_contract.resData ;
     const quanto_multiplier   = ToStrictNumber(data_contract.quanto_multiplier) ;
     const order_price_round   = ToStrictNumber(data_contract.order_price_round) ;
     if (!isStrictNumber(quanto_multiplier) || quanto_multiplier <= 0) { throw new Error('did not get right quanto_multiplier')}
