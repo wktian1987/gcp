@@ -16,7 +16,6 @@ import {
 } from "./utility.js";
 
 import {TradeBot} from './handleTV.js';
-import { dataflow_v1b3 } from "googleapis";
 
 export async function HandleTgBot(msg) {
     const myTgID            = process.env.myTgID        ;
@@ -30,9 +29,9 @@ export async function HandleTgBot(msg) {
 
     // 只处理我或者群内发来的消息
     if (chat_id !== myTgID && chat_id !== myGroupAlertTgID) {
-        await SendTG("收到未授权联系人信息", "已忽略本条消息", myTgID);
+        SendTG("收到未授权联系人信息", "已忽略本条消息", myTgID).catch(()=>{});
         await Sleep(1000);
-        await SendTG("收到未授权联系人信息", "已忽略本条消息", myGroupAlertTgID);
+        SendTG("收到未授权联系人信息", "已忽略本条消息", myGroupAlertTgID).catch(()=>{});
         throw new Error("收到未授权联系人信息, 已忽略本条消息");
     }
 
@@ -43,7 +42,7 @@ export async function HandleTgBot(msg) {
     })(text);
 
     if (!isStrictString(botNumber) || !botNumber.startsWith(botNumber_start)) {
-        await SendTG("消息格式错误", "请检查", chat_id);
+        SendTG("消息格式错误", "请检查", chat_id).catch(()=>{});
         throw new Error("消息格式错误, 请检查") ;
     }
 

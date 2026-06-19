@@ -36,6 +36,7 @@ import {
 } from "./utility.js";
 
 import { SendOrderToBroker, CheckOrderConfirm, CheckFundFee } from "./broker.js";
+import { promises } from "nodemailer/lib/xoauth2/index.js";
 
 
 export const CV = {
@@ -87,6 +88,7 @@ export const TradeBot = {
         this.toUpdateRangeList  =  []                           ;
         this.toClearRangeSet    =  new Set()                    ;
         this.alertMessageSet    =  new Set()                    ;
+        this.promiseArray       =  []                           ;
         AddSetMessage(this.alertMessageSet, tvData.thisAlertMessage) ;
 
         this.tgResetIDName      =  tvData.botNumber + '_tgID'           ; // 全局中保存的发送命令的ID
@@ -101,12 +103,13 @@ export const TradeBot = {
 
         // 可以通过TG-RESET信号来重置全局锁 和 报错信息
         if (isStrictTrue(TradeBot[this.tgResetName])) { 
-                TradeBot[this.tgResetName      ] = false       ;
-                TradeBot[this.LockTimeName     ] = null        ;
-                TradeBot[this.RunningWellName  ] = new Set()   ;
-                TradeBot[this.SpreadsheetIDName] = null        ;
+            TradeBot[this.tgResetName      ] = false       ;
+            TradeBot[this.LockTimeName     ] = null        ;
+            TradeBot[this.RunningWellName  ] = new Set()   ;
+            TradeBot[this.SpreadsheetIDName] = null        ;
 
-                SendTG('RESET命令已收到', 'RESET已设置', TradeBot[this.tgResetIDName]).catch(()=>{}) ;
+            const task_toReplyResetSignal = SendTG('RESET命令已收到', 'RESET已设置', TradeBot[this.tgResetIDName]);
+            promiseArray.push({ taskName: '回复RESET信号', task: task_toReplyResetSignal });
         }
 
         // 在全局中有报错的话, 直接退出
@@ -1227,23 +1230,29 @@ export async function HandleTradeBot(tvData) {
     const task_SendToTG     = bot.SendToTG()     ;
     const task_SendToEmail  = bot.SendToEmail()  ;
 
+    const task_ReleaseLockOfGS = bot.ReleaseLockOfGS() ;
+
+    bot.promiseArray.push({taskName: '发送TG'   , task: task_SendToTG   }) ;
+    bot.promiseArray.push({taskName: '发送Email', task: task_SendToEmail}) ;
+
+    const taskindex_ReleaseLockOfGS = bot.promiseArray.push({taskName: '最后解锁GS', task: task_ReleaseLockOfGS}) - 1;
+
     // 执行并发任务
-    const handleResults = await Promise.allSettled([task_SendToTG, task_SendToEmail]);
-    let thereTaskErr_TG_Email       = false    ;
-    let resultMessage_TG_Email      = ''       ;
-    handleResults.forEach((result, index) => {
+    const taskResults = await Promise.allSettled(promiseArray.map(v => v.task));
+    let task_thereErr   = false    ;
+    let task_errMessage = ''       ;
+    taskResults.forEach((result, index) => {
+        const taskName = promiseArray[index].taskName ;
         if (result.status === "fulfilled") {
-            resultMessage_TG_Email += (index === 0 ? "发送TG" : "发送Email") + '成功 ';
+            promiseArray[index].result  = result.value ;
         }
         if (result.status !== "fulfilled") {
-            thereTaskErr_TG_Email = true;
-            resultMessage_TG_Email += (index === 0 ? "发送TG" : "发送Email") + '失败 ';
+            task_thereErr       =  true;
+            task_errMessage    +=  taskName + '失败: ' + ( result.reason?.message || String(result.reason || '未知错误') ) ;
         }
     });
 
-    // console.log(bot.cLogHead + resultMessage_TG_Email.trim()) ;
-
-    const r_ReleaseLockOfGS = await bot.ReleaseLockOfGS();
+    const r_ReleaseLockOfGS = promiseArray[taskindex_ReleaseLockOfGS].result ;
     if (!r_ReleaseLockOfGS || isStrictString(r_ReleaseLockOfGS)) { 
         // 无法为GS解锁, 是严重错误, 需要手动解锁
         bot.AddRunningWellMessage('程序运行到最后, 无法为GS解锁, 是严重错误, 需要手动解锁: \n' + r_ReleaseLockOfGS) ;
@@ -1260,6 +1269,6 @@ export async function HandleTradeBot(tvData) {
     // if (isStrictTrue(r_ReleaseTradeBotLOCK)) { console.log(bot.cLogHead + 'ReleaseTradeBotLOCK() success') }
 
 
-    if (thereTaskErr_TG_Email) {throw new Error(resultMessage_TG_Email)}
+    if (task_thereErr) {throw new Error(task_errMessage)}
 
 }
