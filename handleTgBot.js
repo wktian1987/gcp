@@ -56,12 +56,12 @@ export async function HandleTgBot(msg) {
 
         if (!Object.hasOwn(TradeBot, tgResetName)) {
             resetMessage = `机器人还未创建, 没必要RESET` ;
-            await SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id) ;
+            SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(()=>{}) ;
         } 
 
         if (Object.hasOwn(TradeBot, tgResetName) && TradeBot[tgResetName] === true) {
             resetMessage = `RESET已设, 但TradeBot还未接收, 没必要重设` ;
-            await SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id) ;
+            SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(()=>{}) ;
         }
         
         if (Object.hasOwn(TradeBot, tgResetName) && TradeBot[tgResetName] === false) {
@@ -81,14 +81,14 @@ export async function HandleTgBot(msg) {
                 resetMessage = AddMessage(resetMessage, 'RESET信号已创建, 等待TradeBot接收');
             }
 
-            await SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id) ;
+            SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(()=>{}) ;
         }
     }
 
-    const spreadsheetID = await GetSpreadsheetID(botNumber);
+    const SpreadsheetIDName  =  botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID
+    const spreadsheetID = Object.hasOwn(TradeBot, SpreadsheetIDName) && isStrictString(TradeBot[SpreadsheetIDName]) ? TradeBot[SpreadsheetIDName] : await GetSpreadsheetID(botNumber);
 
     const toGCPData = A2dToCleanObj(await GetGS(spreadsheetID, Range_toGCP) ) ;
-
 
     const toTGData = await GetGS(spreadsheetID, toGCPData.toReadRange);
     const toTGDataString = FormatMatrixToString(toTGData);

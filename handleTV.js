@@ -1227,7 +1227,7 @@ export async function HandleTradeBot(tvData) {
     const task_SendToTG     = bot.SendToTG()     ;
     const task_SendToEmail  = bot.SendToEmail()  ;
 
-    执行并发任务
+    // 执行并发任务
     const handleResults = await Promise.allSettled([task_SendToTG, task_SendToEmail]);
     let thereTaskErr_TG_Email       = false    ;
     let resultMessage_TG_Email      = ''       ;
