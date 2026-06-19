@@ -132,6 +132,17 @@ export function ToStrictNumber(val, NA0) {
     return NA0Val  ;
 }
 
+/**
+ * 从两个数字变量中找出绝对值最小的一个
+ * @param {string} n1 
+ * @param {string} n2 
+ * @returns false: 表示出错, 输入的值不是标准数字
+ */
+export function MinABSnumber(n1, n2) {
+    if (!isStrictNumber(n1) || !isStrictNumber(n2)) {return false}
+    return  Math.abs(c1) > Math.abs(c2) ? c2 : c1 ;
+}
+
 export function ToStrictNumBoolStr(val, notAvailableValueTo) {
     const notAvailableValue = isStrictString(notAvailableValueTo)  ?  notAvailableValueTo.trim()  :  "notAvailableValue"  ;
     // Number("") 和 Number(null) 会变成 0

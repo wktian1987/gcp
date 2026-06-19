@@ -8,6 +8,7 @@ import {
     isPlainObject,
     isObjectOfKeyValue,
     ToStrictNumber,
+    MinABSnumber,
     ToStrictString,
     ToStrictNumBoolStr,
     AddSetMessage,
@@ -139,7 +140,11 @@ export const TradeBot = {
             let toGCPData   = await this.Get_toGCPData() ;
             let currentLock = toGCPData.LOCK ;
             if (TradeBot[this.LockTimeName] !== this.LockTime) {return '临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去' }
-            if (currentLock !== CV.noLOCK) {return '大TradeBot锁被释放的情况下, GS锁未被释放' }
+            if (currentLock !== CV.noLOCK) {
+                const errMessage = '大TradeBot锁被释放的情况下, GS锁未被释放' ;
+                this.AddRunningWellMessage(errMessage) ;
+                return errMessage ;
+            }
             if (currentLock === CV.noLOCK) {
                 await UpdateGS(this.spreadsheetID, toGCPData.lockRange, [[this.lockName]]);
                 await Sleep(100); // 等0.1后再确认是否成功,防止GS频繁写入读取限制
@@ -709,12 +714,16 @@ export const TradeBot = {
     } ,
 
     chgPctIfVALUEFchg(valueFchgpct, findUPchgpctLimit = 0.1, findDNchgpctLimit = -1.1) {
+        const minchgpct       = MinABSnumber(c1, c2) ;
         const then_allFund    = this.allFund * (1+valueFchgpct)    ;
         const upLimit_allFund = this.valueIfChg(findUPchgpctLimit) ;
         const dnLimit_allFund = this.valueIfChg(findDNchgpctLimit) ;
 
-        if (then_allFund > this.allFund && then_allFund < upLimit_allFund && then_allFund < dnLimit_allFund) {return false} 
-        if (then_allFund < this.allFund && then_allFund > upLimit_allFund && then_allFund > dnLimit_allFund) {return false} 
+
+        if (then_allFund > this.allFund && upLimit_allFund < then_allFund && dnLimit_allFund < then_allFund) {return false} 
+        if (then_allFund > this.allFund && upLimit_allFund > then_allFund && dnLimit_allFund > then_allFund) {return false} 
+
+        if (then_allFund < this.allFund && upLimit_allFund < then_allFund && dnLimit_allFund < then_allFund) {return false} 
 
         let found       =   false                       ;
         let findUp      =   then_allFund > this.allFund ;
