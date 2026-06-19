@@ -17,6 +17,9 @@ import {
 
 import {TradeBot} from './handleTV.js';
 
+
+const tempStore = {} ;
+
 export async function HandleTgBot(msg) {
     const myTgID            = process.env.myTgID        ;
     const myGroupAlertTgID  = process.env.TG_CHAT_ID    ;
@@ -32,7 +35,6 @@ export async function HandleTgBot(msg) {
         SendTG("收到未授权联系人信息", "已忽略本条消息", myTgID).catch(()=>{});
         await Sleep(1000);
         SendTG("收到未授权联系人信息", "已忽略本条消息", myGroupAlertTgID).catch(()=>{});
-        throw new Error("收到未授权联系人信息, 已忽略本条消息");
     }
 
     const botNumber = (txt => {
@@ -43,7 +45,6 @@ export async function HandleTgBot(msg) {
 
     if (!isStrictString(botNumber) || !botNumber.startsWith(botNumber_start)) {
         SendTG("消息格式错误", "请检查", chat_id).catch(()=>{});
-        throw new Error("消息格式错误, 请检查") ;
     }
 
     if (text.toUpperCase().includes('RESET')) {
@@ -89,36 +90,50 @@ export async function HandleTgBot(msg) {
     const SpreadsheetIDName  =  botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID
     const spreadsheetID = Object.hasOwn(TradeBot, SpreadsheetIDName) && isStrictString(TradeBot[SpreadsheetIDName]) ? TradeBot[SpreadsheetIDName] : await GetSpreadsheetID(botNumber);
 
-    const toGCPData = A2dToCleanObj(await GetGS(spreadsheetID, Range_toGCP) ) ;
+    const toReadRangeName  = botNumber + '_toReadRange'     ;
+    const toEmailRangeName = botNumber + '_toEmailRange'    ;
+    if (!isStrictString(tempStore[toReadRangeName]) || !isStrictString(tempStore[toEmailRangeName])) {
+        const toGCPData = A2dToCleanObj(await GetGS(spreadsheetID, Range_toGCP) ) ;
+        tempStore[toReadRangeName]  = toGCPData.toReadRange     ;
+        tempStore[toEmailRangeName] = toGCPData.toEmailRange    ;
+    }
+    let DataFromGS = await BatchGetGS(spreadsheetID, [tempStore[toReadRangeName], tempStore[toEmailRangeName], Range_toGCP]) ;
+    const toGCPData = A2dToCleanObj(DataFromGS[2]) ;
+    if (tempStore[toReadRangeName] !== toGCPData.toReadRange || tempStore[toEmailRangeName] !== toGCPData.toEmailRange) {
+        tempStore[toReadRangeName]  = toGCPData.toReadRange     ;
+        tempStore[toEmailRangeName] = toGCPData.toEmailRange    ;
+        DataFromGS = await BatchGetGS(spreadsheetID, [tempStore[toReadRangeName], tempStore[toEmailRangeName]]) ;
+    }
 
-    const DataFromGS = await BatchGetGS(spreadsheetID, [toGCPData.toReadRange, toGCPData.toEmailRange])
-    const toTGData = DataFromGS[0];
+    const toTGData    = DataFromGS[0];
     const toEmailData = DataFromGS[1];
 
     const toTGDataString = FormatMatrixToString(toTGData);
-    const task_SendTG = SendTG(botNumber, toTGDataString, chat_id);
+    // const task_SendTG = SendTG(botNumber, toTGDataString, chat_id);
+    SendTG(botNumber, toTGDataString, chat_id).catch(()=>{}) ;
 
     const toEmailHtml = ConvertRowsToHtmlTable(toEmailData);
-    const task_SendEmail = SendEmail(botNumber, toEmailHtml);
+    // const task_SendEmail = SendEmail(botNumber, toEmailHtml);
+    SendEmail(botNumber, toEmailHtml).catch(()=>{}) ;
 
-    // 执行并发任务
-    const handleResults = await Promise.allSettled([task_SendTG, task_SendEmail]);
-    let task_thereErr = false   ;
-    let task_message  = ''      ;
-    let task_name     = ''      ;
-    handleResults.forEach((result, index) => {
-        if (index === 0) {task_name = '发送TG'     }
-        if (index === 1) {task_name = '发送Email'  }
+    // // 执行并发任务
+    // const handleResults = await Promise.allSettled([task_SendTG, task_SendEmail]);
+    // let task_thereErr = false   ;
+    // let task_message  = ''      ;
+    // let task_name     = ''      ;
+    // handleResults.forEach((result, index) => {
+    //     if (index === 0) {task_name = '发送TG'     }
+    //     if (index === 1) {task_name = '发送Email'  }
 
-        if (result.status === "fulfilled") {
-            task_message += AddMessage(task_message, task_name + '成功');
-        }
-        if (result.status !== "fulfilled") {
-            task_thereErr = true;
-            task_message += AddMessage(task_message, task_name + '失败');
-        }
-    });
+    //     if (result.status === "fulfilled") {
+    //         task_message += AddMessage(task_message, task_name + '成功');
+    //     }
+    //     if (result.status !== "fulfilled") {
+    //         task_thereErr = true;
+    //         task_message += AddMessage(task_message, task_name + '失败');
+    //     }
+    // });
 
-    if (task_thereErr) {throw new Error(task_message)}
+    // if (task_thereErr) {throw new Error(task_message)}
 
 }
