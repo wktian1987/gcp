@@ -1187,6 +1187,7 @@ export const TradeBot = {
 
 
 export async function HandleTradeBot(tvData) {
+    const gcpGetTime = Date.now() ;
     // 清洗来自TV的数据
     Object.keys(tvData).forEach(key => {
         tvData[key] = ToStrictNumBoolStr(tvData[key], 'notAvailableValueFromTV') ;
@@ -1220,6 +1221,7 @@ export async function HandleTradeBot(tvData) {
     // 因为mainData包含旧数据
     bot.UpdateDataToBot(bot.mainData)                           ;
     bot.UpdateDataToBot(bot.tvData)                             ;
+    bot.gcpGetTime  = gcpGetTime  ;
     // console.log(bot.cLogHead + 'UpdateDataToBot() success')     ;
 
     bot.ReNew()                                     ;
