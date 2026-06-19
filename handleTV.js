@@ -36,7 +36,6 @@ import {
 } from "./utility.js";
 
 import { SendOrderToBroker, CheckOrderConfirm, CheckFundFee } from "./broker.js";
-import { promises } from "nodemailer/lib/xoauth2/index.js";
 
 
 export const CV = {
