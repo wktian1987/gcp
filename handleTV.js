@@ -1224,24 +1224,24 @@ export async function HandleTradeBot(tvData) {
     if (!r_WriteToGS || isStrictString(r_WriteToGS)) { throw new Error('WriteToGS() 失败: \n' + r_WriteToGS) }
     // if (isStrictTrue(r_WriteToGS)) { console.log(bot.cLogHead + 'WriteToGS() success') }
 
-    const task_SendToTG    = bot.SendToTG()     ;
-    const task_SendToEmail = bot.SendToEmail()  ;
+    bot.SendToTG().catch(()=>{})     ; // 发送信号, 不管成不成都不管
+    bot.SendToEmail().catch(()=>{})  ; // 
 
     // 执行并发任务
-    const handleResults = await Promise.allSettled([task_SendToTG, task_SendToEmail]);
-    let thereTaskErr_TG_Email       = false    ;
-    let resultMessage_TG_Email      = ''       ;
-    handleResults.forEach((result, index) => {
-        if (result.status === "fulfilled") {
-            resultMessage_TG_Email += (index === 0 ? "发送TG" : "发送Email") + '成功 ';
-        }
-        if (result.status !== "fulfilled") {
-            thereTaskErr_TG_Email = true;
-            resultMessage_TG_Email += (index === 0 ? "发送TG" : "发送Email") + '失败 ';
-        }
-    });
+    // const handleResults = await Promise.allSettled([task_SendToTG, task_SendToEmail]);
+    // let thereTaskErr_TG_Email       = false    ;
+    // let resultMessage_TG_Email      = ''       ;
+    // handleResults.forEach((result, index) => {
+    //     if (result.status === "fulfilled") {
+    //         resultMessage_TG_Email += (index === 0 ? "发送TG" : "发送Email") + '成功 ';
+    //     }
+    //     if (result.status !== "fulfilled") {
+    //         thereTaskErr_TG_Email = true;
+    //         resultMessage_TG_Email += (index === 0 ? "发送TG" : "发送Email") + '失败 ';
+    //     }
+    // });
 
-    console.log(bot.cLogHead + resultMessage_TG_Email.trim()) ;
+    // console.log(bot.cLogHead + resultMessage_TG_Email.trim()) ;
 
     const r_ReleaseLockOfGS = await bot.ReleaseLockOfGS();
     if (!r_ReleaseLockOfGS || isStrictString(r_ReleaseLockOfGS)) { 
