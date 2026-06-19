@@ -11,10 +11,12 @@ import {
     AddMessage,
     StrFromSetMessage,
     GetTimeStringWithOffset,
-    isStrictNumber
+    isStrictNumber,
+    BatchGetGS
 } from "./utility.js";
 
 import {TradeBot} from './handleTV.js';
+import { dataflow_v1b3 } from "googleapis";
 
 export async function HandleTgBot(msg) {
     const myTgID            = process.env.myTgID        ;
@@ -90,14 +92,15 @@ export async function HandleTgBot(msg) {
 
     const toGCPData = A2dToCleanObj(await GetGS(spreadsheetID, Range_toGCP) ) ;
 
-    const toTGData = await GetGS(spreadsheetID, toGCPData.toReadRange);
+    const DataFromGS = await BatchGetGS(spreadsheetID, [toGCPData.toReadRange, toGCPData.toEmailRange])
+    const toTGData = DataFromGS[0];
+    const toEmailData = DataFromGS[1];
+
     const toTGDataString = FormatMatrixToString(toTGData);
     const task_SendTG = SendTG(botNumber, toTGDataString, chat_id);
 
-    const toEmailData = await GetGS(spreadsheetID, toGCPData.toEmailRange);
-    const mail_subject = botNumber;
     const toEmailHtml = ConvertRowsToHtmlTable(toEmailData);
-    const task_SendEmail = SendEmail(mail_subject, toEmailHtml);
+    const task_SendEmail = SendEmail(botNumber, toEmailHtml);
 
     // 执行并发任务
     const handleResults = await Promise.allSettled([task_SendTG, task_SendEmail]);
