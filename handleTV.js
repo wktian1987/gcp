@@ -718,7 +718,18 @@ export const TradeBot = {
         return {then_allFUnd, then_allCoin} ;
     } ,
 
-    chgPctIfVALUEFchg(valueFchgpct, findUPchgpctLimit = 0.1, findDNchgpctLimit = -1.1) {
+    /**
+     * 计算在当前仓位下, 如果allFund变化多少的时候, 标的价格应当变化多少, 才会导致allFund变化这个多
+     * @param {number} valueFchgpct  例如, -0.2
+     * @param {number} findUPchgpctLimit 例如 0.1
+     * @param {number} findDNchgpctLimit 例如 -1.1
+     * @returns 会抛出错误
+     * @returns number 计算出来的数值
+     */
+    chgPctIfVALUEFchg(valueFchgpct = -0.2, findUPchgpctLimit = 0.1, findDNchgpctLimit = -1.1) {
+        if (!isStrictNumber(valueFchgpct) || !isStrictNumber(findUPchgpctLimit) || !isStrictNumber(findDNchgpctLimit)) {
+            throw new Error('valueFchgpct, findUPchgpctLimit, findDNchgpctLimit 输入错误') ;
+        } ;
         const minchgpct       = MinABSnumber(c1, c2) ;
         const then_allFund    = this.allFund * (1+valueFchgpct)    ;
         const upLimit_allFund = this.valueIfChg(findUPchgpctLimit) ;
@@ -1237,13 +1248,13 @@ export async function HandleTradeBot(tvData) {
     const taskindex_ReleaseLockOfGS = bot.promiseArray.push({taskName: '最后解锁GS', task: task_ReleaseLockOfGS}) - 1;
 
     // 执行并发任务
-    const taskResults = await Promise.allSettled(promiseArray.map(v => v.task));
+    const taskResults = await Promise.allSettled(bot.promiseArray.map(v => v.task));
     let task_thereErr   = false    ;
     let task_errMessage = ''       ;
     taskResults.forEach((result, index) => {
-        const taskName = promiseArray[index].taskName ;
+        const taskName = bot.promiseArray[index].taskName ;
         if (result.status === "fulfilled") {
-            promiseArray[index].result  = result.value ;
+            bot.promiseArray[index].result  = result.value ;
         }
         if (result.status !== "fulfilled") {
             task_thereErr       =  true;
@@ -1251,7 +1262,7 @@ export async function HandleTradeBot(tvData) {
         }
     });
 
-    const r_ReleaseLockOfGS = promiseArray[taskindex_ReleaseLockOfGS].result ;
+    const r_ReleaseLockOfGS = bot.promiseArray[taskindex_ReleaseLockOfGS].result ;
     if (!r_ReleaseLockOfGS || isStrictString(r_ReleaseLockOfGS)) { 
         // 无法为GS解锁, 是严重错误, 需要手动解锁
         bot.AddRunningWellMessage('程序运行到最后, 无法为GS解锁, 是严重错误, 需要手动解锁: \n' + r_ReleaseLockOfGS) ;
