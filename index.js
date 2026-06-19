@@ -25,10 +25,11 @@ app.post('/tgBot', json(), async (req, res) => {
         await HandleTgBot(msg);
         console.log(`✔ HandleTgBot()处理成功`);
     } catch (e) {
-        console.error({
+        const errObj = {
             severity: "ERROR", // 强制涂红
             message: `✘ HandleTgBot()处理失败\n` + e.message
-        });
+        };
+        console.error(JSON.stringify(errObj));
     }
 }
 );
@@ -51,38 +52,41 @@ app.post('/tradingview', json(), async (req, res) => {
             await HandleTradeBot(body);
             console.log(`✔ ${body.botNumber}: HandleTradeBot()处理成功`);
         } catch (e) {
-            console.error({
+            const errObj = {
                 severity: "ERROR", // 强制涂红
                 message: `✘ ${body.botNumber}: HandleTradeBot()处理失败\n` + e.message
-            });
+            };
+            console.error(JSON.stringify(errObj));
         }
     }
 
     if (body.botGate === "AllPrice") {
         try {
-            const { HandleAllPrice} = await import("./handleTV.js");
+            const { HandleAllPrice } = await import("./handleTV.js");
             await HandleAllPrice(body);
             console.log(`✔ HandleAllPrice()处理成功`);
         } catch (e) {
-            console.error({
+            const errObj = {
                 severity: "ERROR", // 强制涂红
                 message: `✘ HandleAllPrice()处理失败: \n` + e.message
-            });
+            };
+            console.error(JSON.stringify(errObj));
         }
     }
 
     // 用tradingview信号来激活查看邮件的操作
-    await new Promise(resolve => setTimeout(resolve, 100)) ;
+    await new Promise(resolve => setTimeout(resolve, 100));
     console.log(`tradingview信号处理完毕, 开始处理HandleUnreadGmails()`);
     try {
         const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
         await HandleUnreadGmails();
         console.log(`✔ HandleUnreadGmails()处理成功`);
     } catch (e) {
-        console.error({
+        const errObj = {
             severity: "ERROR", // 强制涂红
             message: `✘ HandleUnreadGmails()处理失败: \n` + e.message
-        });
+        };
+        console.error(JSON.stringify(errObj));
     }
 
 }  )  ;
