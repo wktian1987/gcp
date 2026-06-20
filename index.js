@@ -103,7 +103,5 @@ async function HandleSignal(url, body) {
 
 }
 
-
-server.listen(process.env.PORT || 8080, '0.0.0.0', () => { 
-    console.log(`✔ 服务开始监听端口 ${process.env.PORT || 8080}，运行...`); 
-});
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, '0.0.0.0', () => { console.log(`✔ 服务开始监听端口 ${PORT}，运行...`); });
