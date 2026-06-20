@@ -291,7 +291,7 @@ export const TradeBot = {
             if (    !Object.hasOwn(mainData, 'LOCK')    ||
                     !isStrictString(mainData.LOCK)      ||
                     mainData.LOCK !== this.lockName     )   {throw new Error('didnt get available data, 2') }
-            if (mainData.TradingSymbol !== this.tvData.TradingSymbolPrice) {throw new Error('The TradingSymbol in GS is different from TV')}
+            if (mainData.TradingSymbol !== this.tvData.TradingSymbol) {throw new Error('The TradingSymbol in GS is different from TV')}
 
             const uncloseOrdersA2d      = isStrictTrue(mainData.therePosition) ? (valuesArray[1]).map(lines => CleanArrayToNumStrBool(lines)) : [] ;
 
