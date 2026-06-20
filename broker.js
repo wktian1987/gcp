@@ -262,7 +262,7 @@ async function GATE_Fetch(fetchBody) {
     try {
         const rcdA2d = [['时间: ', GetTimeStringWithOffset(8, Date.now()), '________________________________________']] ;
         rcdA2d.push(...ObjToA2dNumBoolStr(fetchBody)) ;
-        if (fetchBody.isOK) {rcdA2d.push(...ObjToA2dNumBoolStr(fetchBody.resData)) ;}
+        if (fetchBody.isOK) {rcdA2d.push(...ObjToA2dNumBoolStr(fetchBody.resData)) } else {rcdA2d.push(['出错信息: ', fetchBody.errMessage])}
         AppendGS(fetchBody.spreadsheetID, RcdRespRange, rcdA2d) ;
 
     } catch(e) {
