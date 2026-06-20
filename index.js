@@ -105,6 +105,6 @@ async function HandleSignal(url, body) {
 
 
 
-server.listen(process.env.POR, () => { console.log(`✔ 服务开始监听端口 ${PORT}，运行...`); });
+server.listen(process.env.PORT, () => { console.log(`✔ 服务开始监听端口 ${PORT}，运行...`); });
 
 
