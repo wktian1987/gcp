@@ -239,6 +239,9 @@ async function GATE_Fetch(fetchBody) {
         const resp = await fetch(url, options);
         const data = CleanObjToNumBoolStr(await resp.json() )    ; //这里必须需要await
 
+        fetchBody.status = resp.status ;
+        if (isObjectOfKeyValue(data)) {fetchBody.resData = data}
+
         if (resp.status === 400) { throw new Error(`GATE_Fetch Error: 400 无效请求`) }
         if (resp.status === 401) { throw new Error(`GATE_Fetch Error: 401 认证失败`) }
         if (resp.status === 404) { throw new Error(`GATE_Fetch Error: 404 未找到`) }
@@ -249,21 +252,19 @@ async function GATE_Fetch(fetchBody) {
         if (resp.status === resOK) {
             Object.keys(dataCheck).forEach( (k) => { if (data[k] !== dataCheck[k]) {throw new Error(`从交易所获取到的数据验证不通过: ${k} = ${data[k]}, != ${dataCheck[k]}`)} } ) ; 
             fetchBody.isOK     = true ;
-            fetchBody.resData  = data ;
         }
     } catch (e) {
         fetchBody.isOK          =  false            ;
         fetchBody.errMessage    =  e.message.trim() ;
-        if (isObjectOfKeyValue(data)) {fetchBody.resData = data}
     }
 
     try {
         const rcdA2d = [['时间: ', GetTimeStringWithOffset(8, Date.now()), '________________________________________']] ;
         rcdA2d.push(...ObjToA2dNumBoolStr(fetchBody)) ;
-        if (fetchBody.isOK) { rcdA2d.push(...ObjToA2dNumBoolStr(fetchBody.resData)) } else {
-            rcdA2d.push(['出错信息: ', fetchBody.errMessage]);
-            if (isObjectOfKeyValue(fetchBody.resData)) { rcdA2d.push(...ObjToA2dNumBoolStr(fetchBody.resData)) }
-        }
+        rcdA2d.push(['_______', '_______________________________'])
+        if (isStrictString(fetchBody.errMessage)) { rcdA2d.push(['出错信息: ', fetchBody.errMessage]) }
+        if (isObjectOfKeyValue(fetchBody.resData)) { rcdA2d.push(...ObjToA2dNumBoolStr(fetchBody.resData)) }
+
         // ClearGS(fetchBody.spreadsheetID, RcdRespRange) ; 
         AppendGS(fetchBody.spreadsheetID, RcdRespRange, rcdA2d) ;
 
