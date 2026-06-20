@@ -237,13 +237,13 @@ async function GATE_Fetch(fetchBody) {
         const resp = await fetch(url, options);
         const data = CleanObjToNumBoolStr(await resp.json() )    ; //这里必须需要await
 
-        if (resp.status === 400) { throw new Error(`GATE_Fetch Error: 无效请求`) }
-        if (resp.status === 401) { throw new Error(`GATE_Fetch Error: 认证失败`) }
-        if (resp.status === 404) { throw new Error(`GATE_Fetch Error: 未找到`) }
-        if (resp.status === 429) { throw new Error(`GATE_Fetch Error: 请求过于频繁`) }
-        if (resp.status >= 400 && resp.status < 500) { throw new Error(`GATE_Fetch Error: 未知错误`) }
-        if (resp.status >= 500) { throw new Error(`GATE_Fetch Error: 服务器错误`) }
-        if (resp.status !== resOK) {throw new Error(`GATE_Fetch Error: 未知错误`)}
+        if (resp.status === 400) { throw new Error(`GATE_Fetch Error: 400 无效请求`) }
+        if (resp.status === 401) { throw new Error(`GATE_Fetch Error: 401 认证失败`) }
+        if (resp.status === 404) { throw new Error(`GATE_Fetch Error: 404 未找到`) }
+        if (resp.status === 429) { throw new Error(`GATE_Fetch Error: 429 请求过于频繁`) }
+        if (resp.status >= 400 && resp.status < 500) { throw new Error(`GATE_Fetch Error: [400, 500) 未知错误`) }
+        if (resp.status >= 500) { throw new Error(`GATE_Fetch Error: >=500 服务器错误`) }
+        if (resp.status !== resOK) {throw new Error(`GATE_Fetch Error: resp.status !== resOK, 未知错误`)}
         if (resp.status === resOK) {
             Object.keys(dataCheck).forEach( (k) => { if (data[k] !== dataCheck[k]) {throw new Error(`从交易所获取到的数据验证不通过: ${k} = ${data[k]}, != ${dataCheck[k]}`)} } ) ; 
             fetchBody.isOK     = true ;
@@ -280,7 +280,8 @@ async function GATE_SendOrderToBroker(S) {
     ////这里应该要检查当前保证金余额
     ///////////////
 
-    const text  =  S.ing_buysell === CV.order_BUY ? 't-' + S.ing_orderID.replaceAll(':', '_') : S.ing_orderID ;
+    let text = S.ing_orderID.replaceAll(':', '.'); 
+    text = text.startsWith('t-') ? text : 't-' + text;
     const size  =  S.ing_buysell === CV.order_BUY ? Math.floor( S.ing_qty / quanto_multiplier) : -1 * Math.round( Math.abs(S.ing_qty) / quanto_multiplier) ;
     if ( Math.abs(size) < 1 ) {throw new Error('ing_qty is too small, cant trade')}
     S.ing_qty   =  S.ing_buysell === CV.order_BUY ? size * quanto_multiplier : S.ing_qty ;
