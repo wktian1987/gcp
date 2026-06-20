@@ -681,28 +681,41 @@ export async function SendTG(subject, text, toChatID = process.env.TG_CHAT_ID) {
  * @returns 出错会抛出异常
  */
 export async function SendEmail(mail_subject, mail_content, mailReceiver = process.env.RECEIVER_EMAIL) {
-    const mailUser = process.env.GMAIL_USER                         ;
-    const mailPass = process.env.GMAIL_APP_PASS                     ;
-
     const { createTransport } = await import('nodemailer');
-    const transporter = createTransport({ service: 'gmail', auth: { user: mailUser, pass: mailPass } });
 
-    // 构建邮件选项
-    const mailOptions = {
-        from: `"GCP Router" <${mailUser}>`,
-        to: mailReceiver,
-        subject: mail_subject,
-        html: mail_content // 传入你生成的 HTML Table 字符串
-    };
-    try { await transporter.sendMail(mailOptions) } catch (e) {
-        const { Resend } = await import('resend');
-        const resend = new Resend(process.env.ResendKEY);
-        await resend.emails.send({
+    try { 
+
+        const mailUser = process.env.GMAIL_USER;
+        const mailPass = process.env.GMAIL_APP_PASS;
+
+        const transporter = createTransport({ service: 'gmail', auth: { user: mailUser, pass: mailPass } });
+
+        // 构建邮件选项
+        const mailOptions = {
+            from: `"GCP Router" <${mailUser}>`,
+            to: mailReceiver,
+            subject: mail_subject,
+            html: mail_content // 传入你生成的 HTML Table 字符串
+        };
+        await transporter.sendMail(mailOptions) 
+    
+    } catch (e) {
+        const transporter = createTransport({
+            host: 'smtp.resend.com',
+            port: 465,
+            secure: true,
+            auth: {
+                user: 'resend', // 固定的
+                pass: process.env.ResendKEY // 扔进 GCP Secrets 的密钥
+            }
+        });
+        const mailOptions = {
             from: 'GCP Router from Resend <onboarding@resend.dev>',
             to: mailReceiver,
             subject: mail_subject,
-            html: mail_content
-        });
+            html: mail_content 
+        };
+        await transporter.sendMail(mailOptions) 
     }
 }
 
