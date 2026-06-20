@@ -21,9 +21,6 @@ import {
 
 import { CV } from "./handleTV.js";
 
-
-
-
 //#region - Basic Broker interface
 
 /**
@@ -257,12 +254,17 @@ async function GATE_Fetch(fetchBody) {
     } catch (e) {
         fetchBody.isOK          =  false            ;
         fetchBody.errMessage    =  e.message.trim() ;
+        if (isObjectOfKeyValue(data)) {fetchBody.resData = data}
     }
 
     try {
         const rcdA2d = [['时间: ', GetTimeStringWithOffset(8, Date.now()), '________________________________________']] ;
         rcdA2d.push(...ObjToA2dNumBoolStr(fetchBody)) ;
-        if (fetchBody.isOK) {rcdA2d.push(...ObjToA2dNumBoolStr(fetchBody.resData)) } else {rcdA2d.push(['出错信息: ', fetchBody.errMessage])}
+        if (fetchBody.isOK) { rcdA2d.push(...ObjToA2dNumBoolStr(fetchBody.resData)) } else {
+            rcdA2d.push(['出错信息: ', fetchBody.errMessage]);
+            if (isObjectOfKeyValue(fetchBody.resData)) { rcdA2d.push(...ObjToA2dNumBoolStr(fetchBody.resData)) }
+        }
+        // ClearGS(fetchBody.spreadsheetID, RcdRespRange) ; 
         AppendGS(fetchBody.spreadsheetID, RcdRespRange, rcdA2d) ;
 
     } catch(e) {
