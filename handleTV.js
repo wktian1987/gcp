@@ -744,12 +744,14 @@ export const TradeBot = {
         const upLimit_allFund = this.valueIfChg(findUPchgpctLimit).then_allFUnd ;
         const dnLimit_allFund = this.valueIfChg(findDNchgpctLimit).then_allFUnd ;
 
+        const minchg = findUPchgpctLimit * findDNchgpctLimit > 0 ? MinABSnumber(findUPchgpctLimit, findDNchgpctLimit) : 0 ;
+
         let toFind              =  false    ;
         let find_directionUp    =  true     ;
         let find_bigger         =  true     ;
 
         if (toAllFund > this.allFund && upLimit_allFund < toAllFund && dnLimit_allFund < toAllFund) {return false} 
-        if (toAllFund > this.allFund && upLimit_allFund > toAllFund && dnLimit_allFund > toAllFund) {return 0} 
+        if (toAllFund > this.allFund && upLimit_allFund > toAllFund && dnLimit_allFund > toAllFund) {return minchg} 
         if (toAllFund > this.allFund && upLimit_allFund > toAllFund && dnLimit_allFund < toAllFund) {
             toFind              =  true     ;
             find_directionUp    =  true     ;
@@ -762,7 +764,7 @@ export const TradeBot = {
         }
 
         if (toAllFund < this.allFund && upLimit_allFund > toAllFund && dnLimit_allFund > toAllFund) {return false} 
-        if (toAllFund < this.allFund && upLimit_allFund < toAllFund && dnLimit_allFund < toAllFund) {return 0} 
+        if (toAllFund < this.allFund && upLimit_allFund < toAllFund && dnLimit_allFund < toAllFund) {return minchg} 
         if (toAllFund < this.allFund && upLimit_allFund > toAllFund && dnLimit_allFund < toAllFund) {
             toFind              =  true     ;
             find_directionUp    =  false    ;
@@ -778,23 +780,23 @@ export const TradeBot = {
 
         if (toFind &&  find_directionUp &&  find_bigger) {
             let findchgpct = findDNchgpctLimit;
-            while (findchgpct < findUPchgpctLimit && this.valueIfChg(findchgpct) < toAllFund) { findchgpct += step }
+            while (findchgpct < findUPchgpctLimit && this.valueIfChg(findchgpct).then_allFUnd < toAllFund) { findchgpct += step }
             return findchgpct;
         }
         if (toFind && !find_directionUp &&  find_bigger) {
             let findchgpct = findUPchgpctLimit;
-            while (findchgpct > findDNchgpctLimit && this.valueIfChg(findchgpct) < toAllFund) { findchgpct -= step }
+            while (findchgpct > findDNchgpctLimit && this.valueIfChg(findchgpct).then_allFUnd < toAllFund) { findchgpct -= step }
             return findchgpct;
         }
 
         if (toFind && !find_directionUp && !find_bigger) {
             let findchgpct = findUPchgpctLimit;
-            while (findchgpct > findDNchgpctLimit && this.valueIfChg(findchgpct) > toAllFund) { findchgpct -= step }
+            while (findchgpct > findDNchgpctLimit && this.valueIfChg(findchgpct).then_allFUnd > toAllFund) { findchgpct -= step }
             return findchgpct;
         }
         if (toFind &&  find_directionUp && !find_bigger) {
             let findchgpct = findDNchgpctLimit;
-            while (findchgpct < findUPchgpctLimit && this.valueIfChg(findchgpct) > toAllFund) { findchgpct += step }
+            while (findchgpct < findUPchgpctLimit && this.valueIfChg(findchgpct).then_allFUnd > toAllFund) { findchgpct += step }
             return findchgpct;
         }
 
@@ -817,12 +819,14 @@ export const TradeBot = {
         const upLimit_allCoin = this.valueIfChg(findUPchgpctLimit).then_allCoin ;
         const dnLimit_allCoin = this.valueIfChg(findDNchgpctLimit).then_allCoin ;
 
+        const minchg = findUPchgpctLimit * findDNchgpctLimit > 0 ? MinABSnumber(findUPchgpctLimit, findDNchgpctLimit) : 0 ;
+
         let toFind              =  false    ;
         let find_directionUp    =  true     ;
         let find_bigger         =  true     ;
 
         if (toAllCoin > this.allCoin && upLimit_allCoin < toAllCoin && dnLimit_allCoin < toAllCoin) {return false} 
-        if (toAllCoin > this.allCoin && upLimit_allCoin > toAllCoin && dnLimit_allCoin > toAllCoin) {return 0} 
+        if (toAllCoin > this.allCoin && upLimit_allCoin > toAllCoin && dnLimit_allCoin > toAllCoin) {return minchg} 
         if (toAllCoin > this.allCoin && upLimit_allCoin > toAllCoin && dnLimit_allCoin < toAllCoin) {
             toFind              =  true     ;
             find_directionUp    =  true     ;
@@ -835,7 +839,7 @@ export const TradeBot = {
         }
 
         if (toAllCoin < this.allCoin && upLimit_allCoin > toAllCoin && dnLimit_allCoin > toAllCoin) {return false} 
-        if (toAllCoin < this.allCoin && upLimit_allCoin < toAllCoin && dnLimit_allCoin < toAllCoin) {return 0} 
+        if (toAllCoin < this.allCoin && upLimit_allCoin < toAllCoin && dnLimit_allCoin < toAllCoin) {return minchg} 
         if (toAllCoin < this.allCoin && upLimit_allCoin > toAllCoin && dnLimit_allCoin < toAllCoin) {
             toFind              =  true     ;
             find_directionUp    =  false    ;
@@ -851,23 +855,23 @@ export const TradeBot = {
 
         if (toFind &&  find_directionUp &&  find_bigger) {
             let findchgpct = findDNchgpctLimit;
-            while (findchgpct < findUPchgpctLimit && this.valueIfChg(findchgpct) < toAllCoin) { findchgpct += step }
+            while (findchgpct < findUPchgpctLimit && this.valueIfChg(findchgpct).then_allCoin < toAllCoin) { findchgpct += step }
             return findchgpct;
         }
         if (toFind && !find_directionUp &&  find_bigger) {
             let findchgpct = findUPchgpctLimit;
-            while (findchgpct > findDNchgpctLimit && this.valueIfChg(findchgpct) < toAllCoin) { findchgpct -= step }
+            while (findchgpct > findDNchgpctLimit && this.valueIfChg(findchgpct).then_allCoin < toAllCoin) { findchgpct -= step }
             return findchgpct;
         }
 
         if (toFind && !find_directionUp && !find_bigger) {
             let findchgpct = findUPchgpctLimit;
-            while (findchgpct > findDNchgpctLimit && this.valueIfChg(findchgpct) > toAllCoin) { findchgpct -= step }
+            while (findchgpct > findDNchgpctLimit && this.valueIfChg(findchgpct).then_allCoin > toAllCoin) { findchgpct -= step }
             return findchgpct;
         }
         if (toFind &&  find_directionUp && !find_bigger) {
             let findchgpct = findDNchgpctLimit;
-            while (findchgpct < findUPchgpctLimit && this.valueIfChg(findchgpct) > toAllCoin) { findchgpct += step }
+            while (findchgpct < findUPchgpctLimit && this.valueIfChg(findchgpct).then_allCoin > toAllCoin) { findchgpct += step }
             return findchgpct;
         }
 
