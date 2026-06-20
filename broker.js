@@ -22,8 +22,6 @@ import {
 import { CV } from "./handleTV.js";
 
 
-const RcdRespRange = 'Broker!A:B' ;
-const spreadsheetID = '' ;
 
 
 //#region - Basic Broker interface
@@ -35,7 +33,6 @@ const spreadsheetID = '' ;
  * @returns 直接在传入的对象上进行数据修改, 不会另外返回数据
  */
 export async function SendOrderToBroker(S) {
-    spreadsheetID = S.spreadsheetID ; // 为后面交易所记录交易记录准备的
     if (!isStrictFalse(S.isReal) && S.TradingSymbol.startsWith("GATE:")) { await GATE_SendOrderToBroker(S); return; }
 
     const simRange_00 = 'simBroker!A30:B'   ;
@@ -58,8 +55,6 @@ export async function SendOrderToBroker(S) {
  * @returns 直接在传入的ingOrderData对象中修改属性, 不会另外返回
  */
 export async function CheckOrderConfirm(ingOrderData) { 
-    spreadsheetID = S.spreadsheetID ; // 为后面交易所记录交易记录准备的
-
     if (!isStrictFalse(ingOrderData.isReal) && ingOrderData.TradingSymbol.startsWith("GATE:")) { await GATE_CheckOrderConfirm(ingOrderData); return; }
 
     const simRange_00 = 'simBroker!A30:B'   ;
@@ -100,8 +95,6 @@ export async function CheckOrderConfirm(ingOrderData) {
  * @returns 直接在传入的fund对象中修改属性, 不会另外返回
  */
 export async function CheckFundFee(fund) {
-    spreadsheetID = S.spreadsheetID ; // 为后面交易所记录交易记录准备的
-
     if (!isStrictFalse(fund.isReal) && fund.TradingSymbol.startsWith("GATE:")) { await GATE_CheckFundFee(fund); return; }
 
     const simRange_01 = 'simBroker!A1:B29';
@@ -151,21 +144,24 @@ function tvSymbol_TO_GATE_Symbol(tvSymbol) {
 }
 
 class GateFetchBody {
-    constructor(isReal = false, method = 'GET', path = '', body = null, resOK = 200, dataCheck = {contract : 'BTC_USDT'}) {
+    constructor(isReal = false, method = 'GET', path = '', body = null, resOK = 200, dataCheck = {contract : 'BTC_USDT'}, spreadsheetID = 'XXX') {
         if (!isObjectOfKeyValue(dataCheck)) {throw new Error('GateFetchBody输入的dataCheck不是标准的可验证对象')}
         // 每一个实例在诞生之初，就在自己的地盘上锁死了独立的变量空间
-        this.isReal     = isReal    ;
-        this.method     = method    ;
-        this.path       = path      ;
-        this.body       = body      ;
-        this.resOK      = resOK     ;
-        this.dataCheck  = dataCheck ;
-        this.status     = 0         ;
-        this.isOK       = false     ;
-        this.resData    = undefined ;
-        this.errMessage = undefined ;
+        this.isReal         = isReal        ;
+        this.method         = method        ;
+        this.path           = path          ;
+        this.body           = body          ;
+        this.resOK          = resOK         ;
+        this.dataCheck      = dataCheck     ;
+        this.spreadsheetID  = spreadsheetID ;
+        this.status         = 0             ;
+        this.isOK           = false         ;
+        this.resData        = undefined     ;
+        this.errMessage     = undefined     ;
     }
 }
+
+const RcdRespRange = 'Broker!A:B' ; // 记录交易所交互记录
 
 /**
  * 签名并网发送信息到交易所（GATE唯一请求入口）
@@ -267,7 +263,7 @@ async function GATE_Fetch(fetchBody) {
         const rcdA2d = [['时间: ', GetTimeStringWithOffset(8, Date.now()), '________________________________________']] ;
         rcdA2d.push(...ObjToA2dNumBoolStr(fetchBody)) ;
         if (fetchBody.isOK) {rcdA2d.push(...ObjToA2dNumBoolStr(fetchBody.resData)) ;}
-        AppendGS(spreadsheetID, RcdRespRange, rcdA2d) ;
+        AppendGS(fetchBody.spreadsheetID, RcdRespRange, rcdA2d) ;
 
     } catch(e) {
         console.log('Broker err resp: ' + e.message) ;
@@ -290,7 +286,7 @@ async function GATE_SendOrderToBroker(S) {
 
     // Get quanto_multiplier,  order_price_round
     const path_contract     = '/futures/' + brokerSymbol.settle + '/contracts/' + brokerSymbol.contract ;
-    const fetchBody_contract = new GateFetchBody(S.isReal, 'GET', path_contract, null, 200, {name: brokerSymbol.contract}) ;
+    const fetchBody_contract = new GateFetchBody(S.isReal, 'GET', path_contract, null, 200, {name: brokerSymbol.contract}, S.spreadsheetID) ;
     await GATE_Fetch(fetchBody_contract) ;
     if (!fetchBody_contract.isOK) {throw new Error(fetchBody_contract.errMessage)}
     const data_contract = fetchBody_contract.resData ;
@@ -324,7 +320,7 @@ async function GATE_SendOrderToBroker(S) {
     // 合约交易下单:
     // POST /futures/{settle}/orders
     const path_order  =  '/futures/' + brokerSymbol.settle + '/orders'  ;
-    const fetchBody_order = new GateFetchBody(S.isReal, 'POST', path_order, orderBody, 201, {text}) ;
+    const fetchBody_order = new GateFetchBody(S.isReal, 'POST', path_order, orderBody, 201, {text}, S.spreadsheetID) ;
     await GATE_Fetch(fetchBody_order) ;
     if (!fetchBody_order.isOK) {throw new Error('下单失败: ' + fetchBody_order.errMessage)}
     const data_order = fetchBody_order.resData ;
@@ -350,7 +346,7 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
     // 只有完全没有成交的情况才会返回order_cancel
     if ( isStrictTrue(ingOrderData.ifWaitingThenCancel) ) {
         const path_cancel   =  '/futures/' + brokerSymbol.settle + '/orders/' + ingOrderData.ing_orderID ;
-        const fetchBody_cancel = new GateFetchBody(ingOrderData.isReal, 'DELETE', path_cancel, null, 200, {text: ingOrderData.ing_orderID}) ;
+        const fetchBody_cancel = new GateFetchBody(ingOrderData.isReal, 'DELETE', path_cancel, null, 200, {text: ingOrderData.ing_orderID}, ingOrderData.spreadsheetID) ;
         await GATE_Fetch(fetchBody_cancel) ;
         if (!fetchBody_cancel.isOK) {throw new Error(fetchBody_cancel.errMessage)}
         const data_cancel = fetchBody_cancel.resData ;
@@ -381,7 +377,7 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
         // 如果不撤单单的话, 去查看是否有新的成交记录
         // GET  '/futures/{settle}/orders/{order_id}'
         const path_confirm      =  '/futures/' + brokerSymbol.settle + '/orders/' + ingOrderData.ing_orderID ;
-        const fetchBody_confirm =  new GateFetchBody(ingOrderData.isReal, 'GET', path_confirm, null, 200, {text: ingOrderData.ing_orderID}) ;
+        const fetchBody_confirm =  new GateFetchBody(ingOrderData.isReal, 'GET', path_confirm, null, 200, {text: ingOrderData.ing_orderID}, ingOrderData.spreadsheetID) ;
         await GATE_Fetch(fetchBody_confirm) ;
         if (!fetchBody_confirm.isOK) {throw new Error(fetchBody_confirm.errMessage)}
         const data_confirm = fetchBody_confirm.resData ;
@@ -412,7 +408,7 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
     // » pnl_fund	    string	已实现盈亏中的资金费结算盈亏
     // » pnl_fee	    string	已实现盈亏中的总手续费支出
     const path_position  =  '/futures/' + brokerSymbol.settle + '/positions/' + brokerSymbol.contract ;
-    const fetchBody_position = new GateFetchBody(ingOrderData.isReal, 'GET', path_position, null, 200, {contract: brokerSymbol.contract}) ;
+    const fetchBody_position = new GateFetchBody(ingOrderData.isReal, 'GET', path_position, null, 200, {contract: brokerSymbol.contract}, ingOrderData.spreadsheetID) ;
     await GATE_Fetch(fetchBody_position) ;
     if (!fetchBody_position.isOK) {throw new Error(fetchBody_position.errMessage)}
     const data_position = fetchBody_position.resData ;
@@ -443,7 +439,7 @@ async function GATE_CheckFundFee(fund) {
     // » pnl_fee	    string	已实现盈亏中的总手续费支出
     const path_position  =  '/futures/' + brokerSymbol.settle + '/positions/' + brokerSymbol.contract ;
 
-    const fetchBody = new GateFetchBody(fund.isReal, 'GET', path_position, null, 200, {contract: brokerSymbol.contract}) ;
+    const fetchBody = new GateFetchBody(fund.isReal, 'GET', path_position, null, 200, {contract: brokerSymbol.contract}, fund.spreadsheetID) ;
     await GATE_Fetch(fetchBody) ;
     if (!fetchBody.isOK) {throw new Error(fetchBody.errMessage)}
     const data_position = fetchBody.resData ;
