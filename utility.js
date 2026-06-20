@@ -703,19 +703,21 @@ export async function SendEmail(mail_subject, mail_content, mailReceiver = proce
     
     } catch (e) {
 
-        const mailUser = process.env.GMAIL_USER;
-        const mailPass = process.env.GMAIL_APP_PASS;
+        console.log(`Resend Error: ${e.message}`) ;
 
-        const transporter = createTransport({ service: 'gmail', auth: { user: mailUser, pass: mailPass } });
+        // const mailUser = process.env.GMAIL_USER;
+        // const mailPass = process.env.GMAIL_APP_PASS;
 
-        // 构建邮件选项
-        const mailOptions = {
-            from: `"GCP Router" <${mailUser}>`,
-            to: mailReceiver,
-            subject: mail_subject,
-            html: mail_content // 传入你生成的 HTML Table 字符串
-        };
-        await transporter.sendMail(mailOptions) 
+        // const transporter = createTransport({ service: 'gmail', auth: { user: mailUser, pass: mailPass } });
+
+        // // 构建邮件选项
+        // const mailOptions = {
+        //     from: `"GCP Router" <${mailUser}>`,
+        //     to: mailReceiver,
+        //     subject: mail_subject,
+        //     html: mail_content // 传入你生成的 HTML Table 字符串
+        // };
+        // await transporter.sendMail(mailOptions) 
 
     }
 }
