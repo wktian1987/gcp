@@ -291,7 +291,11 @@ export const TradeBot = {
             if (    !Object.hasOwn(mainData, 'LOCK')    ||
                     !isStrictString(mainData.LOCK)      ||
                     mainData.LOCK !== this.lockName     )   {throw new Error('didnt get available data, 2') }
-            if (mainData.TradingSymbol !== this.tvData.TradingSymbol) {throw new Error('The TradingSymbol in GS is different from TV')}
+            if (mainData.TradingSymbol !== this.tvData.TradingSymbol) {
+                const errMessage = 'The TradingSymbol in GS is different from TV' ;
+                this.AddRunningWellMessage(errMessage) ; // 这是很严重的错误, 需要记录
+                throw new Error(errMessage) ;
+            }
 
             const uncloseOrdersA2d      = isStrictTrue(mainData.therePosition) ? (valuesArray[1]).map(lines => CleanArrayToNumStrBool(lines)) : [] ;
 
@@ -721,17 +725,16 @@ export const TradeBot = {
 
     /**
      * 计算在当前仓位下, 如果allFund变化多少的时候, 标的价格应当变化多少, 才会导致allFund变化这个多
-     * @param {number} valueFchgpct  例如, -0.2
+     * @param {number} toAllFund  例如, 历史最高allFund * -0.3 , 计算止损价
      * @param {number} findUPchgpctLimit 例如 0.1
      * @param {number} findDNchgpctLimit 例如 -1.1
      * @returns 会抛出错误
      * @returns number 计算出来的数值
      */
-    chgPctIfVALUEFchg(valueFchgpct = -0.2, findUPchgpctLimit = 0.1, findDNchgpctLimit = -1.1) {
-        if (!isStrictNumber(valueFchgpct) || !isStrictNumber(findUPchgpctLimit) || !isStrictNumber(findDNchgpctLimit) || findUPchgpctLimit < 0 || findDNchgpctLimit > 0 ) {
+    chgPctIfVALUEFchg(toAllFund, findUPchgpctLimit = 0.1, findDNchgpctLimit = -1.1) {
+        if (!isStrictNumber(toAllFund) || !isStrictNumber(findUPchgpctLimit) || !isStrictNumber(findDNchgpctLimit) || findUPchgpctLimit < 0 || findDNchgpctLimit > 0 ) {
             throw new Error('valueFchgpct, findUPchgpctLimit, findDNchgpctLimit 输入错误') ;
         } ;
-        const then_allFund    = this.allFund * (1+valueFchgpct)                 ;
         const upLimit_allFund = this.valueIfChg(findUPchgpctLimit).then_allFUnd ;
         const dnLimit_allFund = this.valueIfChg(findDNchgpctLimit).then_allFUnd ;
 
@@ -739,27 +742,27 @@ export const TradeBot = {
         let find_directionUp    =  true     ;
         let find_bigger         =  true     ;
 
-        if (then_allFund > this.allFund && upLimit_allFund < then_allFund && dnLimit_allFund < then_allFund) {return false} 
-        if (then_allFund > this.allFund && upLimit_allFund > then_allFund && dnLimit_allFund > then_allFund) {return 0} 
-        if (then_allFund > this.allFund && upLimit_allFund > then_allFund && dnLimit_allFund < then_allFund) { // 最可能的情况
+        if (toAllFund > this.allFund && upLimit_allFund < toAllFund && dnLimit_allFund < toAllFund) {return false} 
+        if (toAllFund > this.allFund && upLimit_allFund > toAllFund && dnLimit_allFund > toAllFund) {return 0} 
+        if (toAllFund > this.allFund && upLimit_allFund > toAllFund && dnLimit_allFund < toAllFund) { // 最可能的情况
             toFind              =  true     ;
             find_directionUp    =  true     ;
             find_bigger         =  true     ;
         }
-        if (then_allFund > this.allFund && upLimit_allFund < then_allFund && dnLimit_allFund > then_allFund) { // 几乎不可能的情况
+        if (toAllFund > this.allFund && upLimit_allFund < toAllFund && dnLimit_allFund > toAllFund) { // 几乎不可能的情况
             toFind              =  true     ;
             find_directionUp    =  false    ;
             find_bigger         =  true     ;
         }
 
-        if (then_allFund < this.allFund && upLimit_allFund > then_allFund && dnLimit_allFund > then_allFund) {return false} 
-        if (then_allFund < this.allFund && upLimit_allFund < then_allFund && dnLimit_allFund < then_allFund) {return 0} 
-        if (then_allFund < this.allFund && upLimit_allFund > then_allFund && dnLimit_allFund < then_allFund) { // 最可能的情况
+        if (toAllFund < this.allFund && upLimit_allFund > toAllFund && dnLimit_allFund > toAllFund) {return false} 
+        if (toAllFund < this.allFund && upLimit_allFund < toAllFund && dnLimit_allFund < toAllFund) {return 0} 
+        if (toAllFund < this.allFund && upLimit_allFund > toAllFund && dnLimit_allFund < toAllFund) { // 最可能的情况
             toFind              =  true     ;
             find_directionUp    =  false    ;
             find_bigger         =  false    ;
         }
-        if (then_allFund < this.allFund && upLimit_allFund < then_allFund && dnLimit_allFund > then_allFund) { // 绝对不可能的情况
+        if (toAllFund < this.allFund && upLimit_allFund < toAllFund && dnLimit_allFund > toAllFund) { // 绝对不可能的情况
             toFind              =  true     ;
             find_directionUp    =  true     ;
             find_bigger         =  false    ;
@@ -769,23 +772,23 @@ export const TradeBot = {
 
         if (toFind &&  find_directionUp &&  find_bigger) { // 最可能的往上去找刚好大的点
             let findchgpct = findDNchgpctLimit;
-            while (findchgpct < findUPchgpctLimit && this.valueIfChg(findchgpct) < then_allFund) { findchgpct += step }
+            while (findchgpct < findUPchgpctLimit && this.valueIfChg(findchgpct) < toAllFund) { findchgpct += step }
             return findchgpct;
         }
         if (toFind && !find_directionUp &&  find_bigger) { // 几乎不可能的往下去找刚好大的点
             let findchgpct = findUPchgpctLimit;
-            while (findchgpct > findDNchgpctLimit && this.valueIfChg(findchgpct) < then_allFund) { findchgpct -= step }
+            while (findchgpct > findDNchgpctLimit && this.valueIfChg(findchgpct) < toAllFund) { findchgpct -= step }
             return findchgpct;
         }
 
         if (toFind && !find_directionUp && !find_bigger) { // 最可能的往下去找刚好小的点
             let findchgpct = findUPchgpctLimit;
-            while (findchgpct > findDNchgpctLimit && this.valueIfChg(findchgpct) > then_allFund) { findchgpct -= step }
+            while (findchgpct > findDNchgpctLimit && this.valueIfChg(findchgpct) > toAllFund) { findchgpct -= step }
             return findchgpct;
         }
         if (toFind &&  find_directionUp && !find_bigger) { // 绝不可能的往上去找刚好小的点
             let findchgpct = findDNchgpctLimit;
-            while (findchgpct < findUPchgpctLimit && this.valueIfChg(findchgpct) > then_allFund) { findchgpct += step }
+            while (findchgpct < findUPchgpctLimit && this.valueIfChg(findchgpct) > toAllFund) { findchgpct += step }
             return findchgpct;
         }
 
@@ -795,17 +798,16 @@ export const TradeBot = {
 
     /**
      * 计算在当前仓位下, 如果allCoin变化多少的时候, 标的价格应当变化多少, 才会导致allCoin变化这个多
-     * @param {number} valueCchgpct  例如, -0.2
+     * @param {number} toAllCoin  例如, 历史最高allCoin * -0.2 , 计算止损价
      * @param {number} findUPchgpctLimit 例如 0.1
      * @param {number} findDNchgpctLimit 例如 -1.1
      * @returns 会抛出错误
      * @returns number 计算出来的数值
      */
-    chgPctIfVALUECchg(valueCchgpct = -0.2, findUPchgpctLimit = 0.1, findDNchgpctLimit = -1.1) {
-        if (!isStrictNumber(valueCchgpct) || !isStrictNumber(findUPchgpctLimit) || !isStrictNumber(findDNchgpctLimit) || findUPchgpctLimit < 0 || findDNchgpctLimit > 0 ) {
+    chgPctIfVALUECchg(toAllCoin, findUPchgpctLimit = 0.1, findDNchgpctLimit = -1.1) {
+        if (!isStrictNumber(toAllCoin) || !isStrictNumber(findUPchgpctLimit) || !isStrictNumber(findDNchgpctLimit) || findUPchgpctLimit < 0 || findDNchgpctLimit > 0 ) {
             throw new Error('valueCchgpct, findUPchgpctLimit, findDNchgpctLimit 输入错误') ;
         } ;
-        const then_allCoin    = this.allCoin * (1+valueCchgpct)                 ;
         const upLimit_allCoin = this.valueIfChg(findUPchgpctLimit).then_allCoin ;
         const dnLimit_allCoin = this.valueIfChg(findDNchgpctLimit).then_allCoin ;
 
@@ -813,27 +815,27 @@ export const TradeBot = {
         let find_directionUp    =  true     ;
         let find_bigger         =  true     ;
 
-        if (then_allCoin > this.allCoin && upLimit_allCoin < then_allCoin && dnLimit_allCoin < then_allCoin) {return false} 
-        if (then_allCoin > this.allCoin && upLimit_allCoin > then_allCoin && dnLimit_allCoin > then_allCoin) {return 0} 
-        if (then_allCoin > this.allCoin && upLimit_allCoin > then_allCoin && dnLimit_allCoin < then_allCoin) { // 最可能的情况
+        if (toAllCoin > this.allCoin && upLimit_allCoin < toAllCoin && dnLimit_allCoin < toAllCoin) {return false} 
+        if (toAllCoin > this.allCoin && upLimit_allCoin > toAllCoin && dnLimit_allCoin > toAllCoin) {return 0} 
+        if (toAllCoin > this.allCoin && upLimit_allCoin > toAllCoin && dnLimit_allCoin < toAllCoin) { // 最可能的情况
             toFind              =  true     ;
             find_directionUp    =  true     ;
             find_bigger         =  true     ;
         }
-        if (then_allCoin > this.allCoin && upLimit_allCoin < then_allCoin && dnLimit_allCoin > then_allCoin) { // 几乎不可能的情况
+        if (toAllCoin > this.allCoin && upLimit_allCoin < toAllCoin && dnLimit_allCoin > toAllCoin) { // 几乎不可能的情况
             toFind              =  true     ;
             find_directionUp    =  false    ;
             find_bigger         =  true     ;
         }
 
-        if (then_allCoin < this.allCoin && upLimit_allCoin > then_allCoin && dnLimit_allCoin > then_allCoin) {return false} 
-        if (then_allCoin < this.allCoin && upLimit_allCoin < then_allCoin && dnLimit_allCoin < then_allCoin) {return 0} 
-        if (then_allCoin < this.allCoin && upLimit_allCoin > then_allCoin && dnLimit_allCoin < then_allCoin) { // 最可能的情况
+        if (toAllCoin < this.allCoin && upLimit_allCoin > toAllCoin && dnLimit_allCoin > toAllCoin) {return false} 
+        if (toAllCoin < this.allCoin && upLimit_allCoin < toAllCoin && dnLimit_allCoin < toAllCoin) {return 0} 
+        if (toAllCoin < this.allCoin && upLimit_allCoin > toAllCoin && dnLimit_allCoin < toAllCoin) { // 最可能的情况
             toFind              =  true     ;
             find_directionUp    =  false    ;
             find_bigger         =  false    ;
         }
-        if (then_allCoin < this.allCoin && upLimit_allCoin < then_allCoin && dnLimit_allCoin > then_allCoin) { // 几乎不可能的情况
+        if (toAllCoin < this.allCoin && upLimit_allCoin < toAllCoin && dnLimit_allCoin > toAllCoin) { // 几乎不可能的情况
             toFind              =  true     ;
             find_directionUp    =  true     ;
             find_bigger         =  false    ;
@@ -843,23 +845,23 @@ export const TradeBot = {
 
         if (toFind &&  find_directionUp &&  find_bigger) { // 最可能的往上去找刚好大的点
             let findchgpct = findDNchgpctLimit;
-            while (findchgpct < findUPchgpctLimit && this.valueIfChg(findchgpct) < then_allCoin) { findchgpct += step }
+            while (findchgpct < findUPchgpctLimit && this.valueIfChg(findchgpct) < toAllCoin) { findchgpct += step }
             return findchgpct;
         }
         if (toFind && !find_directionUp &&  find_bigger) { // 几乎不可能的往下去找刚好大的点
             let findchgpct = findUPchgpctLimit;
-            while (findchgpct > findDNchgpctLimit && this.valueIfChg(findchgpct) < then_allCoin) { findchgpct -= step }
+            while (findchgpct > findDNchgpctLimit && this.valueIfChg(findchgpct) < toAllCoin) { findchgpct -= step }
             return findchgpct;
         }
 
         if (toFind && !find_directionUp && !find_bigger) { // 最可能的往下去找刚好小的点
             let findchgpct = findUPchgpctLimit;
-            while (findchgpct > findDNchgpctLimit && this.valueIfChg(findchgpct) > then_allCoin) { findchgpct -= step }
+            while (findchgpct > findDNchgpctLimit && this.valueIfChg(findchgpct) > toAllCoin) { findchgpct -= step }
             return findchgpct;
         }
         if (toFind &&  find_directionUp && !find_bigger) { // 几乎不可能的往上去找刚好小的点
             let findchgpct = findDNchgpctLimit;
-            while (findchgpct < findUPchgpctLimit && this.valueIfChg(findchgpct) > then_allCoin) { findchgpct += step }
+            while (findchgpct < findUPchgpctLimit && this.valueIfChg(findchgpct) > toAllCoin) { findchgpct += step }
             return findchgpct;
         }
 
@@ -873,10 +875,10 @@ export const TradeBot = {
      * @returns number: 计算出的stopPriceF
      */
     GetStopPriceF() {
-        const stopF_stopF    = this.chgPctIfVALUEFchg(this.stopRate4F / 100, 0 , -1) ;
-        const stopF_notStopC = this.chgPctIfVALUECchg(this.notStop4C  / 100, 0 , -1) ;
-        if (!isStrictNumber(stopF_stopF) || !isStrictNumber(stopF_notStopC)) {return false}
-        return this.TradingSymbolPrice * (1 + Math.min(stopF_stopF, stopF_notStopC)) ;
+        const pct_stopF_stopF    = this.chgPctIfVALUEFchg(this.hghestFund * (1+this.stopRate4F/100), 0 , -1) ;
+        const pct_stopF_notStopC = this.chgPctIfVALUECchg(this.hghestCoin * (1+this.notStop4C /100), 0 , -1) ;
+        if (!isStrictNumber(pct_stopF_stopF) || !isStrictNumber(pct_stopF_notStopC)) {return false}
+        return this.TradingSymbolPrice * (1 + Math.min(pct_stopF_stopF, pct_stopF_notStopC)) ;
     } ,
 
     /**
@@ -885,17 +887,17 @@ export const TradeBot = {
      * @returns number: 计算出的stopPriceC
      */
     GetStopPriceC() {
-        const stopC_stopC    = this.chgPctIfVALUECchg(this.stopRate4C /100 , 0 , -1) ;
-        const stopC_notStopF = this.chgPctIfVALUEFchg(this.notStop4F  /100 , 0 , -1) ;
-        if (!isStrictNumber(stopC_stopC) || !isStrictNumber(stopC_notStopF)) {return false}
-        return this.TradingSymbolPrice * (1 + Math.min(stopC_stopC, stopC_notStopF)) ;
+        const pct_stopC_stopC    = this.chgPctIfVALUECchg(this.hghestCoin * (1+this.stopRate4C /100) , 0 , -1) ;
+        const pct_stopC_notStopF = this.chgPctIfVALUEFchg(this.hghestFund * (1+this.notStop4F  /100) , 0 , -1) ;
+        if (!isStrictNumber(pct_stopC_stopC) || !isStrictNumber(pct_stopC_notStopF)) {return false}
+        return this.TradingSymbolPrice * (1 + Math.min(pct_stopC_stopC, pct_stopC_notStopF)) ;
     } ,
 
 
     GetLiquidPrice() {
-        const liquid = this.chgPctIfVALUEFchg(-0.99, 0, -1.5) ;
-        if (!isStrictNumber(liquid)){return false}
-        return this.TradingSymbolPrice * (1 + liquid) ;
+        const pct_liquid = this.chgPctIfVALUEFchg(0, 0, -1) ;
+        if (!isStrictNumber(pct_liquid)){return false}
+        return this.TradingSymbolPrice * (1 + pct_liquid) ;
     } ,
 
     /**
@@ -987,6 +989,12 @@ export const TradeBot = {
 
         this.closeToRndHgh = this.roundHgh / Math.pow((1 + this.waveUpChg), this.notBuyCloseToRndHghStep);
         this.closeToRndLow = this.roundLow / Math.pow((1 + this.waveDnChg), this.notBuyCloseToRndLowStep);
+
+        // gridDifficulty   1.1
+        // enDifficulty     0.055
+        // exDifficulty	    0.945
+
+
 
         this.hghToBuy = Math.min(this.basicHghToBuy,
             this.closeToRndHgh,
@@ -1315,7 +1323,6 @@ export const TradeBot = {
     },
 
 };
-
 
 export async function HandleTradeBot(tvData) {
     const gcpGetTime = Date.now() ;
