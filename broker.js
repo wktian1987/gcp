@@ -15,12 +15,15 @@ import {
     A2dToCleanObj,
     isPlainObject,
     isObjectOfKeyValue,
-    UpdateGS
+    UpdateGS,
+    AppendGS
 } from "./utility.js";
 
 import { CV } from "./handleTV.js";
 
-import { maxHeaderSize } from "node:http"; // 这一行是干嘛的??? 为什么我的代码里莫名其妙出现这一行
+
+const RcdRespRange = 'Broker!A:B' ;
+const spreadsheetID = '' ;
 
 
 //#region - Basic Broker interface
@@ -32,6 +35,7 @@ import { maxHeaderSize } from "node:http"; // 这一行是干嘛的??? 为什么
  * @returns 直接在传入的对象上进行数据修改, 不会另外返回数据
  */
 export async function SendOrderToBroker(S) {
+    spreadsheetID = S.spreadsheetID ; // 为后面交易所记录交易记录准备的
     if (!isStrictFalse(S.isReal) && S.TradingSymbol.startsWith("GATE:")) { await GATE_SendOrderToBroker(S); return; }
 
     const simRange_00 = 'simBroker!A30:B'   ;
@@ -54,6 +58,8 @@ export async function SendOrderToBroker(S) {
  * @returns 直接在传入的ingOrderData对象中修改属性, 不会另外返回
  */
 export async function CheckOrderConfirm(ingOrderData) { 
+    spreadsheetID = S.spreadsheetID ; // 为后面交易所记录交易记录准备的
+
     if (!isStrictFalse(ingOrderData.isReal) && ingOrderData.TradingSymbol.startsWith("GATE:")) { await GATE_CheckOrderConfirm(ingOrderData); return; }
 
     const simRange_00 = 'simBroker!A30:B'   ;
@@ -94,6 +100,8 @@ export async function CheckOrderConfirm(ingOrderData) {
  * @returns 直接在传入的fund对象中修改属性, 不会另外返回
  */
 export async function CheckFundFee(fund) {
+    spreadsheetID = S.spreadsheetID ; // 为后面交易所记录交易记录准备的
+
     if (!isStrictFalse(fund.isReal) && fund.TradingSymbol.startsWith("GATE:")) { await GATE_CheckFundFee(fund); return; }
 
     const simRange_01 = 'simBroker!A1:B29';
@@ -115,6 +123,7 @@ export async function CheckFundFee(fund) {
 // 模拟交易：https://api-testnet.gateapi.io
 // 现在的版本为: /api/v4
 // 是否是实盘交易, 只有isStrictTrue(isReal)是实盘交易, 其他全是模拟盘
+
 
 /**
  * 将 TV 信号 Symbol 转换为交易所标准 Symbol 对象 ; 
@@ -253,6 +262,20 @@ async function GATE_Fetch(fetchBody) {
         fetchBody.isOK          =  false            ;
         fetchBody.errMessage    =  e.message.trim() ;
     }
+
+    try {
+        const rcdA2d = [['时间: ', GetTimeStringWithOffset(8, Date.now()), '________________________________________']] ;
+        rcdA2d.push(...ObjToA2dNumBoolStr(fetchBody)) ;
+        if (fetchBody.isOK) {rcdA2d.push(...ObjToA2dNumBoolStr(fetchBody.resData)) ;}
+        AppendGS(spreadsheetID, RcdRespRange, rcdA2d) ;
+
+    } catch(e) {
+        console.log('Broker err resp: ' + e.message) ;
+    }
+
+
+
+
 }
 // 当有了上面那个无缝签名的 gateProtectedFetch 大闸后，
 // 你在外面的发单、对账、查统一账户资产的函数，瞬间变得像喝水一样简单利落：
