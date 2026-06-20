@@ -291,6 +291,7 @@ export const TradeBot = {
             if (    !Object.hasOwn(mainData, 'LOCK')    ||
                     !isStrictString(mainData.LOCK)      ||
                     mainData.LOCK !== this.lockName     )   {throw new Error('didnt get available data, 2') }
+            if (mainData.TradingSymbol !== this.tvData.TradingSymbolPrice) {throw new Error('The TradingSymbol in GS is different from TV')}
 
             const uncloseOrdersA2d      = isStrictTrue(mainData.therePosition) ? (valuesArray[1]).map(lines => CleanArrayToNumStrBool(lines)) : [] ;
 
@@ -875,7 +876,7 @@ export const TradeBot = {
         const stopF_stopF    = this.chgPctIfVALUEFchg(this.stopRate4F / 100, 0 , -1) ;
         const stopF_notStopC = this.chgPctIfVALUECchg(this.notStop4C  / 100, 0 , -1) ;
         if (!isStrictNumber(stopF_stopF) || !isStrictNumber(stopF_notStopC)) {return false}
-        return Math.min(stopF_stopF, stopF_notStopC) ;
+        return this.TradingSymbolPrice * (1 + Math.min(stopF_stopF, stopF_notStopC)) ;
     } ,
 
     /**
@@ -884,17 +885,17 @@ export const TradeBot = {
      * @returns number: 计算出的stopPriceC
      */
     GetStopPriceC() {
-        const stopC_stopC    = this.chgPctIfVALUEFchg(this.stopRate4C /100 , 0 , -1) ;
-        const stopC_notStopF = this.chgPctIfVALUECchg(this.notStop4F  /100 , 0 , -1) ;
+        const stopC_stopC    = this.chgPctIfVALUECchg(this.stopRate4C /100 , 0 , -1) ;
+        const stopC_notStopF = this.chgPctIfVALUEFchg(this.notStop4F  /100 , 0 , -1) ;
         if (!isStrictNumber(stopC_stopC) || !isStrictNumber(stopC_notStopF)) {return false}
-        return Math.min(stopC_stopC, stopC_notStopF) ;
+        return this.TradingSymbolPrice * (1 + Math.min(stopC_stopC, stopC_notStopF)) ;
     } ,
 
 
     GetLiquidPrice() {
-        const liquidPrice = this.chgPctIfVALUEFchg(-0.99, 0, -1.5) ;
-        if (!isStrictNumber(liquidPrice)){return false}
-        return liquidPrice
+        const liquid = this.chgPctIfVALUEFchg(-0.99, 0, -1.5) ;
+        if (!isStrictNumber(liquid)){return false}
+        return this.TradingSymbolPrice * (1 + liquid) ;
     } ,
 
     /**
