@@ -1411,6 +1411,7 @@ export async function HandleTradeBot(tvData) {
     // if (isStrictTrue(r_ReleaseTradeBotLOCK)) { console.log(bot.cLogHead + 'ReleaseTradeBotLOCK() success') }
 
 
+    // 发送TG, 发送Email 时, 报错
     if (task_thereErr) {throw new Error(task_errMessage)}
 
 }
