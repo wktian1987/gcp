@@ -678,6 +678,7 @@ export async function SendTG(subject, text, toChatID = process.env.TG_CHAT_ID) {
  * 发件人为默认google email, 收件人为默认收件人
  * @param {String} mail_subject 
  * @param {String} mail_content 
+ * @returns 出错会抛出异常
  */
 export async function SendEmail(mail_subject, mail_content, mailReceiver = process.env.RECEIVER_EMAIL) {
     const mailUser = process.env.GMAIL_USER                         ;
@@ -693,8 +694,16 @@ export async function SendEmail(mail_subject, mail_content, mailReceiver = proce
         subject: mail_subject,
         html: mail_content // 传入你生成的 HTML Table 字符串
     };
-
-    await transporter.sendMail(mailOptions);
+    try { await transporter.sendMail(mailOptions) } catch (e) {
+        const { Resend } = await import('resend');
+        const resend = new Resend(process.env.ResendKEY);
+        await resend.emails.send({
+            from: 'GCP Router from Resend <onboarding@resend.dev>',
+            to: mailReceiver,
+            subject: mail_subject,
+            html: mail_content
+        });
+    }
 }
 
 /**
