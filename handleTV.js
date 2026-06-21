@@ -111,7 +111,7 @@ export const TradeBot = {
             TradeBot[this.tbName_runningWell  ] = new Set()   ;
             TradeBot[this.tbName_spreadsheetID] = null        ;
 
-            SendTG(`${tvData.botNumber} RESET命令已收到`, 'RESET已设置', TradeBot[this.tbName_resetTGID]).catch(()=>{}) ;
+            SendTG(`${tvData.botNumber} RESET命令已收到`, 'RESET已设置', TradeBot[this.tbName_resetTGID]).catch(() => { });
         }
 
         // 在全局中有报错的话, 直接退出
@@ -1399,32 +1399,10 @@ export async function HandleTradeBot(tvData) {
     if (!r_WriteToGS || isStrictString(r_WriteToGS)) { throw new Error('WriteToGS() 失败: \n' + r_WriteToGS) }
     // if (isStrictTrue(r_WriteToGS)) { console.log(bot.cLogHead + 'WriteToGS() success') }
 
-    const task_SendToTG     = bot.SendToTG()     ;
-    const task_SendToEmail  = bot.SendToEmail()  ;
+    bot.SendToTG().catch(() => { });
+    bot.SendToEmail().catch(() => { });
 
-    const task_ReleaseLockOfGS = bot.ReleaseLockOfGS() ;
-
-    bot.promiseArray.push({taskName: '发送TG'   , task: task_SendToTG   }) ;
-    bot.promiseArray.push({taskName: '发送Email', task: task_SendToEmail}) ;
-
-    const taskindex_ReleaseLockOfGS = bot.promiseArray.push({taskName: '最后解锁GS', task: task_ReleaseLockOfGS}) - 1;
-
-    // 执行并发任务
-    const taskResults = await Promise.allSettled(bot.promiseArray.map(v => v.task));
-    let task_thereErr   = false    ;
-    let task_errMessage = ''       ;
-    taskResults.forEach((result, index) => {
-        const taskName = bot.promiseArray[index].taskName ;
-        if (result.status === "fulfilled") {
-            bot.promiseArray[index].result  = result.value ;
-        }
-        if (result.status !== "fulfilled") {
-            task_thereErr       =  true;
-            task_errMessage    +=  taskName + '失败: ' + ( result.reason?.message || String(result.reason || '未知错误') ) ;
-        }
-    });
-
-    const r_ReleaseLockOfGS = bot.promiseArray[taskindex_ReleaseLockOfGS].result ;
+    const r_ReleaseLockOfGS = await bot.ReleaseLockOfGS() ;
     if (!r_ReleaseLockOfGS || isStrictString(r_ReleaseLockOfGS)) { 
         // 无法为GS解锁, 是严重错误, 需要手动解锁
         bot.AddRunningWellMessage('程序运行到最后, 无法为GS解锁, 是严重错误, 需要手动解锁: \n' + r_ReleaseLockOfGS) ;
@@ -1439,9 +1417,5 @@ export async function HandleTradeBot(tvData) {
         throw new Error('ReleaseTradeBotLOCK() 失败: \n' + r_ReleaseTradeBotLOCK)  ;
     }
     // if (isStrictTrue(r_ReleaseTradeBotLOCK)) { console.log(bot.cLogHead + 'ReleaseTradeBotLOCK() success') }
-
-
-    // 发送TG, 发送Email 时, 报错
-    if (task_thereErr) {throw new Error(task_errMessage)}
 
 }
