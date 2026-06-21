@@ -40,7 +40,7 @@ async function HandleSignalList() {
     if (isWorkerRunning) {return}
     isWorkerRunning = true ;
     while (SignalList.length > 0) {
-        const toHandleSignal = SignalList.shift()
+        const toHandleSignal = SignalList.pop()
         await HandleSignal(toHandleSignal.url, toHandleSignal.body) ;
     }
 

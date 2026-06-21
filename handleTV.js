@@ -90,45 +90,51 @@ export const TradeBot = {
         this.promiseArray       =  []                           ;
         AddSetMessage(this.alertMessageSet, tvData.thisAlertMessage) ;
 
-        this.tgResetIDName      =  tvData.botNumber + '_tgID'           ; // 全局中保存的发送命令的ID
-        this.tgResetName        =  tvData.botNumber + '_tgReset'        ; // 全局中的归零信号名
-        this.LockTimeName       =  tvData.botNumber + '_lockTime'       ; // 全局中的锁名
-        this.RunningWellName    =  tvData.botNumber + '_runningWell'    ; // 全局中的出错名
-        this.SpreadsheetIDName  =  tvData.botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID, 避免每次重新读取
-        if (!Object.hasOwn(TradeBot, this.tgResetName       )) { TradeBot[this.tgResetName      ] = false       } // 在全局中设置归零信号
-        if (!Object.hasOwn(TradeBot, this.LockTimeName      )) { TradeBot[this.LockTimeName     ] = null        } // 在全局中设锁
-        if (!Object.hasOwn(TradeBot, this.RunningWellName   )) { TradeBot[this.RunningWellName  ] = new Set()   } // 在全局中设runningWell
-        if (!Object.hasOwn(TradeBot, this.SpreadsheetIDName )) { TradeBot[this.SpreadsheetIDName] = null        } // 在全局中设置spreadsheetID
+        this.tbName_isLocked       =  tvData.botNumber + '_isLocked'       ; // 全局中判断是否locked的名
+        this.tbName_resetTGID      =  tvData.botNumber + '_resetTGID'      ; // 全局中保存的发送命令的ID
+        this.tbName_tgReset        =  tvData.botNumber + '_tgReset'        ; // 全局中的归零信号名
+        this.tbName_lastLockTime   =  tvData.botNumber + '_lastLockTime'   ; // 全局中的锁名
+        this.tbName_runningWell    =  tvData.botNumber + '_runningWell'    ; // 全局中的出错名
+        this.tbName_spreadsheetID  =  tvData.botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID, 避免每次重新读取
+
+        if (!Object.hasOwn(TradeBot, this.tbName_isLocked      )) { TradeBot[this.tbName_isLocked     ] = false       } // 在全局中设置是否已经被锁
+        if (!Object.hasOwn(TradeBot, this.tbName_tgReset       )) { TradeBot[this.tbName_tgReset      ] = false       } // 在全局中设置归零信号
+        if (!Object.hasOwn(TradeBot, this.tbName_lastLockTime  )) { TradeBot[this.tbName_lastLockTime ] = 0           } // 在全局中设锁
+        if (!Object.hasOwn(TradeBot, this.tbName_runningWell   )) { TradeBot[this.tbName_runningWell  ] = new Set()   } // 在全局中设runningWell
+        if (!Object.hasOwn(TradeBot, this.tbName_spreadsheetID )) { TradeBot[this.tbName_spreadsheetID] = null        } // 在全局中设置spreadsheetID
 
         // 可以通过TG-RESET信号来重置全局锁 和 报错信息
-        if (isStrictTrue(TradeBot[this.tgResetName])) { 
-            TradeBot[this.tgResetName      ] = false       ;
-            TradeBot[this.LockTimeName     ] = null        ;
-            TradeBot[this.RunningWellName  ] = new Set()   ;
-            TradeBot[this.SpreadsheetIDName] = null        ;
+        if (isStrictTrue(TradeBot[this.tbName_tgReset])) { 
+            TradeBot[this.tbName_isLocked     ] = false       ;
+            TradeBot[this.tbName_tgReset      ] = false       ;
+            TradeBot[this.tbName_lastLockTime ] = 0           ;
+            TradeBot[this.tbName_runningWell  ] = new Set()   ;
+            TradeBot[this.tbName_spreadsheetID] = null        ;
 
-            const task_toReplyResetSignal = SendTG(`${tvData.botNumber} RESET命令已收到`, 'RESET已设置', TradeBot[this.tgResetIDName]);
-            this.promiseArray.push({ taskName: '回复RESET信号', task: task_toReplyResetSignal });
+            SendTG(`${tvData.botNumber} RESET命令已收到`, 'RESET已设置', TradeBot[this.tbName_resetTGID]).catch(()=>{}) ;
         }
 
         // 在全局中有报错的话, 直接退出
-        if (!this.isRunningWell()) {return '发现之前的运行中有错误, 本次信号没必要再处理, 提前退出, 以前的错误为: \n' + StrFromSetMessage(TradeBot[this.RunningWellName]) }
+        if (!this.isRunningWell()) {return '发现之前的运行中有错误, 本次信号没必要再处理, 提前退出, 以前的错误为: \n' + StrFromSetMessage(TradeBot[this.tbName_runningWell]) }
 
-        if (TradeBot[this.LockTimeName] > this.LockTime) {return '当前正在处理更新的信号, 本信号丢弃' }
+        if (TradeBot[this.tbName_lastLockTime] > this.LockTime) {return '已处理更新的信号, 本信号丢弃' }
         // 正常情况下一个信号运行绝对不会超过5分钟; 一旦发生这种情况, 肯定是发生了不可挽回的错误, 直接抛错退出当前信号处理就可以了
-        if (isStrictNumber(TradeBot[this.LockTimeName]) && Date.now() - TradeBot[this.LockTimeName] > 5 * 60 * 1000) {return '上一个信号长时间未解锁, 肯定遇到了无法挽回的错误, 但错误未被记录, 本信号不再处理, 需手动检查' }
+        if (isStrictTrue(TradeBot[this.tbName_isLocked]) && Date.now() - TradeBot[this.tbName_lastLockTime] > 5 * 60 * 1000) {return '上一个信号长时间未解锁, 肯定遇到了无法挽回的错误, 但错误未被记录, 本信号不再处理, 需手动检查' }
         // 如果现在有锁的话, 等待当前正在处理的信号完成, 当信号已经过去60s后, 不再处理
-        while (TradeBot[this.LockTimeName] !== null && Date.now() - this.LockTime < 60 * 1000) { await Sleep(1000) }
+        while (isStrictTrue(TradeBot[this.tbName_isLocked]) && Date.now() - this.LockTime < 60 * 1000) { await Sleep(1000) }
         // 已经超过60s, 或者大锁被释放
-        if (TradeBot[this.LockTimeName] !== null) {return '仍在处理上一个信号, 但是本信号已经超时, 直接退出' }
+        if (isStrictTrue(TradeBot[this.tbName_isLocked])) {return '仍在处理上一个信号, 但是本信号已经超时, 直接退出' }
         // 大锁被清空后, 马上抢大锁
-        if (TradeBot[this.LockTimeName] === null) {TradeBot[this.LockTimeName] = this.LockTime } 
+        if (isStrictFalse(TradeBot[this.tbName_isLocked])) {
+            TradeBot[this.tbName_isLocked] = true;
+            TradeBot[this.tbName_lastLockTime] = this.LockTime;
+        }
         // 至此, 已经在大TradeBot对象中, 给当前botNumber上锁, 其他botNumber几乎不可能再抢占到 大TradeBot锁
         // 在GS中上锁前, 会再次检查 大TradeBot 中的锁, 确保万无一失
 
-        if (TradeBot[this.SpreadsheetIDName] === null) {
+        if (TradeBot[this.tbName_spreadsheetID] === null) {
             try {
-                TradeBot[this.SpreadsheetIDName] = await GetSpreadsheetID(tvData.botNumber);
+                TradeBot[this.tbName_spreadsheetID] = await GetSpreadsheetID(tvData.botNumber);
             } catch (e) {
                 let errMessage = e.message + '\n' ;
                 const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
@@ -136,7 +142,7 @@ export const TradeBot = {
                 return '获取spreadsheetID失败: \n' + errMessage.trim() ;
             }
         }
-        if (isStrictString(TradeBot[this.SpreadsheetIDName])) {this.spreadsheetID = TradeBot[this.SpreadsheetIDName] }
+        if (isStrictString(TradeBot[this.tbName_spreadsheetID])) {this.spreadsheetID = TradeBot[this.tbName_spreadsheetID] }
 
         // 开始设GS锁
         // 只要进入这一步,说明抢到了 大TradeBot 锁
@@ -144,9 +150,10 @@ export const TradeBot = {
         try {
             let toGCPData   = await this.Get_toGCPData() ;
             let currentLock = toGCPData.LOCK ;
-            if (TradeBot[this.LockTimeName] !== this.LockTime) {return '临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去' }
+            if (toGCPData.lstLockSignalTime > this.LockTime) {return '检查GS发现已处理过更新的信号'}
+            if (TradeBot[this.tbName_lastLockTime] !== this.LockTime) {return '临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去' }
             if (currentLock !== CV.noLOCK) {
-                const errMessage = '大TradeBot锁被释放的情况下, GS锁未被释放' ;
+                const errMessage = '上一次运行大TradeBot锁被释放的情况下, GS锁未被释放' ;
                 this.AddRunningWellMessage(errMessage) ;
                 return errMessage ;
             }
@@ -189,10 +196,10 @@ export const TradeBot = {
      * @returns string: 解锁校验出错
      */
     ReleaseTradeBotLOCK() {
-        if (TradeBot[this.LockTimeName] !== this.LockTime) {
+        if (TradeBot[this.tbName_lastLockTime] !== this.LockTime) {
             return '释放大锁失败, 此信号无权解锁' ;
         } else {
-            TradeBot[this.LockTimeName] = null ;
+            TradeBot[this.tbName_isLocked] = false ;
             return true ;
         }
     },
@@ -201,14 +208,14 @@ export const TradeBot = {
      * 将新的出错信息写入 大TradeBot对象 中
      * @param {string} errMessage 
      */
-    AddRunningWellMessage(errMessage) { AddSetMessage(TradeBot[this.RunningWellName], errMessage) } ,
+    AddRunningWellMessage(errMessage) { AddSetMessage(TradeBot[this.tbName_runningWell], errMessage) } ,
 
     /**
      * 依据runningWellSet中是否有元素来判断是否有运行错误
      * @returns true: 运行中无错误
      * @returns false: 运行中有错误
      */
-    isRunningWell() { return TradeBot[this.RunningWellName].size === 0 },
+    isRunningWell() { return TradeBot[this.tbName_runningWell].size === 0 },
 
     /**
      * 获取当前toGCPData
@@ -233,7 +240,7 @@ export const TradeBot = {
     async ReleaseLockOfGS(MAX_Attempts = 99, NotGotLockValueTo = 'NotGotLockValue') {
         try {
             // 再次确权, 验证要加的锁, 是否与TradeBot中的锁相同
-            if (TradeBot[this.LockTimeName] !== this.LockTime) { throw new Error('TradeBot存放的LockTime与当前写入的不符') }
+            if (TradeBot[this.tbName_lastLockTime] !== this.LockTime) { throw new Error('TradeBot存放的LockTime与当前写入的不符') }
 
             // 确权拦截：先看自己现在还有没有解锁的权力（防止自己超时被别人强刷后，误把别人的锁给解了）
             // 这种情况一旦发生, 说明运行有了问题, 需要处理

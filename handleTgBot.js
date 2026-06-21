@@ -12,7 +12,9 @@ import {
     StrFromSetMessage,
     GetTimeStringWithOffset,
     isStrictNumber,
-    BatchGetGS
+    BatchGetGS,
+    isStrictTrue,
+    isStrictFalse
 } from "./utility.js";
 
 import {TradeBot} from './handleTV.js';
@@ -48,47 +50,36 @@ export async function HandleTgBot(msg) {
     }
 
     if (text.toUpperCase().includes('RESET')) {
-        const tgResetIDName      =  botNumber + '_tgID'           ; // 全局中保存的发送命令的ID
-        const tgResetName        =  botNumber + '_tgReset'        ; // 全局中的RESET名
-        const LockTimeName       =  botNumber + '_lockTime'       ; // 全局中的锁名
-        const RunningWellName    =  botNumber + '_runningWell'    ; // 全局中的出错名
-        const SpreadsheetIDName  =  botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID
+        const tbName_isLocked       =  botNumber + '_isLocked'          ;
+        const tbName_resetTGID      =  botNumber + '_resetTGID'         ;
+        const tbName_tgReset        =  botNumber + '_tgReset'           ;
+        // const tbName_lastLockTime   =  botNumber + '_lastLockTime'      ;
+        // const tbName_runningWell    =  botNumber + '_runningWell'       ;
+        // const tbName_spreadsheetID  =  botNumber + '_spreadsheetID'     ;
 
         let resetMessage = '' ;
 
-        if (!Object.hasOwn(TradeBot, tgResetName)) {
+        if (!Object.hasOwn(TradeBot, tbName_isLocked)) {
             resetMessage = `机器人还未创建, 没必要RESET` ;
             SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(()=>{}) ;
         } 
 
-        if (Object.hasOwn(TradeBot, tgResetName) && TradeBot[tgResetName] === true) {
+        if (Object.hasOwn(TradeBot, tbName_tgReset) && isStrictTrue(TradeBot[tbName_tgReset])) {
             resetMessage = `RESET已设, 但TradeBot还未接收, 没必要重设` ;
             SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(()=>{}) ;
         }
         
-        if (Object.hasOwn(TradeBot, tgResetName) && TradeBot[tgResetName] === false) {
-            if (TradeBot[LockTimeName] === null) {resetMessage = '当前机器人处于未锁定状态, 无需RESET'}
-
-            if (isStrictNumber(TradeBot[LockTimeName]) && Date.now() - TradeBot[LockTimeName] < 5 * 60 *1000) {
-                resetMessage = AddMessage(resetMessage, '当前机器人正在运行, 或者未超时, 请等待5分钟后再解锁') ;
-            } 
-            
-            if (isStrictNumber(TradeBot[LockTimeName]) && Date.now() - TradeBot[LockTimeName] >= 5 * 60 *1000) {
-                TradeBot[tgResetIDName] = chat_id   ;
-                TradeBot[tgResetName]   = true      ;
-                resetMessage = AddMessage(resetMessage, '属性RESET前全局中的值为:') ;
-                resetMessage = AddMessage(resetMessage, 'lockTime: \n' + TradeBot[LockTimeName] + '\n' + GetTimeStringWithOffset(8, TradeBot[LockTimeName])) ;
-                resetMessage = AddMessage(resetMessage, 'runningWell: \n' + StrFromSetMessage(TradeBot[RunningWellName])) ;
-                resetMessage = AddMessage(resetMessage, 'spreadsheetID: \n' + TradeBot[SpreadsheetIDName]) ;
-                resetMessage = AddMessage(resetMessage, 'RESET信号已创建, 等待TradeBot接收');
-            }
+        if (Object.hasOwn(TradeBot, tbName_tgReset) && isStrictFalse(TradeBot[tbName_tgReset]) ) {
+            TradeBot[tbName_resetTGID]  = chat_id   ;
+            TradeBot[tbName_tgReset]    = true      ;
+            resetMessage = AddMessage(resetMessage, 'RESET信号已创建, 等待TradeBot接收');
 
             SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(()=>{}) ;
         }
     }
 
-    const SpreadsheetIDName  =  botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID
-    const spreadsheetID = Object.hasOwn(TradeBot, SpreadsheetIDName) && isStrictString(TradeBot[SpreadsheetIDName]) ? TradeBot[SpreadsheetIDName] : await GetSpreadsheetID(botNumber);
+    const tbName_spreadsheetID  =  botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID
+    const spreadsheetID = Object.hasOwn(TradeBot, tbName_spreadsheetID) && isStrictString(TradeBot[tbName_spreadsheetID]) ? TradeBot[tbName_spreadsheetID] : await GetSpreadsheetID(botNumber);
 
     const toReadRangeName  = botNumber + '_toReadRange'     ;
     const toEmailRangeName = botNumber + '_toEmailRange'    ;
