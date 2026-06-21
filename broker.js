@@ -150,7 +150,7 @@ class GateFetchBody {
         this.body           = body          ;
         this.resOK          = resOK         ;
         this.dataCheck      = dataCheck     ;
-        this.spreadsheetID  = spreadsheetID ;
+        // this.spreadsheetID  = spreadsheetID ;
         this.status         = 0             ;
         this.isOK           = false         ;
         this.resData        = undefined     ;
