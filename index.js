@@ -22,8 +22,12 @@ const server = http.createServer(async (req, res) => {
         res.end("ACK");
         const body = JSON.parse(bodyData);
         SignalList.push({url, body}) ;
-        await HandleSignalList() ;
-        // await HandleSignal(url, body) ;
+        console.log(`... ... 收到新任务, ${url}, 已放入待处理队列`)
+        if (isWorkerRunning) {console.log('... ... 已经有人在处理队列任务了, 不必分配新的工人')}
+        if (!isWorkerRunning) {
+            console.log('... ... 分配新的工人去处理队列任务') ;
+            await HandleSignalList() ;
+        }
     } catch (e) {
         req.resume() ;
         // 这里回复 ACK, 不管数据如何, 我直接回收到了,
@@ -39,7 +43,7 @@ const server = http.createServer(async (req, res) => {
 async function HandleSignalList() {
     if (isWorkerRunning) {return}
     isWorkerRunning = true ;
-    console.log('... ... 开始处理队列任务')
+    console.log('... ... 新工人开始处理队列任务')
     let taskNumber = 0 ;
     while (SignalList.length > 0) {
         taskNumber  += 1 ;
@@ -64,6 +68,7 @@ async function HandleSignalList() {
         });
 
     isWorkerRunning = false ;
+    console.log(`... ... 队列中的全部任务已处理完毕, 此工人退出`) ;
 }
 
 async function HandleSignal(url, body) {
