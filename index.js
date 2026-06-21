@@ -39,9 +39,14 @@ const server = http.createServer(async (req, res) => {
 async function HandleSignalList() {
     if (isWorkerRunning) {return}
     isWorkerRunning = true ;
+    console.log('... ... 开始处理队列任务')
+    let taskNumber = 0 ;
     while (SignalList.length > 0) {
+        taskNumber  += 1 ;
+        console.log(`... ... 开始处理第${taskNumber}个任务, 队列内现有${SignalList.length - 1}个任务待处理`)
         const toHandleSignal = SignalList.pop()
         await HandleSignal(toHandleSignal.url, toHandleSignal.body) ;
+        console.log(`... ... 第${taskNumber}个任务处理完毕`)
     }
 
     // 用信号来激活查看邮件的操作

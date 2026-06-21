@@ -150,12 +150,12 @@ export const TradeBot = {
         try {
             let toGCPData   = await this.Get_toGCPData() ;
             let currentLock = toGCPData.LOCK ;
-            if (toGCPData.lstLockSignalTime > this.LockTime) {return '检查GS发现已处理过更新的信号'}
-            if (TradeBot[this.tbName_lastLockTime] !== this.LockTime) {return '临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去' }
+            if (toGCPData.lstLockSignalTime > this.LockTime) { throw new Error('检查GS发现已处理过更新的信号') }
+            if (TradeBot[this.tbName_lastLockTime] !== this.LockTime) { throw new Error('临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去') }
             if (currentLock !== CV.noLOCK) {
-                const errMessage = '上一次运行大TradeBot锁被释放的情况下, GS锁未被释放' ;
+                const errMessage = '上一次运行大TradeBot锁被释放的情况下, GS锁未被释放';
                 this.AddRunningWellMessage(errMessage) ;
-                return errMessage ;
+                throw new Error(errMessage);
             }
             if (currentLock === CV.noLOCK) {
                 await UpdateGS(this.spreadsheetID, toGCPData.lockRange, [[this.lockName]]);
@@ -170,7 +170,7 @@ export const TradeBot = {
                         // 再次尝试给GS解锁, 万一有锁
                         // 不必关心返回值了, 因为下次信号进来设锁的时候, 会首先检查GS锁状态
                         await this.ReleaseLockOfGS();
-                        return '往GS写入LOCK失败' ;
+                        throw new Error('往GS写入LOCK失败') ;
                     }
                 }
             }
