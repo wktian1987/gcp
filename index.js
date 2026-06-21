@@ -7,6 +7,8 @@ const targetURL = {
 
 const urlList = Object.keys(targetURL).map(k => String(targetURL[k]));
 
+const signalList = [] ; // 里面的元素是 {url, body}
+
 const server = http.createServer(async (req, res) => {
     try {
         const { method, url } = req;
@@ -18,7 +20,9 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'text/plain' });
         res.end("ACK");
         const body = JSON.parse(bodyData);
-        await HandleSignal(url, body) ;
+        signalList.push({url, body}) ;
+        await HandleSignals() ;
+        // await HandleSignal(url, body) ;
     } catch (e) {
         req.resume() ;
         // 这里回复 ACK, 不管数据如何, 我直接回收到了,
@@ -30,22 +34,19 @@ const server = http.createServer(async (req, res) => {
     }
 } ) ;
 
+// 我的目的是让信号一个一个地处理, 从最新的信号开始处理
+let isWorkingRunning = false ;
+async function HandleSignals() {
+    if (isWorkingRunning) {return}
+    isWorkingRunning = true ;
+    while (signalList.length > 0) {
+        const toHandleSignal = signalList.shift()
+        await HandleSignal(toHandleSignal.url, toHandleSignal.body) ;
+    }
+    isWorkingRunning = false ;
+}
 
 async function HandleSignal(url, body) {
-
-    // 用信号来激活查看邮件的操作
-    // 与后面的信号主逻辑并发运行
-    const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
-    HandleUnreadGmails()
-        .then(() => { console.log(`✔ HandleUnreadGmails()处理成功`) })
-        .catch(e => {
-            const errObj = {
-                severity: "ERROR", // 强制涂红
-                message: `✘ HandleUnreadGmails()处理失败: \n` + e.message
-            };
-            console.error(JSON.stringify(errObj));
-        });
-
 
     if (url === targetURL.tgbot) {
         console.log("收到/tgBot连接");
@@ -72,6 +73,8 @@ async function HandleSignal(url, body) {
         console.log("收到TradingView Message, botGate: " + body.botGate);
 
         if (body.botGate === "TradeBot") {
+            console.log("TradeBot botNumber: " + body.botNumber);
+
             try {
                 const { HandleTradeBot } = await import("./handleTV.js");
                 await HandleTradeBot(body);
@@ -100,6 +103,19 @@ async function HandleSignal(url, body) {
         }
 
     }
+
+    // 用信号来激活查看邮件的操作
+    // 与后面的信号主逻辑并发运行
+    const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
+    HandleUnreadGmails()
+        .then(() => { console.log(`✔ HandleUnreadGmails()处理成功`) })
+        .catch(e => {
+            const errObj = {
+                severity: "ERROR", // 强制涂红
+                message: `✘ HandleUnreadGmails()处理失败: \n` + e.message
+            };
+            console.error(JSON.stringify(errObj));
+        });
 
 }
 
