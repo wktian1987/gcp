@@ -695,7 +695,7 @@ export async function SendEmail(mail_subject, mail_content, mailReceiver = proce
         });
         const mailOptions = {
             from: 'GCP Router from Resend <onboarding@resend.dev>',
-            to: mailReceiver,
+            to: mailReceiver.toLowerCase(),
             subject: mail_subject,
             html: mail_content 
         };
