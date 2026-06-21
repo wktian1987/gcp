@@ -7,7 +7,8 @@ const targetURL = {
 
 const urlList = Object.keys(targetURL).map(k => String(targetURL[k]));
 
-const signalList = [] ; // 里面的元素是 {url, body}
+const SignalList = [] ; // 里面的元素是 {url, body}
+let isWorkerRunning = false ;
 
 const server = http.createServer(async (req, res) => {
     try {
@@ -20,8 +21,8 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'text/plain' });
         res.end("ACK");
         const body = JSON.parse(bodyData);
-        signalList.push({url, body}) ;
-        await HandleSignals() ;
+        SignalList.push({url, body}) ;
+        await HandleSignalList() ;
         // await HandleSignal(url, body) ;
     } catch (e) {
         req.resume() ;
@@ -35,15 +36,29 @@ const server = http.createServer(async (req, res) => {
 } ) ;
 
 // 我的目的是让信号一个一个地处理, 从最新的信号开始处理
-let isWorkingRunning = false ;
-async function HandleSignals() {
-    if (isWorkingRunning) {return}
-    isWorkingRunning = true ;
-    while (signalList.length > 0) {
-        const toHandleSignal = signalList.shift()
+async function HandleSignalList() {
+    if (isWorkerRunning) {return}
+    isWorkerRunning = true ;
+    while (SignalList.length > 0) {
+        const toHandleSignal = SignalList.shift()
         await HandleSignal(toHandleSignal.url, toHandleSignal.body) ;
     }
-    isWorkingRunning = false ;
+
+    // 用信号来激活查看邮件的操作
+    // 与后面的信号主逻辑并发运行
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
+    HandleUnreadGmails()
+        .then(() => { console.log(`✔ HandleUnreadGmails()处理成功`) })
+        .catch(e => {
+            const errObj = {
+                severity: "ERROR", // 强制涂红
+                message: `✘ HandleUnreadGmails()处理失败: \n` + e.message
+            };
+            console.error(JSON.stringify(errObj));
+        });
+
+    isWorkerRunning = false ;
 }
 
 async function HandleSignal(url, body) {
@@ -104,21 +119,22 @@ async function HandleSignal(url, body) {
 
     }
 
-    // 用信号来激活查看邮件的操作
-    // 与后面的信号主逻辑并发运行
-    await new Promise(resolve => setTimeout(resolve, 100));
-    const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
-    HandleUnreadGmails()
-        .then(() => { console.log(`✔ HandleUnreadGmails()处理成功`) })
-        .catch(e => {
-            const errObj = {
-                severity: "ERROR", // 强制涂红
-                message: `✘ HandleUnreadGmails()处理失败: \n` + e.message
-            };
-            console.error(JSON.stringify(errObj));
-        });
-
 }
+
+// 实际上下面的代码用处不大
+process.on('SIGTERM', async () => {
+    console.log("⚠️[GCP 部署切流] 收到云端退役信号(SIGTERM)！拦截成功，大闸降下...");
+
+    // 🔒 铁血对账：只要账本里还有单子没清空，或者后台 Worker 还在埋头苦干，死死顶住！
+    while (SignalList.length > 0 || isWorkerRunning) {
+        console.log(`⏳ 护盘冲刺中：队列还剩 ${SignalList.length} 单，Worker忙碌状态:，原地等待 1 秒...`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); 
+    }
+
+    // 🟢 此时此刻，地上的单子全量安全落地，Sheets 写完，邮件发完，资产毫发无损！
+    console.log("✔ [自保大闸] 核心资产 100% 全量清仓落地。老实例完成历史使命，准予体面退役。");
+    process.exit(0); // 💥 主动交枪，通知谷歌：老容器已经安全交割，你可以物理回收了！
+});
 
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, '0.0.0.0', () => { console.log(`✔ 服务开始监听端口 ${PORT}，运行...`); });
