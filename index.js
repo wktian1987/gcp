@@ -106,6 +106,7 @@ async function HandleSignal(url, body) {
 
     // 用信号来激活查看邮件的操作
     // 与后面的信号主逻辑并发运行
+    await new Promise(resolve => setTimeout(resolve, 100));
     const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
     HandleUnreadGmails()
         .then(() => { console.log(`✔ HandleUnreadGmails()处理成功`) })
