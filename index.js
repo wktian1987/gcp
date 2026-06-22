@@ -1,4 +1,5 @@
 import http from 'http';
+import { Sleep } from './utility.js';
 
 // 创建原生 HTTP 监听基座
 const targetURL = {
@@ -14,10 +15,10 @@ export function ToStopSartNewSignals(toStopStart = 'toStop') { // 重启是'toSt
     stopHandleNewSignals = toStopStart === 'toStop' ? true : false; // 1. 下发熔断禁令
     if (toStopStart === 'toStop') {SignalList.length = 0} // 2. 物理超渡内存中积压的所有过期信号！
 }
-// 最多保留10个队列任务
+// 最多保留100个队列任务
 function AddNewSignal(sigObj) {
     SignalList.push(sigObj) ;
-    while (SignalList.length > 9) {SignalList.shift()}
+    while (SignalList.length > 100) {SignalList.shift()}
 }
 
 // 按照目前的设置
@@ -69,7 +70,7 @@ const server = http.createServer(async (req, res) => {
             if (!isWorkerRunning) {
                 console.log('... ... 分配新的工人去处理队列任务');
                 HandleSignalList().catch(() => { }); // 这里不必写await
-            }
+            } // 只有isworkerrunning 是false 的时候才会有新的工人进来, 这样设计就不会与你说的情况
         }
     } catch (e) {
         req.resume();
@@ -83,25 +84,40 @@ const server = http.createServer(async (req, res) => {
 });
 
 // 我的目的是让信号一个一个地处理, 从最新的信号开始处理
+// 并发处理, 每隔1s开启一个新的并发
+// 每次清空队列后,等待对列内任务执行完后再执行新的队列
 async function HandleSignalList() {
-    if (isWorkerRunning) {return}
-    isWorkerRunning = true ;
-    console.log('... ... 新工人开始处理队列任务')
-    let taskNumber = 0 ;
+    if (isWorkerRunning) { return }
+    console.log('... ... 新工人开始处理队列任务');
+    isWorkerRunning = true;
+
+    let taskNumber = 0;
+    let handledNumber = 0 ;
     while (SignalList.length > 0) {
-        taskNumber  += 1 ;
-        console.log(`... ... 开始处理第${taskNumber}个任务, 队列内现有${SignalList.length - 1}个任务待处理`)
-        const toHandleSignal = SignalList.pop()
-        await HandleSignal(toHandleSignal.url, toHandleSignal.body) ;
-        console.log(`... ... 第${taskNumber}个任务处理完毕`)
+        const promiseA = [];
+        while (SignalList.length > 0) {
+            taskNumber += 1;
+            console.log(`... ... 开始处理第${taskNumber}个任务`)
+            const toHandleSignal = SignalList.pop()
+            promiseA.push(HandleSignal(toHandleSignal.url, toHandleSignal.body).catch(() => { }));
+            await Sleep(1000);
+        }
+
+        console.log(`... ... 正在并发处理${taskNumber - handledNumber}个任务,等待处理完毕`);
+        await Promise.allSettled(promiseA);
+        handledNumber = taskNumber ;
+        console.log(`... ... 共有${taskNumber}个任务处理完毕`);
+
+
+        // 用信号来激活查看邮件的操作
+        console.log(`开始检查处理Gmail未读邮件`);
+        const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
+        HandleUnreadGmails().catch(() => { }); // 查看未读邮件是一个小事情, 不必报错
     }
 
-    // 用信号来激活查看邮件的操作
-    const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
-    HandleUnreadGmails().catch(() => { }); // 查看未读邮件是一个小事情, 不必报错
+    isWorkerRunning = false; 
+    console.log(`... ... 队列中的全部任务已处理完毕, 此工人共处理${handledNumber}个任务后退出`);
 
-    isWorkerRunning = false ;
-    console.log(`... ... 队列中的全部任务已处理完毕, 此工人退出`) ;
 }
 
 async function HandleSignal(url, body) {
