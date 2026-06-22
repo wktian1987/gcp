@@ -43,8 +43,8 @@ export async function HandleTgBot(msg) {
     }
 
     if (text.toUpperCase().includes('STOPHANDLENEWSIGNALS' )) { 
-        stopHandleNewSignals = true ;
-        const message = '停止对新的信号进行处理' ;
+        let message = '停止对新的信号进行处理' ;
+        if (stopHandleNewSignals) {message = '已经发送停止新信号处理命令, 无需再次发送'} elee {stopHandleNewSignals = true}
         SendTG(`收到stop handle New Signals信号`, message, chat_id).catch(() => { });
     }
 
