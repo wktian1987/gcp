@@ -17,25 +17,48 @@ export function ToStopSartNewSignals(toStopStart = 'toStop') { // 重启是'toSt
 
 const server = http.createServer(async (req, res) => {
     try {
-        if (stopHandleNewSignals) {throw new Error('... ... stopHandleNewSignals is set, 不再处理新的信号')}
         const { method, url } = req;
-        if (method !== 'POST' || !urlList.includes(url)) {throw new Error('... ... 只接受POST信号, 且信号发往指定URL')}
-        let bodyData = '';
-        for await (const chunk of req) { bodyData += chunk }
-        // 这里回复 ACK, 不管数据如何, 我直接回收到了,
-        // 至此已经不需要再接收数据了
-        res.writeHead(200, { 'Content-Type': 'text/plain' });
-        res.end("ACK");
-        const body = JSON.parse(bodyData);
-        SignalList.push({url, body}) ;
-        console.log(`... ... 收到新任务, ${url}, 已放入待处理队列`)
-        if (isWorkerRunning) {console.log('... ... 已经有人在处理队列任务了, 不必分配新的工人')}
-        if (!isWorkerRunning) {
-            console.log('... ... 分配新的工人去处理队列任务') ;
-            HandleSignalList().catch(() => { }); // 这里不必写await
+        if (method === 'POST' && url === targetURL.tgbot) { // 对于来自TG的消息有单独的快速通道
+            console.log("收到/tgBot连接");
+            try {
+                for await (const chunk of req) { bodyData += chunk }
+                // 这里回复 ACK, 不管数据如何, 我直接回收到了,
+                // 至此已经不需要再接收数据了
+                res.writeHead(200, { 'Content-Type': 'text/plain' });
+                res.end("ACK");
+                const body = JSON.parse(bodyData);
+                const msg = body.message;
+                const { HandleTgBot } = await import("./handleTgBot.js");
+                await HandleTgBot(msg);
+                console.log(`✔ HandleTgBot()处理成功`);
+            } catch (e) {
+                // GCP 结构化日志
+                const errObj = {
+                    severity: "ERROR", // 强制涂红
+                    message: `✘ HandleTgBot()处理失败\n` + e.message
+                };
+                console.error(JSON.stringify(errObj));
+            }
+        } else {
+            if (stopHandleNewSignals) { throw new Error('... ... stopHandleNewSignals is set, 不再处理新的信号') }
+            if (method !== 'POST' || !urlList.includes(url)) { throw new Error('... ... 只接受POST信号, 且信号发往指定URL') }
+            let bodyData = '';
+            for await (const chunk of req) { bodyData += chunk }
+            // 这里回复 ACK, 不管数据如何, 我直接回收到了,
+            // 至此已经不需要再接收数据了
+            res.writeHead(200, { 'Content-Type': 'text/plain' });
+            res.end("ACK");
+            const body = JSON.parse(bodyData);
+            SignalList.push({ url, body });
+            console.log(`... ... 收到新任务, ${url}, 已放入待处理队列`)
+            if (isWorkerRunning) { console.log('... ... 已经有人在处理队列任务了, 不必分配新的工人') }
+            if (!isWorkerRunning) {
+                console.log('... ... 分配新的工人去处理队列任务');
+                HandleSignalList().catch(() => { }); // 这里不必写await
+            }
         }
     } catch (e) {
-        req.resume() ;
+        req.resume();
         // 这里回复 ACK, 不管数据如何, 我直接回收到了,
         if (!res.headersSent) {
             res.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -43,7 +66,7 @@ const server = http.createServer(async (req, res) => {
         }
         console.log(`✘ server收到错误信号: \n${e.message}`);
     }
-} ) ;
+});
 
 // 我的目的是让信号一个一个地处理, 从最新的信号开始处理
 async function HandleSignalList() {
