@@ -19,6 +19,7 @@ import {
 
 import {TradeBot} from './handleTV.js';
 import { stopHandleNewSignals, ToStopSartNewSignals } from "./index.js";
+import { HandleUnreadGmails } from "./handleUnreadGmails.js";
 
 
 const tempStore = {} ;
@@ -46,12 +47,20 @@ export async function HandleTgBot(msg) {
         let message = '停止对新的信号进行处理';
         if (stopHandleNewSignals) { message = '已经发送停止新信号处理命令, 无需再次发送' } else { ToStopSartNewSignals('toStop') }
         SendTG(`收到stop handle New Signals信号`, message, chat_id).catch(() => { });
+        return ;
     }
 
     if (text.toUpperCase().includes('STARTHANDLENEWSIGNALS')) {
         let message = '开始对新的信号进行处理';
         if (!stopHandleNewSignals) { message = '现在新的信号处理正常, 无需手动开始' } else { ToStopSartNewSignals('toStart') }
         SendTG(`收到start handle New Signals信号`, message, chat_id).catch(() => { });
+        return ;
+    }
+
+    if (text.toUpperCase().includes('HANDLEUNREADGMAILS')) {
+        SendTG(`收到HandleUnreadGmails信号`, '开始处理未读Gmail邮件', chat_id).catch(() => { });
+        HandleUnreadGmails().catch(() => { });
+        return ;
     }
 
     const botNumber = (txt => {

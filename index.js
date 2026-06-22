@@ -98,12 +98,7 @@ async function HandleSignalList() {
 
     // 用信号来激活查看邮件的操作
     const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
-    try {
-        await HandleUnreadGmails();
-        console.log(`✔ HandleUnreadGmails()处理成功`) ;
-    } catch (e) {
-        console.log(`✘ HandleUnreadGmails()处理失败: \n` + e.message) ; // 简单log错误信息即可, 没必要报错
-    }
+    HandleUnreadGmails().catch(() => { });
 
     isWorkerRunning = false ;
     console.log(`... ... 队列中的全部任务已处理完毕, 此工人退出`) ;
