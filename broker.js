@@ -242,14 +242,14 @@ async function GATE_Fetch(fetchBody) {
         fetchBody.status = res.status ;
         if (isObjectOfKeyValue(resData)) {fetchBody.resData = resData}
 
-        if (resData.status === 400) { throw new Error(`GATE_Fetch Error: 400 无效请求`) }
-        if (resData.status === 401) { throw new Error(`GATE_Fetch Error: 401 认证失败`) }
-        if (resData.status === 404) { throw new Error(`GATE_Fetch Error: 404 未找到`) }
-        if (resData.status === 429) { throw new Error(`GATE_Fetch Error: 429 请求过于频繁`) }
-        if (resData.status >= 400 && resData.status < 500) { throw new Error(`GATE_Fetch Error: [400, 500) 未知错误`) }
-        if (resData.status >= 500) { throw new Error(`GATE_Fetch Error: >=500 服务器错误`) }
-        if (resData.status !== resOK) {throw new Error(`GATE_Fetch Error: resData.status !== resOK, 未知错误`)}
-        if (resData.status === resOK) {
+        if (res.status === 400) { throw new Error(`GATE_Fetch Error: 400 无效请求`) }
+        if (res.status === 401) { throw new Error(`GATE_Fetch Error: 401 认证失败`) }
+        if (res.status === 404) { throw new Error(`GATE_Fetch Error: 404 未找到`) }
+        if (res.status === 429) { throw new Error(`GATE_Fetch Error: 429 请求过于频繁`) }
+        if (res.status >= 400 && res.status < 500) { throw new Error(`GATE_Fetch Error: [400, 500) 未知错误`) }
+        if (res.status >= 500) { throw new Error(`GATE_Fetch Error: >=500 服务器错误`) }
+        if (res.status !== resOK) {throw new Error(`GATE_Fetch Error: res.status !== resOK, 未知错误`)}
+        if (res.status === resOK) {
             Object.keys(dataCheck).forEach( (k) => { if (resData[k] !== dataCheck[k]) {throw new Error(`GATE_Fetch Error: 从交易所获取到的数据验证不通过, ${k} of resData is ${resData[k]}, not required ${dataCheck[k]}`)} } ) ; 
             fetchBody.isOK     = true ;
         }
