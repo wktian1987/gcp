@@ -102,11 +102,7 @@ async function HandleSignalList() {
         await HandleUnreadGmails();
         console.log(`✔ HandleUnreadGmails()处理成功`) ;
     } catch (e) {
-        const errObj = {
-            severity: "ERROR", // 强制涂红
-            message: `✘ HandleUnreadGmails()处理失败: \n` + e.message
-        };
-        console.error(JSON.stringify(errObj));
+        console.log(`✘ HandleUnreadGmails()处理失败: \n` + e.message) ; // 简单log错误信息即可, 没必要报错
     }
 
     isWorkerRunning = false ;
