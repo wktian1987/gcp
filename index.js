@@ -8,8 +8,8 @@ const targetURL = {
 const urlList = Object.keys(targetURL).map(k => String(targetURL[k]));
 
 const SignalList = [] ; // 里面的元素是 {url, body}
-let isWorkerRunning = true ; // 系统刚启动时, 默认是不接收新的信号的, 需要手动启动
-export let stopHandleNewSignals = false; // 当从tg收到取消所有任务信号的时候, 取消所有信号
+let isWorkerRunning = false ; 
+export let stopHandleNewSignals = true; // 当从tg收到取消所有任务信号的时候, 取消所有信号
 export function ToStopSartNewSignals(toStopStart = 'toStop') { // 重启是'toStart')
     stopHandleNewSignals = toStopStart === 'toStop' ? true : false; // 1. 下发熔断禁令
     if (toStopStart === 'toStop') {SignalList.length = 0} // 2. 物理超渡内存中积压的所有过期信号！
