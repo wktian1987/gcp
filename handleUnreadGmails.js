@@ -217,7 +217,12 @@ export async function HandleUnreadGmails(toChatID = process.env.TG_CHAT_ID, mail
         // 如果没有未读邮件，则安全退出, 后面还有finally 不用担心 client 和 lock 锁定状态
         if (messages.length === 0) { return }
 
+        let task_thereErr = false;
+        let task_message = '';
+        let task_name = '';
+        let emailSerial = 0 ;
         for (const uid of messages) {
+            emailSerial += 1 ;
             // 下载并解析
             const emailStream = await client.download(uid);
             const parsed = await simpleParser(emailStream.content);
@@ -260,21 +265,26 @@ export async function HandleUnreadGmails(toChatID = process.env.TG_CHAT_ID, mail
 
             // 执行并发任务
             const handleResults = await Promise.allSettled([task_markEmailRead, task_SendTG, task_SendEmail]);
-            let task_thereErr = false ;
-            let task_message  = ''    ;
-            let task_name     = ''    ;
+
+            if (emailSerial === 1) {
+                task_message = AddMessage(task_message, `共有未读邮件${messages.length}封`);
+                task_message = AddMessage(task_message, `---------------------------`);
+            }
             handleResults.forEach((result, index) => {
                 if (index === 0) {task_name = 'task_markEmailRead'   }
                 if (index === 1) {task_name = 'task_SendTG'          }
                 if (index === 2) {task_name = 'task_SendEmail'       }
-                if (result.status === "fulfilled") { task_message = AddMessage(task_message, task_name + '执行成功')} else {
+                task_message = AddMessage(task_message, `第${emailSerial}封邮件处理结果: `)
+                if (result.status === "fulfilled") { 
+                    task_message = AddMessage(task_message, task_name + '执行成功') ;
+                } else {
                     task_thereErr   =  true                                             ;
                     task_message    =  AddMessage(task_message, task_name + '执行失败')  ;
                 }
-                if (task_thereErr) {throw new Error(task_message)}
             });
 
         }
+        if (task_thereErr) { throw new Error(task_message) }
         
     } finally {
         if (lock) { await lock.release() }
