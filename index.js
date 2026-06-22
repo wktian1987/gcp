@@ -18,7 +18,9 @@ export function ToStopSartNewSignals(toStopStart = 'toStop') { // 重启是'toSt
 const server = http.createServer(async (req, res) => {
     try {
         const { method, url } = req;
-        if (method === 'POST' && url === targetURL.tgbot) { // 对于来自TG的消息有单独的快速通道
+
+        // 对于来自TG的消息有单独的快速通道
+        if (method === 'POST' && url === targetURL.tgbot) {
             console.log("收到/tgBot连接");
             try {
                 for await (const chunk of req) { bodyData += chunk }
@@ -101,23 +103,6 @@ async function HandleSignalList() {
 }
 
 async function HandleSignal(url, body) {
-
-    if (url === targetURL.tgbot) {
-        console.log("收到/tgBot连接");
-        try {
-            const msg = body.message;
-            const { HandleTgBot } = await import("./handleTgBot.js");
-            await HandleTgBot(msg);
-            console.log(`✔ HandleTgBot()处理成功`);
-        } catch (e) {
-            // GCP 结构化日志
-            const errObj = {
-                severity: "ERROR", // 强制涂红
-                message: `✘ HandleTgBot()处理失败\n` + e.message
-            };
-            console.error(JSON.stringify(errObj));
-        }
-    }
 
     if (url === targetURL.tradingview) {
         if (!Object.hasOwn(body, 'fromTVcheck') || !Object.hasOwn(body, 'botGate') || body.fromTVcheck !== process.env.fromTVcheck) {
