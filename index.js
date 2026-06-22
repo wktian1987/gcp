@@ -41,7 +41,7 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(200, { 'Content-Type': 'text/plain' });
             res.end("ACK");
         }
-        console.log(`✘ server收到错误信号: ${e.message}`);
+        console.log(`✘ server收到错误信号: \n${e.message}`);
     }
 } ) ;
 
