@@ -60,7 +60,7 @@ export async function HandleTgBot(msg) {
     })(text);
 
     if (!isStrictString(botNumber) || !botNumber.startsWith(botNumber_start)) {
-        if (!text.toUpperCase().includes('STOPHANDLENEWSIGNALS') && !text.toUpperCase().includes('STARTHANDLENEWSIGNALS') || ) {
+        if (!text.toUpperCase().includes('STOPHANDLENEWSIGNALS') && !text.toUpperCase().includes('STARTHANDLENEWSIGNALS')) {
             SendTG("消息格式错误", "请检查", chat_id).catch(()=>{});
         }
         return ;
