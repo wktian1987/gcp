@@ -32,33 +32,38 @@ export async function HandleTgBot(msg) {
 
     const chat_id   = String(msg.chat.id || "unknown").trim()   ;
     const text      = msg.text || ""                            ;
+    if (!txt) {return };
 
     // 只处理我或者群内发来的消息
     if (chat_id !== myTgID && chat_id !== myGroupAlertTgID) {
         SendTG("收到未授权联系人信息", "已忽略本条消息", myTgID).catch(()=>{});
         await Sleep(1000);
         SendTG("收到未授权联系人信息", "已忽略本条消息", myGroupAlertTgID).catch(()=>{});
-    }
-
-    const botNumber = (txt => {
-        if (!txt) return null;
-        const match = txt.match(/trd(\d{2})/); // 匹配 trd 加上两位数字
-        return match ? `${botNumber_start}${match[1]}` : null;
-    })(text);
-
-    if (!text.toUpperCase().includes('STOPHANDLENEWSIGNALS') || !text.toUpperCase().includes('STARTHANDLENEWSIGNALS') || !isStrictString(botNumber) || !botNumber.startsWith(botNumber_start)) {
-        SendTG("消息格式错误", "请检查", chat_id).catch(()=>{});
+        return ;
     }
 
     if (text.toUpperCase().includes('STOPHANDLENEWSIGNALS' )) { 
         stopHandleNewSignals = true ;
         const message = '停止对新的信号进行处理' ;
-        SendTG(`${botNumber} 收到stop handle New Signals信号`, message, chat_id).catch(() => { });
+        SendTG(`收到stop handle New Signals信号`, message, chat_id).catch(() => { });
     }
+
     if (text.toUpperCase().includes('STARTHANDLENEWSIGNALS')) { 
         let message = '开始对新的信号进行处理' ;
         if (!stopHandleNewSignals) { message = '现在新的信号处理正常, 无需手动开始' } else { stopHandleNewSignals = false }
-        SendTG(`${botNumber} 收到start handle New Signals信号`, message, chat_id).catch(() => { });
+        SendTG(`收到start handle New Signals信号`, message, chat_id).catch(() => { });
+    }
+
+    const botNumber = (txt => {
+        const match = txt.match(/trd(\d{2})/); // 匹配 trd 加上两位数字
+        return match ? `${botNumber_start}${match[1]}` : null;
+    })(text);
+
+    if (!isStrictString(botNumber) || !botNumber.startsWith(botNumber_start)) {
+        if (!text.toUpperCase().includes('STOPHANDLENEWSIGNALS') && !text.toUpperCase().includes('STARTHANDLENEWSIGNALS') || ) {
+            SendTG("消息格式错误", "请检查", chat_id).catch(()=>{});
+        }
+        return ;
     }
 
     if (text.toUpperCase().includes('RESET')) {
