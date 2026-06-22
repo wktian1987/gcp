@@ -32,7 +32,7 @@ export async function HandleTgBot(msg) {
 
     const chat_id   = String(msg.chat.id || "unknown").trim()   ;
     const text      = msg.text || ""                            ;
-    if (!txt) {return };
+    if (!text) {return };
 
     // 只处理我或者群内发来的消息
     if (chat_id !== myTgID && chat_id !== myGroupAlertTgID) {
