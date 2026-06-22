@@ -23,6 +23,7 @@ const server = http.createServer(async (req, res) => {
         if (method === 'POST' && url === targetURL.tgbot) {
             console.log("收到/tgBot连接");
             try {
+                let bodyData ;
                 for await (const chunk of req) { bodyData += chunk }
                 // 这里回复 ACK, 不管数据如何, 我直接回收到了,
                 // 至此已经不需要再接收数据了
