@@ -191,7 +191,7 @@ function convertToTextTable(rawContent) {
 }
 
 const gmailFolderName = "tradingview";
-export async function HandleUnreadGmails() {
+export async function HandleUnreadGmails(toChatID = process.env.TG_CHAT_ID, mailReceiver = process.env.RECEIVER_EMAIL) {
     let lock = null;
     let client = null;
 
@@ -251,12 +251,12 @@ export async function HandleUnreadGmails() {
             const task_markEmailRead = client.messageFlagsAdd(uid, ['\\Seen']) ;
 
             // 准备发送任务
-            const task_SendTG = SendTG(subject, tgText);
+            const task_SendTG = SendTG(subject, tgText, toChatID);
 
             let processedHtml = finalBody.replace(/<TBL>([\s\S]*?)<\/TBL>/gi, (match, content) => { return makePrettyTable(content.trim()) });
             processedHtml = `<div style="font-family: monospace; white-space: pre-wrap; font-size: 1em;">${processedHtml.replace(/\n/g, '<br>')}</div>`;
 
-            const task_SendEmail = SendEmail(`tv${subject}`, processedHtml) ;
+            const task_SendEmail = SendEmail(`tv${subject}`, processedHtml, mailReceiver) ;
 
             // 执行并发任务
             const handleResults = await Promise.allSettled([task_markEmailRead, task_SendTG, task_SendEmail]);

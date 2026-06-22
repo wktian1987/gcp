@@ -98,7 +98,7 @@ async function HandleSignalList() {
 
     // 用信号来激活查看邮件的操作
     const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
-    HandleUnreadGmails().catch(() => { });
+    HandleUnreadGmails().catch(() => { }); // 查看未读邮件是一个小事情, 不必报错
 
     isWorkerRunning = false ;
     console.log(`... ... 队列中的全部任务已处理完毕, 此工人退出`) ;
