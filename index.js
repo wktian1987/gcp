@@ -14,6 +14,11 @@ export function ToStopSartNewSignals(toStopStart = 'toStop') { // 重启是'toSt
     stopHandleNewSignals = toStopStart === 'toStop' ? true : false; // 1. 下发熔断禁令
     if (toStopStart === 'toStop') {SignalList.length = 0} // 2. 物理超渡内存中积压的所有过期信号！
 }
+// 最多保留10个队列任务
+function AddNewSignal(sigObj) {
+    SignalList.push(sigObj) ;
+    while (SignalList.length > 9) {SignalList.shift()}
+}
 
 // 按照目前的设置
 // tg可以给系统发送信号来确认系统开启运行
@@ -58,7 +63,7 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(200, { 'Content-Type': 'text/plain' });
             res.end("ACK");
             const body = JSON.parse(bodyData);
-            SignalList.push({ url, body });
+            AddNewSignal({url, body}) ;
             console.log(`... ... 收到新任务, ${url}, 已放入待处理队列`)
             if (isWorkerRunning) { console.log('... ... 已经有人在处理队列任务了, 不必分配新的工人') }
             if (!isWorkerRunning) {
