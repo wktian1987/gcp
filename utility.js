@@ -684,40 +684,36 @@ export async function SendEmail(mail_subject, mail_content, mailReceiver = proce
     const { createTransport } = await import('nodemailer');
 
     try { 
+        const mailUser = process.env.GMAIL_USER;
+        const mailPass = process.env.GMAIL_APP_PASS;
+
+        const transporter = createTransport({ service: 'gmail', auth: { user: mailUser, pass: mailPass } });
+
+        const mailOptions = {
+            from: `"GCP Router" <${mailUser}>`,
+            to: mailReceiver,
+            subject: mail_subject,
+            html: mail_content 
+        };
+        await transporter.sendMail(mailOptions) 
+
+    } catch (e) {
         const transporter = createTransport({
             host: 'smtp.resend.com',
             port: 465,
             secure: true,
             auth: {
                 user: 'resend', // 固定的
-                pass: process.env.ResendKEY // 扔进 GCP Secrets 的密钥
+                pass: process.env.ResendKEY 
             }
         });
         const mailOptions = {
             from: 'GCP Router from Resend <onboarding@resend.dev>',
-            to: mailReceiver.toLowerCase(),
+            to: mailReceiver.toLowerCase(), // 按照resend要求, 目前是固定的自己的注册邮箱yiriyican@foxmail.com
             subject: mail_subject,
             html: mail_content 
         };
         await transporter.sendMail(mailOptions)
-    
-    } catch (e) {
-        // console.log(`resend error: ${e.message}`)
-
-        const mailUser = process.env.GMAIL_USER;
-        const mailPass = process.env.GMAIL_APP_PASS;
-
-        const transporter = createTransport({ service: 'gmail', auth: { user: mailUser, pass: mailPass } });
-
-        // 构建邮件选项
-        const mailOptions = {
-            from: `"GCP Router" <${mailUser}>`,
-            to: mailReceiver,
-            subject: mail_subject,
-            html: mail_content // 传入你生成的 HTML Table 字符串
-        };
-        await transporter.sendMail(mailOptions) 
-
     }
 }
 
