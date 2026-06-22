@@ -85,18 +85,17 @@ async function HandleSignalList() {
     }
 
     // 用信号来激活查看邮件的操作
-    // 与后面的信号主逻辑并发运行
-    await new Promise(resolve => setTimeout(resolve, 100));
     const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
-    HandleUnreadGmails()
-        .then(() => { console.log(`✔ HandleUnreadGmails()处理成功`) })
-        .catch(e => {
-            const errObj = {
-                severity: "ERROR", // 强制涂红
-                message: `✘ HandleUnreadGmails()处理失败: \n` + e.message
-            };
-            console.error(JSON.stringify(errObj));
-        });
+    try {
+        await HandleUnreadGmails();
+        console.log(`✔ HandleUnreadGmails()处理成功`) ;
+    } catch (e) {
+        const errObj = {
+            severity: "ERROR", // 强制涂红
+            message: `✘ HandleUnreadGmails()处理失败: \n` + e.message
+        };
+        console.error(JSON.stringify(errObj));
+    }
 
     isWorkerRunning = false ;
     console.log(`... ... 队列中的全部任务已处理完毕, 此工人退出`) ;
