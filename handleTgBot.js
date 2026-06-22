@@ -76,11 +76,13 @@ export async function HandleTgBot(msg) {
         if (!Object.hasOwn(TradeBot, tbName_isLocked)) {
             resetMessage = `机器人还未创建, 没必要RESET` ;
             SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(()=>{}) ;
+            return ;
         } 
 
         if (Object.hasOwn(TradeBot, tbName_tgReset) && isStrictTrue(TradeBot[tbName_tgReset])) {
             resetMessage = `RESET已设, 但TradeBot还未接收, 没必要重设` ;
             SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(()=>{}) ;
+            return ;
         }
         
         if (Object.hasOwn(TradeBot, tbName_tgReset) && isStrictFalse(TradeBot[tbName_tgReset]) ) {
@@ -89,6 +91,7 @@ export async function HandleTgBot(msg) {
             resetMessage = AddMessage(resetMessage, 'RESET信号已创建, 等待TradeBot接收');
 
             SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(()=>{}) ;
+            return ;
         }
     }
 
