@@ -15,9 +15,15 @@ export function ToStopSartNewSignals(toStopStart = 'toStop') { // 重启是'toSt
     if (toStopStart === 'toStop') {SignalList.length = 0} // 2. 物理超渡内存中积压的所有过期信号！
 }
 
+// 按照目前的设置
+// tg可以给系统发送信号来确认系统开启运行
+
+
 const server = http.createServer(async (req, res) => {
     try {
         const { method, url } = req;
+        // 在系统进行判断之前先去接收信号,
+        // 这是不得以的做法, 
 
         // 对于来自TG的消息有单独的快速通道
         if (method === 'POST' && url === targetURL.tgbot) {
@@ -147,7 +153,8 @@ async function HandleSignal(url, body) {
 
 // 实际上下面的代码用处不大
 process.on('SIGTERM', async () => {
-    stopHandleNewSignals = true;
+    ToStopSartNewSignals('toStop') ;
+
     console.log("⚠️[GCP 部署切流] 收到云端退役信号(SIGTERM)！拦截成功，大闸降下...");
 
     // 🔒 铁血对账：只要账本里还有单子没清空，或者后台 Worker 还在埋头苦干，死死顶住！

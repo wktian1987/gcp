@@ -236,26 +236,26 @@ async function GATE_Fetch(fetchBody) {
         // 如果是 POST/PUT 动词，无缝注入 body 装弹
         if (method !== 'GET' && bodyString) { options.body = bodyString }
 
-        const resp = await fetch(url, options);
-        const data = CleanObjToNumBoolStr(await resp.json() )    ; //这里必须需要await
+        const res = await fetch(url, options);
+        const resData = CleanObjToNumBoolStr(await res.json()); //这里必须需要await
 
-        fetchBody.status = resp.status ;
-        if (isObjectOfKeyValue(data)) {fetchBody.resData = data}
+        fetchBody.status = res.status ;
+        if (isObjectOfKeyValue(resData)) {fetchBody.resData = resData}
 
-        if (resp.status === 400) { throw new Error(`GATE_Fetch Error: 400 无效请求`) }
-        if (resp.status === 401) { throw new Error(`GATE_Fetch Error: 401 认证失败`) }
-        if (resp.status === 404) { throw new Error(`GATE_Fetch Error: 404 未找到`) }
-        if (resp.status === 429) { throw new Error(`GATE_Fetch Error: 429 请求过于频繁`) }
-        if (resp.status >= 400 && resp.status < 500) { throw new Error(`GATE_Fetch Error: [400, 500) 未知错误`) }
-        if (resp.status >= 500) { throw new Error(`GATE_Fetch Error: >=500 服务器错误`) }
-        if (resp.status !== resOK) {throw new Error(`GATE_Fetch Error: resp.status !== resOK, 未知错误`)}
-        if (resp.status === resOK) {
-            Object.keys(dataCheck).forEach( (k) => { if (data[k] !== dataCheck[k]) {throw new Error(`从交易所获取到的数据验证不通过: ${k} = ${data[k]}, != ${dataCheck[k]}`)} } ) ; 
+        if (resData.status === 400) { throw new Error(`GATE_Fetch Error: 400 无效请求`) }
+        if (resData.status === 401) { throw new Error(`GATE_Fetch Error: 401 认证失败`) }
+        if (resData.status === 404) { throw new Error(`GATE_Fetch Error: 404 未找到`) }
+        if (resData.status === 429) { throw new Error(`GATE_Fetch Error: 429 请求过于频繁`) }
+        if (resData.status >= 400 && resData.status < 500) { throw new Error(`GATE_Fetch Error: [400, 500) 未知错误`) }
+        if (resData.status >= 500) { throw new Error(`GATE_Fetch Error: >=500 服务器错误`) }
+        if (resData.status !== resOK) {throw new Error(`GATE_Fetch Error: resData.status !== resOK, 未知错误`)}
+        if (resData.status === resOK) {
+            Object.keys(dataCheck).forEach( (k) => { if (resData[k] !== dataCheck[k]) {throw new Error(`GATE_Fetch Error: 从交易所获取到的数据验证不通过, ${k} of resData is ${resData[k]}, not required ${dataCheck[k]}`)} } ) ; 
             fetchBody.isOK     = true ;
         }
     } catch (e) {
         fetchBody.isOK          =  false            ;
-        fetchBody.errMessage    =  e.message.trim() ;
+        fetchBody.errMessage    =  e.message.trim() + fetchBody.resData.label || '' + fetchBody.resData.message || '' ;
     }
 
     // try {
