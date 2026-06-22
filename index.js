@@ -9,11 +9,13 @@ const urlList = Object.keys(targetURL).map(k => String(targetURL[k]));
 
 const SignalList = [] ; // 里面的元素是 {url, body}
 let isWorkerRunning = false ;
+export let stopHandleNewSignals = false ; // 当从tg收到取消所有任务信号的时候, 取消所有信号
 
 const server = http.createServer(async (req, res) => {
     try {
+        if (stopHandleNewSignals) {throw new Error('... ... stopHandleNewSignals is set, 不再处理新的信号')}
         const { method, url } = req;
-        if (method !== 'POST' || !urlList.includes(url)) {throw new Error('只接受POST信号, 且信号发往指定URL')}
+        if (method !== 'POST' || !urlList.includes(url)) {throw new Error('... ... 只接受POST信号, 且信号发往指定URL')}
         let bodyData = '';
         for await (const chunk of req) { bodyData += chunk }
         // 这里回复 ACK, 不管数据如何, 我直接回收到了,
@@ -26,7 +28,7 @@ const server = http.createServer(async (req, res) => {
         if (isWorkerRunning) {console.log('... ... 已经有人在处理队列任务了, 不必分配新的工人')}
         if (!isWorkerRunning) {
             console.log('... ... 分配新的工人去处理队列任务') ;
-            await HandleSignalList() ;
+            HandleSignalList().catch(() => { }); // 这里不必写await
         }
     } catch (e) {
         req.resume() ;
@@ -133,6 +135,7 @@ async function HandleSignal(url, body) {
 
 // 实际上下面的代码用处不大
 process.on('SIGTERM', async () => {
+    stopHandleNewSignals = true;
     console.log("⚠️[GCP 部署切流] 收到云端退役信号(SIGTERM)！拦截成功，大闸降下...");
 
     // 🔒 铁血对账：只要账本里还有单子没清空，或者后台 Worker 还在埋头苦干，死死顶住！

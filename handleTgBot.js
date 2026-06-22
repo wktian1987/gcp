@@ -18,6 +18,7 @@ import {
 } from "./utility.js";
 
 import {TradeBot} from './handleTV.js';
+import { stopHandleNewSignals } from "./index.js";
 
 
 const tempStore = {} ;
@@ -45,17 +46,25 @@ export async function HandleTgBot(msg) {
         return match ? `${botNumber_start}${match[1]}` : null;
     })(text);
 
-    if (!isStrictString(botNumber) || !botNumber.startsWith(botNumber_start)) {
+    if (!text.toUpperCase().includes('STOPHANDLENEWSIGNALS') || !text.toUpperCase().includes('STARTHANDLENEWSIGNALS') || !isStrictString(botNumber) || !botNumber.startsWith(botNumber_start)) {
         SendTG("消息格式错误", "请检查", chat_id).catch(()=>{});
+    }
+
+    if (text.toUpperCase().includes('STOPHANDLENEWSIGNALS' )) { 
+        stopHandleNewSignals = true ;
+        const message = '停止对新的信号进行处理' ;
+        SendTG(`${botNumber} 收到stop handle New Signals信号`, message, chat_id).catch(() => { });
+    }
+    if (text.toUpperCase().includes('STARTHANDLENEWSIGNALS')) { 
+        let message = '开始对新的信号进行处理' ;
+        if (!stopHandleNewSignals) { message = '现在新的信号处理正常, 无需手动开始' } else { stopHandleNewSignals = false }
+        SendTG(`${botNumber} 收到start handle New Signals信号`, message, chat_id).catch(() => { });
     }
 
     if (text.toUpperCase().includes('RESET')) {
         const tbName_isLocked       =  botNumber + '_isLocked'          ;
         const tbName_resetTGID      =  botNumber + '_resetTGID'         ;
         const tbName_tgReset        =  botNumber + '_tgReset'           ;
-        // const tbName_lastLockTime   =  botNumber + '_lastLockTime'      ;
-        // const tbName_runningWell    =  botNumber + '_runningWell'       ;
-        // const tbName_spreadsheetID  =  botNumber + '_spreadsheetID'     ;
 
         let resetMessage = '' ;
 

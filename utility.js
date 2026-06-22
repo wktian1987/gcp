@@ -702,7 +702,7 @@ export async function SendEmail(mail_subject, mail_content, mailReceiver = proce
         await transporter.sendMail(mailOptions)
     
     } catch (e) {
-        console.log(`resend error: ${e.message}`)
+        // console.log(`resend error: ${e.message}`)
 
         const mailUser = process.env.GMAIL_USER;
         const mailPass = process.env.GMAIL_APP_PASS;
