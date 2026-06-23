@@ -1143,6 +1143,10 @@ export const TradeBot = {
     async ToSell() {
         if (!isStrictTrue(this.canSell)) {
             if (!this.thereCommandFromGS || isStrictFalse(this.commandData.toSell) ) {return true}
+            if (this.thereCommandFromGS && isStrictTrue(this.commandData.toSell) && this.ifOrderWaiting) {
+                AddSetMessage(this.alertMessageSet, 'Get toSell signal from GS, but there order waiting, ignore this toSell');
+                return true;
+            }
         }
 
         try {
@@ -1211,7 +1215,7 @@ export const TradeBot = {
             }
 
             if (this.thereCommandFromGS && isStrictTrue(this.commandData.toSell)) {
-                AddMessage(this.alertMessage, 'Get toSell signal from GS') ;
+                AddSetMessage(this.alertMessageSet, 'Get toSell signal from GS') ;
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.lowBuySerialUnclose));
                 S.ing_orderPrice = this.commandData.price;
@@ -1269,6 +1273,10 @@ export const TradeBot = {
     async ToBuy() {
         if (!isStrictTrue(this.canBuy)) {
             if (!this.thereCommandFromGS || isStrictFalse(this.commandData.toBuy)) { return true }
+            if (this.thereCommandFromGS && isStrictTrue(this.commandData.toBuy) && this.ifOrderWaiting) {
+                AddSetMessage(this.alertMessageSet, 'Get toBuy signal from GS, but there order waiting, ignore this toSell');
+                return true;
+            }
         }
 
         try {
@@ -1286,6 +1294,7 @@ export const TradeBot = {
             }
 
             if (this.thereCommandFromGS && isStrictTrue(this.commandData.toBuy)) {
+                AddSetMessage(this.alertMessageSet, 'Get toBuy signal from GS');
                 toBuy = true;
                 S.ing_orderPrice = this.commandData.price;
                 S.ing_orderType = this.commandData.orderType;
