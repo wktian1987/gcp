@@ -232,7 +232,7 @@ async function GATE_Fetch(fetchBody) {
                 'SIGN'          : signature             ,        // 刚刚现场砸出来的铁血印章
                 'Timestamp'     : timestamp             }   } ;  // 刚性防重放时空防线
         // 只有在有 body 的 POST 请求时，才“精准焊死” Content-Type 传输协议
-        if (method === 'POST' && bodyString) {headers['Content-Type'] = 'application/json'}
+        if (method === 'POST' && bodyString) {options.headers['Content-Type'] = 'application/json'}
 
         // 如果是 POST/PUT 动词，无缝注入 body 装弹
         if (method === 'POST' && bodyString) { options.body = bodyString }
