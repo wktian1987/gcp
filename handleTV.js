@@ -1227,7 +1227,7 @@ export const TradeBot = {
 
             if (isStrictFalse(toSell)) { return true }
 
-            S.ing_orderID           = toSellOrderA[idx_orderID].trim().replace('B', 'S')                        ;
+            S.ing_orderID           = 'S-' + GetTimeStringWithOffset(8, this.timestamp)                         ;
             S.ing_orderTimestamp    = Date.now()                                                                ;
             S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp)                          ;
             S.ing_serial            = -1 * toSellOrderA[idx_serial]                                             ;
