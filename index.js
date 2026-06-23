@@ -116,7 +116,7 @@ async function HandleSignalList() {
     }
 
     isWorkerRunning = false; 
-    console.log(`... ... 队列中的全部任务已处理完毕, 此工人共处理${handledNumber}个任务后退出`);
+    console.log(`... ... 队列中的全部任务已处理完毕, 此工人共处理${handledNumber}个任务后体面退出`);
 
 }
 

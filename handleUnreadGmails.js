@@ -270,11 +270,11 @@ export async function HandleUnreadGmails(toChatID = process.env.TG_CHAT_ID, mail
                 task_message = AddMessage(task_message, `共有未读邮件${messages.length}封`);
                 task_message = AddMessage(task_message, `---------------------------`);
             }
+            task_message = AddMessage(task_message, `第${emailSerial}封邮件处理结果: `)
             handleResults.forEach((result, index) => {
                 if (index === 0) {task_name = 'task_markEmailRead'   }
                 if (index === 1) {task_name = 'task_SendTG'          }
                 if (index === 2) {task_name = 'task_SendEmail'       }
-                task_message = AddMessage(task_message, `第${emailSerial}封邮件处理结果: `)
                 if (result.status === "fulfilled") { 
                     task_message = AddMessage(task_message, task_name + '执行成功') ;
                 } else {

@@ -284,12 +284,15 @@ export const TradeBot = {
             const toGCPData = await this.Get_toGCPData() ;
             if(!Object.hasOwn(toGCPData, "LOCK") ) {throw new Error("get toGCPData error") }
 
-            const rangesList = [    toGCPData.mainRange                ,       // 0 
-                                    toGCPData.uncloseOrdersRange       ,       // 1
-                                    toGCPData.ingOrderLine             ,       // 2
-                                    toGCPData.tradeHistoryTitleLine    ,       // 3
-                                    toGCPData.uncloseOrdersTitleLine   ,       // 4
-                                    toGCPData.ingOrderTitleLine        ] ;     // 5
+            const rangesList = [    toGCPData.mainRange                ,    // 0 
+                                    toGCPData.uncloseOrdersRange       ,    // 1
+                                    toGCPData.ingOrderLine             ,    // 2
+                                    toGCPData.tradeHistoryTitleLine    ,    // 3
+                                    toGCPData.uncloseOrdersTitleLine   ,    // 4
+                                    toGCPData.ingOrderTitleLine        ,    // 5
+                                    toGCPData.CommandRange             ] ;  // 6
+                        
+            await Sleep(100) ; // 因为刚刚与GS通讯，等小会儿
             const valuesArray   = await BatchGetGS(this.spreadsheetID, rangesList);
 
             const raw_mainData  = valuesArray[0];
@@ -312,7 +315,9 @@ export const TradeBot = {
 
             const uncloseOrdersTitleA   = CleanArrayToNumStrBool(valuesArray[4][0]) ;
 
-            const tradeHistoryTitleA    = CleanArrayToNumStrBool(valuesArray[3][0])  ;
+            const tradeHistoryTitleA    = CleanArrayToNumStrBool(valuesArray[3][0]) ;
+
+            const commandData           = A2dToCleanObj(valuesArray[6]) ;
 
             this.toGCPData              =  toGCPData            ;
             this.mainData               =  mainData             ;
@@ -321,7 +326,31 @@ export const TradeBot = {
             this.uncloseOrdersA2d       =  uncloseOrdersA2d     ;
             this.uncloseOrdersTitleA    =  uncloseOrdersTitleA  ;
             this.tradeHistoryTitleA     =  tradeHistoryTitleA   ;
-            
+
+            this.thereCommandFromGS = false ; // 最高等级的交易命令, 直接来自GS的交易信号, 需要亲自手动设置
+            if (Object.hasOwn(commandData, thisCommandBeRead)   &&
+                Object.hasOwn(commandData, noCommandError)      &&
+                isStrictFalse(commandData.thisCommandBeRead)    &&
+                isStrictTrue(commandData.noCommandError)        )  {
+                commandData.thisCommandBeRead = true ;
+                await UpdateGS(this.spreadsheetID, toGCPData.commandReadRange, [[commandData.thisCommandBeRead]]) ;
+                await Selection(100) ;
+                let checkCommandRead = ToStrictNumBoolStr( (await GetGS(this.spreadsheetID, toGCPData.commandReadRange))[0][0] ) ;
+                if (checkCommandRead !== commandData.thisCommandBeRead) {
+                    // 再重试一次, 重新写, 等2s再重新读
+                    await Sleep(100) ;
+                    await UpdateGS(this.spreadsheetID, toGCPData.commandReadRange, [[commandData.thisCommandBeRead]]) ;
+                    await Sleep(2000) ; 
+                    checkCommandRead = ToStrictNumBoolStr( (await GetGS(this.spreadsheetID, toGCPData.commandReadRange))[0][0] ) ;
+                    if (checkCommandRead !== commandData.thisCommandBeRead) {
+                        throw new Error('读取并设置commandFromGS 失败') ;
+                    }
+
+                }
+                this.thereCommandFromGS = true ;
+                this.commandData = commandData;
+            }
+
             return true ;
 
         } catch(e) { 
@@ -332,6 +361,7 @@ export const TradeBot = {
             const r_ReleaseTradeBotLOCK =  isStrictTrue(r_ReleaseLockOfGS) ? this.ReleaseTradeBotLOCK() : 'ReleaseLockOfGS() fail, no need to release TradeBot Lock' ;
             errMessage  += isStrictString(r_ReleaseLockOfGS)     ? r_ReleaseLockOfGS     + '\n' : 'GS LOCK释放成功'       + '\n';
             errMessage  += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK + '\n' : 'TradeBot LOCK释放成功' + '\n';
+            if (!isStrictTrue(r_ReleaseLockOfGS) || !isStrictTrue(r_ReleaseTradeBotLOCK)) {this.AddRunningWellMessage(errMessage)}
             return errMessage.trim() ;
         }
     } ,
@@ -519,6 +549,10 @@ export const TradeBot = {
             ingOrderData.ifWaitingThenCancel = true;
             if (ingOrderData.ing_buysell === CV.order_BUY  && tvData.TradingSymbolPrice < ingOrderData.ing_orderPrice * (1 + tvData.waveUpChg)) { ingOrderData.ifWaitingThenCancel = false }
             if (ingOrderData.ing_buysell === CV.order_SELL && tvData.TradingSymbolPrice > ingOrderData.ing_orderPrice * (1 + tvData.waveDnChg)) { ingOrderData.ifWaitingThenCancel = false }
+            if (this.thereCommandFromGS && this.commandData.toCancel) { // 查看是否有来自最高等级的GS交易命令
+                AddMessage(this.alertMessage, 'Get toCancel signal from GS');
+                ingOrderData.ifWaitingThenCancel = true;
+            } 
 
             // 去交易所查看成交情况
             await CheckOrderConfirm(ingOrderData);
@@ -1107,7 +1141,9 @@ export const TradeBot = {
      * @returns string: 执行错误信息
     */
     async ToSell() {
-        if (!isStrictTrue(this.canSell)) { return true }
+        if (!isStrictTrue(this.canSell)) {
+            if (!this.thereCommandFromGS || isStrictFalse(this.commandData.toSell) ) {return true}
+        }
 
         try {
             
@@ -1174,6 +1210,16 @@ export const TradeBot = {
                 S.ing_reason = 'cut to prevent liquidate';
             }
 
+            if (this.thereCommandFromGS && isStrictTrue(this.commandData.toSell)) {
+                AddMessage(this.alertMessage, 'Get toSell signal from GS') ;
+                toSell = true;
+                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.lowBuySerialUnclose));
+                S.ing_orderPrice = this.commandData.price;
+                S.ing_orderType  = this.commandData.orderType ;
+                if (S.ing_orderPrice === 0) {S.ing_orderType = CV.order_T_MKT}
+                S.ing_reason = 'toSell from GS';
+            }
+
             if (isStrictFalse(toSell)) { return true }
 
             S.ing_orderID           = toSellOrderA[idx_orderID].trim().replace('B', 'S')                        ;
@@ -1221,7 +1267,9 @@ export const TradeBot = {
      * @returns string: 执行错误信息
     */
     async ToBuy() {
-        if (!isStrictTrue(this.canBuy)) { return true }
+        if (!isStrictTrue(this.canBuy)) {
+            if (!this.thereCommandFromGS || isStrictFalse(this.commandData.toBuy)) { return true }
+        }
 
         try {
             const ingOrderTitleA = this.ingOrderTitleA          ;
@@ -1235,6 +1283,14 @@ export const TradeBot = {
                 S.ing_orderPrice = this.lstRcdTargetLow;
                 S.ing_orderType = CV.order_T_LMT;
                 S.ing_reason = 'touchTargetLow';
+            }
+
+            if (this.thereCommandFromGS && isStrictTrue(this.commandData.toBuy)) {
+                toBuy = true;
+                S.ing_orderPrice = this.commandData.price;
+                S.ing_orderType = this.commandData.orderType;
+                if (S.ing_orderType === CV.order_T_MKT) { S.ing_orderPrice = Math.max(S.ing_orderPrice, 1.01 * this.TradingSymbolPrice) }
+                S.ing_reason = 'toBuy from GS';
             }
 
             if (isStrictFalse(toBuy)) { return true }

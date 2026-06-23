@@ -214,7 +214,7 @@ async function GATE_Fetch(fetchBody) {
         const crypto = (await import('node:crypto')).default || await import('node:crypto');
 
         // 刚性处理 Body 序列化
-        const bodyString = body && method !== 'GET' ? JSON.stringify(body) : '' ;
+        let bodyString =  body && method === 'POST' ? JSON.stringify(body) : '' ;
         // 算出 Body 的 SHA512 哈希（GET 请求的 bodyString 为空，符合官方规范）
         const hashedBody = crypto.createHash('sha512').update(bodyString).digest('hex');
         // 刚性合拢 Gate 官方签名原文公式 (Method + "\n" + Path + "\n" + QueryString + "\n" + HashedBody + "\n" + Timestamp)
@@ -228,14 +228,14 @@ async function GATE_Fetch(fetchBody) {
             method: method                                  ,
             headers: {
                 'Accept'        : 'application/json'    ,
-                'Content-Type'  : 'application/json'    ,
                 'KEY'           : GATE_Key              ,        // 明文公钥账号
                 'SIGN'          : signature             ,        // 刚刚现场砸出来的铁血印章
                 'Timestamp'     : timestamp             }   } ;  // 刚性防重放时空防线
+        // 只有在有 body 的 POST 请求时，才“精准焊死” Content-Type 传输协议
+        if (method === 'POST' && bodyString) {headers['Content-Type'] = 'application/json'}
 
         // 如果是 POST/PUT 动词，无缝注入 body 装弹
-        if (method !== 'GET' && bodyString) { options.body = bodyString }
-
+        if (method === 'POST' && bodyString) { options.body = bodyString }
         const res = await fetch(url, options);
         const resData = CleanObjToNumBoolStr(await res.json()); //这里必须需要await
 
@@ -254,8 +254,12 @@ async function GATE_Fetch(fetchBody) {
             fetchBody.isOK     = true ;
         }
     } catch (e) {
-        fetchBody.isOK          =  false            ;
-        fetchBody.errMessage    =  e.message.trim() + fetchBody.resData.label || '' + fetchBody.resData.message || '' ;
+        fetchBody.isOK = false;
+        fetchBody.errMessage = e.message.trim() + '\n' ;
+        if (fetchBody.resData.label  ) {fetchBody.errMessage += `GateErr label:   ${fetchBody.resData.label  }` + '\n'}
+        if (fetchBody.resData.message) {fetchBody.errMessage += `GateErr message: ${fetchBody.resData.message}` + '\n'}
+        if (fetchBody.resData.detail ) {fetchBody.errMessage += `GateErr detail:  ${fetchBody.resData.detail }` + '\n'}
+        fetchBody.errMessage += `sent request body is: ${JSON.stringify(body)}`;
     }
 
     // try {
@@ -273,11 +277,16 @@ async function GATE_Fetch(fetchBody) {
     // }
 
 }
+
+
 // 当有了上面那个无缝签名的 gateProtectedFetch 大闸后，
 // 你在外面的发单、对账、查统一账户资产的函数，瞬间变得像喝水一样简单利落：
 
 /**
- * 
+ * 往交易所发送订单; 
+ * 1, 先从交易所获得 quanto_multiplier,  order_price_round; 
+ * 2, 组织交易body数据
+ * 3, 下单;
  * @param {object} S 
  * @returns 会抛出错误
  */
@@ -295,24 +304,21 @@ async function GATE_SendOrderToBroker(S) {
     if (!isStrictNumber(quanto_multiplier) || quanto_multiplier <= 0) { throw new Error('did not get right quanto_multiplier')}
     if (!isStrictNumber(order_price_round) || order_price_round <= 0) { throw new Error('did not get right order_price_round')}
 
-    ///////////////
-    ////这里应该要检查当前保证金余额
-    ///////////////
-
-    let text = S.ing_orderID.replaceAll(':', '.'); 
+    // 组织交易body数据
+    let text = S.ing_orderID.replaceAll(':', '.'); // 原始的ID格式为 B-260620:171100.095
     text = text.startsWith('t-') ? text : 't-' + text;
     const size  =  S.ing_buysell === CV.order_BUY ? Math.floor( S.ing_qty / quanto_multiplier) : -1 * Math.round( Math.abs(S.ing_qty) / quanto_multiplier) ;
     if ( Math.abs(size) < 1 ) {throw new Error('ing_qty is too small, cant trade')}
     S.ing_qty   =  S.ing_buysell === CV.order_BUY ? size * quanto_multiplier : S.ing_qty ;
     const price_mul =  S.ing_orderPrice / order_price_round ;
     S.ing_orderPrice = S.ing_buysell === CV.order_BUY ? order_price_round * Math.floor(price_mul) : order_price_round * Math.ceil(price_mul) ;
-    const price = ToStrictString(S.ing_orderPrice) ;
+    const price = S.ing_orderPrice ;
 
     const orderBody = {} ;
-    orderBody.text      =  text                         ;
+    orderBody.text      =  ToStrictString(text)         ;
     orderBody.contract  =  brokerSymbol.contract        ;
-    orderBody.size      =  size                         ;
-    orderBody.price     =  price                        ;
+    orderBody.size      =  ToStrictString(size )        ;
+    orderBody.price     =  ToStrictString(price)        ;
     if (S.ing_orderType === CV.order_T_MKT) {orderBody.price        = '0'   }
     if (S.ing_orderType === CV.order_T_MKT) {orderBody.tif          = 'ioc' }
     if (S.ing_buysell   === CV.order_SELL ) {orderBody.reduce_only  = true  }
@@ -325,7 +331,7 @@ async function GATE_SendOrderToBroker(S) {
     if (!fetchBody_order.isOK) {throw new Error('下单失败: ' + fetchBody_order.errMessage)}
     const data_order = fetchBody_order.resData ;
 
-    S.ing_orderID		    = data_order.text               ;
+    S.ing_orderID		    = data_order.id               ; //与 自定义text 不同
     S.ing_orderTimestamp    = Math.floor(data_order.create_time * 1000) ;
     S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp) ;    
     S.ing_orderStatus		= CV.order_waiting      ; // 按照现在的逻辑, 下单成功后, 暂时先不管交易所真实返回的订单状态, 一律按照waiting来记录
@@ -346,7 +352,7 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
     // 只有完全没有成交的情况才会返回order_cancel
     if ( isStrictTrue(ingOrderData.ifWaitingThenCancel) ) {
         const path_cancel   =  '/futures/' + brokerSymbol.settle + '/orders/' + ingOrderData.ing_orderID ;
-        const fetchBody_cancel = new GateFetchBody(ingOrderData.isReal, 'DELETE', path_cancel, null, 200, {text: ingOrderData.ing_orderID} ) ; //, ingOrderData.spreadsheetID) ;
+        const fetchBody_cancel = new GateFetchBody(ingOrderData.isReal, 'DELETE', path_cancel, null, 200, {id: ingOrderData.ing_orderID} ) ; //, ingOrderData.spreadsheetID) ;
         await GATE_Fetch(fetchBody_cancel) ;
         if (!fetchBody_cancel.isOK) {throw new Error(fetchBody_cancel.errMessage)}
         const data_cancel = fetchBody_cancel.resData ;
@@ -377,7 +383,7 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
         // 如果不撤单单的话, 去查看是否有新的成交记录
         // GET  '/futures/{settle}/orders/{order_id}'
         const path_confirm      =  '/futures/' + brokerSymbol.settle + '/orders/' + ingOrderData.ing_orderID ;
-        const fetchBody_confirm =  new GateFetchBody(ingOrderData.isReal, 'GET', path_confirm, null, 200, {text: ingOrderData.ing_orderID} ) ; //, ingOrderData.spreadsheetID) ;
+        const fetchBody_confirm =  new GateFetchBody(ingOrderData.isReal, 'GET', path_confirm, null, 200, {id: ingOrderData.ing_orderID} ) ; //, ingOrderData.spreadsheetID) ;
         await GATE_Fetch(fetchBody_confirm) ;
         if (!fetchBody_confirm.isOK) {throw new Error(fetchBody_confirm.errMessage)}
         const data_confirm = fetchBody_confirm.resData ;
