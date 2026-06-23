@@ -404,8 +404,8 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
     } else { 
         // 如果不撤单单的话, 去查看是否有新的成交记录
         // GET  '/futures/{settle}/orders/{order_id}'
-        const path_confirm      =  '/futures/' + brokerSymbol.settle + '/orders/' + ingOrderData.ing_orderID ;
-        const fetchBody_confirm =  new GateFetchBody(ingOrderData.isReal, 'GET', path_confirm, null, 200, {id: ingOrderData.ing_orderID} ) ; //, ingOrderData.spreadsheetID) ;
+        const path_confirm      =  '/futures/' + brokerSymbol.settle + '/orders/' + brokerID ;
+        const fetchBody_confirm =  new GateFetchBody(ingOrderData.isReal, 'GET', path_confirm, null, 200, {id: brokerID} ) ; //, ingOrderData.spreadsheetID) ;
         await GATE_Fetch(fetchBody_confirm) ;
         if (!fetchBody_confirm.isOK) {throw new Error(fetchBody_confirm.errMessage)}
         const data_confirm = fetchBody_confirm.resData ;
