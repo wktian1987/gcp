@@ -547,8 +547,9 @@ export const TradeBot = {
             ingOrderData.BaseCoinPrice      = ToStrictNumber(tvData.BaseCoinPrice   , mainData.BaseCoinPrice )      ;
 
             ingOrderData.ifWaitingThenCancel = true;
-            if (ingOrderData.ing_buysell === CV.order_BUY  && tvData.TradingSymbolPrice < ingOrderData.ing_orderPrice * (1 + tvData.waveUpChg)) { ingOrderData.ifWaitingThenCancel = false }
-            if (ingOrderData.ing_buysell === CV.order_SELL && tvData.TradingSymbolPrice > ingOrderData.ing_orderPrice * (1 + tvData.waveDnChg)) { ingOrderData.ifWaitingThenCancel = false }
+            if (ingOrderData.ing_buysell === CV.order_BUY  && tvData.TradingSymbolPrice < ToStrictNumber(ingOrderData.ing_orderPrice, 0) * (1 + tvData.waveUpChg)) { ingOrderData.ifWaitingThenCancel = false }
+            if (ingOrderData.ing_buysell === CV.order_SELL && tvData.TradingSymbolPrice > ToStrictNumber(ingOrderData.ing_orderPrice, 0) * (1 + tvData.waveDnChg)) { ingOrderData.ifWaitingThenCancel = false }
+            if (ingOrderData.ing_reason.includes('from GS')) {ingOrderData.ifWaitingThenCancel = false}
             if (this.thereCommandFromGS && this.commandData.toCancel) { // 查看是否有来自最高等级的GS交易命令
                 AddMessage(this.alertMessage, 'Get toCancel signal from GS');
                 ingOrderData.ifWaitingThenCancel = true;
@@ -1185,7 +1186,7 @@ export const TradeBot = {
             if ((this.hghBuyPriceUnclose / this.TradingSymbolPrice > this.roundHgh / this.roundLow) && (this.hghBuyPriceUnclose > (1 + this.waveUpChg) * this.TradingSymbolPrice)) {
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
-                S.ing_orderPrice = 0;
+                S.ing_orderPrice = CV.NA;
                 S.ing_orderType = CV.order_T_MKT; 
                 S.ing_reason = 'cut too hgh buy order';
             }
@@ -1193,7 +1194,7 @@ export const TradeBot = {
             if (this.TradingSymbolPrice < this.stopPriceC) {
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
-                S.ing_orderPrice = 0;
+                S.ing_orderPrice = CV.NA;
                 S.ing_orderType = CV.order_T_MKT; 
                 S.ing_reason = 'cut due to stopC';
             }
@@ -1201,7 +1202,7 @@ export const TradeBot = {
             if (this.TradingSymbolPrice < this.stopPriceF) {
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
-                S.ing_orderPrice = 0;
+                S.ing_orderPrice = CV.NA;
                 S.ing_orderType = CV.order_T_MKT; 
                 S.ing_reason = 'cut due to stopF';
             }
@@ -1220,7 +1221,7 @@ export const TradeBot = {
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.lowBuySerialUnclose));
                 S.ing_orderPrice = this.commandData.price;
                 S.ing_orderType  = this.commandData.orderType ;
-                if (S.ing_orderPrice === 0) {S.ing_orderType = CV.order_T_MKT}
+                if (S.ing_orderType = CV.order_T_MKT) {S.ing_orderPrice = CV.NA}
                 S.ing_reason = 'toSell from GS';
             }
 
@@ -1232,8 +1233,6 @@ export const TradeBot = {
             S.ing_serial            = -1 * toSellOrderA[idx_serial]                                             ;
             S.ing_buysell           = CV.order_SELL                                                             ;
             S.ing_triggerPrice      = this.TradingSymbolPrice                                                   ;
-            S.ing_orderType         = S.ing_orderType  || CV.order_T_LMT                                        ;
-            S.ing_orderPrice        = isStrictNumber(S.ing_orderPrice) ? S.ing_orderPrice : S.ing_triggerPrice  ;
             S.ing_boughtPrice       = toSellOrderA[idx_confirmPrice]                                            ;
             S.ing_qty               = -1 * toSellOrderA[idx_qty]                                                ;
             S.ing_orderStatus       = CV.order_pending                                                          ;

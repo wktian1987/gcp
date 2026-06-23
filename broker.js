@@ -237,7 +237,17 @@ async function GATE_Fetch(fetchBody) {
         // 如果是 POST/PUT 动词，无缝注入 body 装弹
         if (method === 'POST' && bodyString) { options.body = bodyString }
         const res = await fetch(url, options);
-        const resData = CleanObjToNumBoolStr(await res.json()); //这里必须需要await
+
+        // 交易所传来的原始ID是特别大的数字格式， 直接用json, 会丢失精度。
+        // const resData = CleanObjToNumBoolStr(await res.json()); 
+
+        // 1. 在 `.json()` 前，先拿原汁原味的纯文本数据，此时精度一粒沙都没丢
+        const rawText = await res.text();
+        // 2. 极客正则拦截：把所有超过 16 位的长数字，在文本状态下原地套上双引号，伪装成普通字符串
+        const safeText = rawText.replace(/:\s*(\d{16,})/g, ': "$1"');
+        // 3. 此时再解析，大数字安全降维变成 String 类型，完美复活！
+        const resData = JSON.parse(safeText);
+        // 至此, 虽然交易所发来的ID是数字形式, 但是我硬硬将它变成了不失去精度的字符串形式
 
         fetchBody.status = res.status ;
         if (isObjectOfKeyValue(resData)) {fetchBody.resData = resData}
@@ -307,21 +317,27 @@ async function GATE_SendOrderToBroker(S) {
     if (!isStrictNumber(quanto_multiplier) || quanto_multiplier <= 0) { throw new Error('did not get right quanto_multiplier')}
     if (!isStrictNumber(order_price_round) || order_price_round <= 0) { throw new Error('did not get right order_price_round')}
 
+    const order_price_round_str = ToStrictString(order_price_round);
+    const dotIndex = order_price_round_str.indexOf('.');
+    const priceDecimals = dotIndex === -1 ? 0 : order_price_round_str.split('.')[1].length;
+
     // 组织交易body数据
     let text = S.ing_orderID.replaceAll(':', '.'); // 原始的ID格式为 B-260620:171100.095
     text = text.startsWith('t-') ? text : 't-' + text;
     const size  =  S.ing_buysell === CV.order_BUY ? Math.floor( S.ing_qty / quanto_multiplier) : -1 * Math.round( Math.abs(S.ing_qty) / quanto_multiplier) ;
     if ( Math.abs(size) < 1 ) {throw new Error('ing_qty is too small, cant trade')}
     S.ing_qty   =  S.ing_buysell === CV.order_BUY ? size * quanto_multiplier : S.ing_qty ;
-    const price_mul =  S.ing_orderPrice / order_price_round ;
+    const price_mul =  ToStrictNumber(S.ing_orderPrice, 0) / order_price_round ;
     S.ing_orderPrice = S.ing_buysell === CV.order_BUY ? order_price_round * Math.floor(price_mul) : order_price_round * Math.ceil(price_mul) ;
     const price = S.ing_orderPrice ;
+    const priceFixed = ToStrictNumber(price.toFixed(priceDecimals)) ;
+    if ( Math.abs(priceFixed - price) / price > 0.001 ) {throw new Error('价格计算错误')}
 
     const orderBody = {} ;
     orderBody.text      =  ToStrictString(text)         ;
     orderBody.contract  =  brokerSymbol.contract        ;
     orderBody.size      =  ToStrictString(size )        ;
-    orderBody.price     =  ToStrictString(price)        ;
+    orderBody.price     =  price.toFixed(priceDecimals) ;
     if (S.ing_orderType === CV.order_T_MKT) {orderBody.price        = '0'   }
     if (S.ing_orderType === CV.order_T_MKT) {orderBody.tif          = 'ioc' }
     if (S.ing_buysell   === CV.order_SELL ) {orderBody.reduce_only  = true  }
@@ -334,7 +350,9 @@ async function GATE_SendOrderToBroker(S) {
     if (!fetchBody_order.isOK) {throw new Error('下单失败: ' + fetchBody_order.errMessage)}
     const data_order = fetchBody_order.resData ;
 
-    S.ing_orderID		    = data_order.id               ; //与 自定义text 不同
+    S.ing_orderID		    = data_order.id               ; //与 自定义text 不同, 因为有前面的转换, 这里的大数字是字符串形式
+    if (S.ing_orderType === CV.order_BUY ) {S.ing_orderID = 'B' + S.ing_orderID}
+    if (S.ing_orderType === CV.order_SELL) {S.ing_orderID = 'S' + S.ing_orderID}
     S.ing_orderTimestamp    = Math.floor(data_order.create_time * 1000) ;
     S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp) ;    
     S.ing_orderStatus		= CV.order_waiting      ; // 按照现在的逻辑, 下单成功后, 暂时先不管交易所真实返回的订单状态, 一律按照waiting来记录
@@ -353,6 +371,7 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
     // DELETE /futures/{settle}/orders/{order_id}
     // 如果有成交的话, 标记confirm, 并修改下单量
     // 只有完全没有成交的情况才会返回order_cancel
+    ingOrderData.ing_orderID = ingOrderData.ing_orderID.substring(1) ; // 先把前面自己加的id前面的字符去掉
     if ( isStrictTrue(ingOrderData.ifWaitingThenCancel) ) {
         const path_cancel   =  '/futures/' + brokerSymbol.settle + '/orders/' + ingOrderData.ing_orderID ;
         const fetchBody_cancel = new GateFetchBody(ingOrderData.isReal, 'DELETE', path_cancel, null, 200, {id: ingOrderData.ing_orderID} ) ; //, ingOrderData.spreadsheetID) ;
