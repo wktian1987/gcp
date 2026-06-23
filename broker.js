@@ -350,9 +350,9 @@ async function GATE_SendOrderToBroker(S) {
     if (!fetchBody_order.isOK) {throw new Error('下单失败: ' + fetchBody_order.errMessage)}
     const data_order = fetchBody_order.resData ;
 
-    S.ing_orderID		    = data_order.id               ; //与 自定义text 不同, 因为有前面的转换, 这里的大数字是字符串形式
-    if (S.ing_orderType === CV.order_BUY ) {S.ing_orderID = 'B' + S.ing_orderID}
-    if (S.ing_orderType === CV.order_SELL) {S.ing_orderID = 'S' + S.ing_orderID}
+    S.ing_orderID		    = data_order.id               ; //与 自定义text 不同, 因为有 大数字->字符串 的转换, 这里的大数字是字符串形式
+    if (S.ing_buysell === CV.order_BUY ) {S.ing_orderID = 'B' + S.ing_orderID}
+    if (S.ing_buysell === CV.order_SELL) {S.ing_orderID = 'S' + S.ing_orderID}
     S.ing_orderTimestamp    = Math.floor(data_order.create_time * 1000) ;
     S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp) ;    
     S.ing_orderStatus		= CV.order_waiting      ; // 按照现在的逻辑, 下单成功后, 暂时先不管交易所真实返回的订单状态, 一律按照waiting来记录
@@ -371,10 +371,10 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
     // DELETE /futures/{settle}/orders/{order_id}
     // 如果有成交的话, 标记confirm, 并修改下单量
     // 只有完全没有成交的情况才会返回order_cancel
-    ingOrderData.ing_orderID = ingOrderData.ing_orderID.substring(1) ; // 先把前面自己加的id前面的字符去掉
+    const brokerID= ingOrderData.ing_orderID.substring(1) ; // 先把前面自己加的id前面的字符去掉
     if ( isStrictTrue(ingOrderData.ifWaitingThenCancel) ) {
-        const path_cancel   =  '/futures/' + brokerSymbol.settle + '/orders/' + ingOrderData.ing_orderID ;
-        const fetchBody_cancel = new GateFetchBody(ingOrderData.isReal, 'DELETE', path_cancel, null, 200, {id: ingOrderData.ing_orderID} ) ; //, ingOrderData.spreadsheetID) ;
+        const path_cancel   =  '/futures/' + brokerSymbol.settle + '/orders/' + brokerID ;
+        const fetchBody_cancel = new GateFetchBody(ingOrderData.isReal, 'DELETE', path_cancel, null, 200, {id: brokerID} ) ; //, ingOrderData.spreadsheetID) ;
         await GATE_Fetch(fetchBody_cancel) ;
         if (!fetchBody_cancel.isOK) {throw new Error(fetchBody_cancel.errMessage)}
         const data_cancel = fetchBody_cancel.resData ;
