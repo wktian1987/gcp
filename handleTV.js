@@ -328,8 +328,8 @@ export const TradeBot = {
             this.tradeHistoryTitleA     =  tradeHistoryTitleA   ;
 
             this.thereCommandFromGS = false ; // 最高等级的交易命令, 直接来自GS的交易信号, 需要亲自手动设置
-            if (Object.hasOwn(commandData, thisCommandBeRead)   &&
-                Object.hasOwn(commandData, noCommandError)      &&
+            if (Object.hasOwn(commandData, 'thisCommandBeRead')   &&
+                Object.hasOwn(commandData, 'noCommandError')      &&
                 isStrictFalse(commandData.thisCommandBeRead)    &&
                 isStrictTrue(commandData.noCommandError)        )  {
                 commandData.thisCommandBeRead = true ;
