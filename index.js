@@ -12,6 +12,9 @@ const SignalList = [] ; // 里面的元素是 {url, body}
 let isWorkerRunning = false ; 
 export let stopHandleNewSignals = true; // 当从tg收到取消所有任务信号的时候, 取消所有信号
 export function ToStopSartNewSignals(toStopStart = 'toStop') { // 重启是'toStart')
+    if (toStopStart === 'toStop' ) {console.log('收到信号 ToStopSartNewSignals(toStop)' )}
+    if (toStopStart === 'toStart') {console.log('收到信号 ToStopSartNewSignals(toStart)')}
+    if (toStopStart !== 'toStop' && toStopStart !== 'toStart') {console.log('收到错误信号 ToStopSartNewSignals(非法参数)')}
     stopHandleNewSignals = toStopStart === 'toStop' ? true : false; // 1. 下发熔断禁令
     if (toStopStart === 'toStop') {SignalList.length = 0} // 2. 物理超渡内存中积压的所有过期信号！
 }

@@ -334,7 +334,7 @@ export const TradeBot = {
                 isStrictTrue(commandData.noCommandError)        )  {
                 commandData.thisCommandBeRead = true ;
                 await UpdateGS(this.spreadsheetID, toGCPData.commandReadRange, [[commandData.thisCommandBeRead]]) ;
-                await Selection(100) ;
+                await Sleep(100) ;
                 let checkCommandRead = ToStrictNumBoolStr( (await GetGS(this.spreadsheetID, toGCPData.commandReadRange))[0][0] ) ;
                 if (checkCommandRead !== commandData.thisCommandBeRead) {
                     // 再重试一次, 重新写, 等2s再重新读
