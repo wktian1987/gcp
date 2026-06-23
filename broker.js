@@ -351,7 +351,7 @@ async function GATE_SendOrderToBroker(S) {
     const data_order = fetchBody_order.resData ;
 
     S.ing_orderID		    = data_order.id               ; //与 自定义text 不同, 因为有 大数字->字符串 的转换, 这里的大数字是字符串形式
-    if (S.ing_buysell === CV.order_BUY ) {S.ing_orderID = 'B' + S.ing_orderID}
+    if (S.ing_buysell === CV.order_BUY ) {S.ing_orderID = 'B' + S.ing_orderID} // 为了避免数据在传输过程中导致错误, 精度丢失, 在前面加个前缀, 变成字符串
     if (S.ing_buysell === CV.order_SELL) {S.ing_orderID = 'S' + S.ing_orderID}
     S.ing_orderTimestamp    = Math.floor(data_order.create_time * 1000) ;
     S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp) ;    
@@ -367,12 +367,39 @@ async function GATE_SendOrderToBroker(S) {
 async function GATE_CheckOrderConfirm(ingOrderData) {
     const brokerSymbol  =  tvSymbol_TO_GATE_Symbol(ingOrderData.TradingSymbol) ;
 
-    // 如果需要撤单的话, 先去撤单
+    const brokerID = ingOrderData.ing_orderID.substring(1); // 先把前面自己加的id前面的字符去掉
+
+    // 如果需要撤单的话, 也不能先去撤单, 因为对于一个已经成交的订单执行撤单命令会报错
+
+    // 先去查看是否有新的成交记录
+    // GET  '/futures/{settle}/orders/{order_id}'
+    const path_confirm = '/futures/' + brokerSymbol.settle + '/orders/' + brokerID;
+    const fetchBody_confirm = new GateFetchBody(ingOrderData.isReal, 'GET', path_confirm, null, 200, { id: brokerID }); //, ingOrderData.spreadsheetID) ;
+    await GATE_Fetch(fetchBody_confirm);
+    if (!fetchBody_confirm.isOK) { throw new Error(fetchBody_confirm.errMessage) }
+    const data_confirm = fetchBody_confirm.resData;
+
+    const abs_left = Math.abs(data_confirm.left);
+    const abs_size = Math.abs(data_confirm.size);
+    if (data_confirm.status === 'open' && abs_left < abs_size) {
+        ingOrderData.ing_orderStatus = CV.order_partial;
+        ingOrderData.lst_partial = ingOrderData.ing_partial;
+        ingOrderData.ing_partial = (abs_size - abs_left) / abs_size;
+    }
+    if (data_confirm.status === 'finished') {
+        ingOrderData.ing_orderStatus = CV.order_confirm;
+        ingOrderData.ing_confirmTimestamp = Math.floor(data_confirm.finish_time * 1000);
+        ingOrderData.ing_confirmDate = GetTimeStringWithOffset(8, ingOrderData.ing_confirmTimestamp);
+        ingOrderData.ing_confirmPrice = data_confirm.fill_price;
+        ingOrderData.ing_pXq = ingOrderData.ing_confirmPrice * ingOrderData.ing_qty; // 实际上只取买单成交的值, 对于卖单成交, 即使算出来也不关注
+    }
+
+    // 如果有撤单指令的话, 去撤单
     // DELETE /futures/{settle}/orders/{order_id}
     // 如果有成交的话, 标记confirm, 并修改下单量
     // 只有完全没有成交的情况才会返回order_cancel
-    const brokerID = ingOrderData.ing_orderID.substring(1) ; // 先把前面自己加的id前面的字符去掉
-    if ( isStrictTrue(ingOrderData.ifWaitingThenCancel) ) {
+
+    if ( data_confirm.status === 'open' && abs_left < abs_size && isStrictTrue(ingOrderData.ifWaitingThenCancel) ) {
         const path_cancel   =  '/futures/' + brokerSymbol.settle + '/orders/' + brokerID ;
         const fetchBody_cancel = new GateFetchBody(ingOrderData.isReal, 'DELETE', path_cancel, null, 200, {id: brokerID} ) ; //, ingOrderData.spreadsheetID) ;
         await GATE_Fetch(fetchBody_cancel) ;
@@ -388,44 +415,21 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
             ingOrderData.ing_orderStatus        = CV.order_confirm                                                          ;
             ingOrderData.ing_qty                = ingOrderData.ing_qty * ingOrderData.ing_partial                           ;
             ingOrderData.ing_isPartial          = data_cancel.status === 'finished' ? undefined : ingOrderData.ing_partial  ;
-            ingOrderData.ing_confirmTimestamp   = Math.floor( ( data_confirm?.finish_time??(Date.now()/1000) ) * 1000)      ;
+            ingOrderData.ing_confirmTimestamp   = Math.floor( ( data_cancel?.finish_time??(Date.now()/1000) ) * 1000)      ;
             ingOrderData.ing_confirmDate		= GetTimeStringWithOffset(8, ingOrderData.ing_confirmTimestamp)             ;
-            ingOrderData.ing_confirmPrice		= data_confirm.fill_price                                                   ;
+            ingOrderData.ing_confirmPrice		= data_cancel.fill_price                                                   ;
             ingOrderData.ing_pXq                = ingOrderData.ing_confirmPrice * ingOrderData.ing_qty                      ; // 实际上只取买单成交的值, 对于卖单成交, 即使算出来也不关注
         } else {
             ingOrderData.ing_orderStatus        = CV.order_cancel                                                           ; // 对于撤单只有这个值是有意义的
             ingOrderData.ing_qty                = 0                                                                         ; // 这个值无意义
             ingOrderData.ing_confirmTimestamp   = Date.now()                                                                ; // 这个值无意义
             ingOrderData.ing_confirmDate		= GetTimeStringWithOffset(8, ingOrderData.ing_confirmTimestamp)             ; // 这个值无意义
-            ingOrderData.ing_confirmPrice		= data_confirm.fill_price                                                   ; // 可能是0, 反正这个值也无意义
+            ingOrderData.ing_confirmPrice		= data_cancel.fill_price                                                   ; // 可能是0, 反正这个值也无意义
             ingOrderData.ing_pXq                = ingOrderData.ing_confirmPrice * ingOrderData.ing_qty                      ; // 这个值必然是0或undefined, 无意义
         }
 
-    } else { 
-        // 如果不撤单单的话, 去查看是否有新的成交记录
-        // GET  '/futures/{settle}/orders/{order_id}'
-        const path_confirm      =  '/futures/' + brokerSymbol.settle + '/orders/' + brokerID ;
-        const fetchBody_confirm =  new GateFetchBody(ingOrderData.isReal, 'GET', path_confirm, null, 200, {id: brokerID} ) ; //, ingOrderData.spreadsheetID) ;
-        await GATE_Fetch(fetchBody_confirm) ;
-        if (!fetchBody_confirm.isOK) {throw new Error(fetchBody_confirm.errMessage)}
-        const data_confirm = fetchBody_confirm.resData ;
-
-        const abs_left = Math.abs(data_confirm.left) ;
-        const abs_size = Math.abs(data_confirm.size) ;
-        if ( data_confirm.status === 'open' && abs_left < abs_size )  {
-            ingOrderData.ing_orderStatus =  CV.order_partial                    ;
-            ingOrderData.lst_partial     =  ingOrderData.ing_partial            ;
-            ingOrderData.ing_partial     =  (abs_size - abs_left) / abs_size    ;
-        }
-        if (data_confirm.status === 'finished') {
-            ingOrderData.ing_orderStatus		= CV.order_confirm                                              ;
-            ingOrderData.ing_confirmTimestamp   = Math.floor(data_confirm.finish_time * 1000)                   ;
-            ingOrderData.ing_confirmDate		= GetTimeStringWithOffset(8, ingOrderData.ing_confirmTimestamp) ;
-            ingOrderData.ing_confirmPrice		= data_confirm.fill_price                                       ;
-            ingOrderData.ing_pXq                = ingOrderData.ing_confirmPrice * ingOrderData.ing_qty          ; // 实际上只取买单成交的值, 对于卖单成交, 即使算出来也不关注
-        }
-
-    }
+    } 
+    
 
     // 再去查看当前的仓位信息
     // 获取单个仓位信息:    GET  /futures/{settle}/positions/{contract}
