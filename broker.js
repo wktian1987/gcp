@@ -371,7 +371,7 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
     // DELETE /futures/{settle}/orders/{order_id}
     // 如果有成交的话, 标记confirm, 并修改下单量
     // 只有完全没有成交的情况才会返回order_cancel
-    const brokerID= ingOrderData.ing_orderID.substring(1) ; // 先把前面自己加的id前面的字符去掉
+    const brokerID = ingOrderData.ing_orderID.substring(1) ; // 先把前面自己加的id前面的字符去掉
     if ( isStrictTrue(ingOrderData.ifWaitingThenCancel) ) {
         const path_cancel   =  '/futures/' + brokerSymbol.settle + '/orders/' + brokerID ;
         const fetchBody_cancel = new GateFetchBody(ingOrderData.isReal, 'DELETE', path_cancel, null, 200, {id: brokerID} ) ; //, ingOrderData.spreadsheetID) ;
