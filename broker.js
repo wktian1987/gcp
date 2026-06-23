@@ -259,7 +259,10 @@ async function GATE_Fetch(fetchBody) {
         if (fetchBody.resData.label  ) {fetchBody.errMessage += `GateErr label:   ${fetchBody.resData.label  }` + '\n'}
         if (fetchBody.resData.message) {fetchBody.errMessage += `GateErr message: ${fetchBody.resData.message}` + '\n'}
         if (fetchBody.resData.detail ) {fetchBody.errMessage += `GateErr detail:  ${fetchBody.resData.detail }` + '\n'}
-        fetchBody.errMessage += `sent request body is: ${JSON.stringify(body)}`;
+        fetchBody.errMessage += `sent request method is: ${method}` + '\n';
+        fetchBody.errMessage += `sent request path is: ${path}` + '\n';
+        fetchBody.errMessage += `sent request body is: ${JSON.stringify(body)}` + '\n';
+        fetchBody.errMessage = fetchBody.errMessage.trim() ;
     }
 
     // try {
