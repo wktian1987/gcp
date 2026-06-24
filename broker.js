@@ -254,7 +254,7 @@ async function GATE_Fetch(fetchBody) {
         ReqResDataFromGATE += `sent request method is: ${method}` + '\n';
         ReqResDataFromGATE += `sent request path is: ${path}` + '\n';
         ReqResDataFromGATE += `sent request body is: ${JSON.stringify(body)}` + '\n';
-        ReqResDataFromGATE =  `Broker res text is: ${rawText}` + '\n';
+        ReqResDataFromGATE +=  `Broker res text is: ${rawText}` + '\n';
         console.log(ReqResDataFromGATE.trim()) ;
         // 以后可以删除这个交互记录
 
