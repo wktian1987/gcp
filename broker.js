@@ -249,6 +249,7 @@ async function GATE_Fetch(fetchBody) {
         // 至此, 虽然交易所发来的ID是数字形式, 但是我硬硬将它变成了不失去精度的字符串形式
 
 
+        /////////////////////////////////////////////////////////////
         // 在测试阶段将交易所信号返回打印出来,
         let ReqResDataFromGATE = '交易所交互记录: \n' ;
         ReqResDataFromGATE += `sent request method is: ${method}` + '\n';
@@ -257,6 +258,7 @@ async function GATE_Fetch(fetchBody) {
         ReqResDataFromGATE +=  `Broker res text is: ${rawText}` + '\n';
         console.log(ReqResDataFromGATE.trim()) ;
         // 以后可以删除这个交互记录
+        /////////////////////////////////////////////////////////////
 
 
         fetchBody.status = res.status ;
@@ -397,15 +399,18 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
 
     if ( data_confirm.status !== 'finished' && isStrictTrue(ingOrderData.ifWaitingThenCancel) ) {
         const path_cancel   =  '/futures/' + brokerSymbol.settle + '/orders/' + brokerID ;
-        const fetchBody_cancel = new GateFetchBody(ingOrderData.isReal, 'DELETE', path_cancel, null, 200, {id: brokerID} ) ;
+        const fetchBody_cancel = new GateFetchBody(ingOrderData.isReal, 'DELETE', path_cancel, null, 200, {id: brokerID, finish_as:'cancelled', status: 'finished'} ) ;
+        // 对于撤单, 交易所传回的数据中,  "finish_as": "cancelled", "status": "finished",
+        // 所以不能用status: finished来判断是否有成交
+
         await GATE_Fetch(fetchBody_cancel) ;
         if (!fetchBody_cancel.isOK) {throw new Error(fetchBody_cancel.errMessage)}
         const data_cancel = fetchBody_cancel.resData ;
 
         const abs_left = ToStrictNumber(Math.abs(data_cancel.left) , 0);
         const abs_size = ToStrictNumber(Math.abs(data_cancel.size) , 0); if ( abs_size === 0) {throw new Error('撤单时, 从交易所获得的订单量不对')}
-        ingOrderData.ing_partial = data_cancel.status === 'finished' ? 1 : (abs_size - abs_left) / abs_size ;
-        const toSet_confirm = ingOrderData.ing_partial < 0.001 ? false : true ; // 将计算成交量小于 千分之一 的情况设为没有成交, 其他情况均按照有成交计算, 避免浮点数对比计算出错
+        ingOrderData.ing_partial = (abs_size - abs_left) / abs_size ;
+        const toSet_confirm = abs_size - abs_left < 1 ? false : true ; // 将计算成交量小于1, 即为0 的情况设为没有成交, 其他情况均按照有成交计算, 避免浮点数对比计算出错
         
         if (toSet_confirm) {
             ingOrderData.ing_orderStatus        = CV.order_confirm                                                          ;

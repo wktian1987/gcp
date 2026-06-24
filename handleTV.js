@@ -1289,6 +1289,7 @@ export const TradeBot = {
                 toBuy = true;
                 S.ing_orderPrice = this.lstRcdTargetLow;
                 S.ing_orderType = CV.order_T_LMT;
+                S.ing_qty = this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin * this.leverage / S.ing_orderPrice / this.minEnExPosition / (this.MaxGrid - this.gridNum)));
                 S.ing_reason = 'touchTargetLow';
             }
 
@@ -1297,6 +1298,7 @@ export const TradeBot = {
                 toBuy = true;
                 S.ing_orderPrice = this.commandData.price;
                 S.ing_orderType = this.commandData.orderType;
+                S.ing_qty  = this.commandData.qty ; if (this.commandData.qty <= 0) {throw new Error('command.qty不能<=0')}
                 if (S.ing_orderType === CV.order_T_MKT) { S.ing_orderPrice = Math.max(S.ing_orderPrice, 1.01 * this.TradingSymbolPrice) }
                 S.ing_reason = 'toBuy from GS';
             }
@@ -1311,7 +1313,6 @@ export const TradeBot = {
             S.ing_triggerPrice      = this.TradingSymbolPrice                                                                                                                                       ;
             S.ing_orderType         = S.ing_orderType || CV.order_T_LMT                                                                                                                             ;
             S.ing_orderPrice        = isStrictNumber(S.ing_orderPrice) ? S.ing_orderPrice : S.ing_triggerPrice                                                                                      ;
-            S.ing_qty               = this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin * this.leverage / S.ing_orderPrice / this.minEnExPosition / (this.MaxGrid - this.gridNum)))     ;
             S.ing_orderStatus       = CV.order_pending                                                                                                                                              ;
             S.isReal                = this.isReal                                                                                                                                                   ;
             S.TradingSymbol         = this.TradingSymbol                                                                                                                                            ;
