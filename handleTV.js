@@ -1318,7 +1318,6 @@ export const TradeBot = {
             S.ing_buysell           = CV.order_BUY                                                                                                                                                  ;
             S.ing_triggerPrice      = this.TradingSymbolPrice                                                                                                                                       ;
             S.ing_orderType         = S.ing_orderType || CV.order_T_LMT                                                                                                                             ;
-            S.ing_orderPrice        = isStrictNumber(S.ing_orderPrice) ? S.ing_orderPrice : S.ing_triggerPrice                                                                                      ;
             S.ing_qty               = this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin * this.leverage / S.ing_orderPrice / this.minEnExPosition / (this.MaxGrid - this.gridNum)))     ;
             S.ing_orderStatus       = CV.order_pending                                                                                                                                              ;
             S.isReal                = this.isReal                                                                                                                                                   ;
