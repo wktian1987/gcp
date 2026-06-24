@@ -1311,18 +1311,19 @@ export const TradeBot = {
 
             if (isStrictFalse(toBuy)) { return true }
 
-            S.ing_orderID           = 'B-' + GetTimeStringWithOffset(8, this.timestamp)                                                                                                             ;
-            S.ing_orderTimestamp    = Date.now()                                                                                                                                                    ;
-            S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp)                                                                                                              ;
-            S.ing_serial            = ToStrictNumber(this.lstBuySerial, 0) + 1                                                                                                                      ;
-            S.ing_buysell           = CV.order_BUY                                                                                                                                                  ;
-            S.ing_triggerPrice      = this.TradingSymbolPrice                                                                                                                                       ;
-            S.ing_orderType         = S.ing_orderType || CV.order_T_LMT                                                                                                                             ;
-            S.ing_qty               = this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin * this.leverage / S.ing_orderPrice / this.minEnExPosition / (this.MaxGrid - this.gridNum)))     ;
-            S.ing_orderStatus       = CV.order_pending                                                                                                                                              ;
-            S.isReal                = this.isReal                                                                                                                                                   ;
-            S.TradingSymbol         = this.TradingSymbol                                                                                                                                            ;
-            S.spreadsheetID         = this.spreadsheetID                                                                                                                                            ;
+            S.ing_orderID           = 'B-' + GetTimeStringWithOffset(8, this.timestamp)     ;
+            S.ing_orderTimestamp    = Date.now()                                            ;
+            S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp)      ;
+            S.ing_serial            = ToStrictNumber(this.lstBuySerial, 0) + 1              ;
+            S.ing_buysell           = CV.order_BUY                                          ;
+            S.ing_triggerPrice      = this.TradingSymbolPrice                               ;
+            S.ing_orderType         = S.ing_orderType || CV.order_T_LMT                     ;
+            S.ing_orderStatus       = CV.order_pending                                      ;
+            S.isReal                = this.isReal                                           ;
+            S.TradingSymbol         = this.TradingSymbol                                    ;
+            S.spreadsheetID         = this.spreadsheetID                                    ;
+            S.calcuQtyPrice = (S.ing_orderType === CV.order_T_MKT || !isStrictNumber(S.ing_orderPrice) ) ? this.TradingSymbolPrice : S.ing_orderPrice ;
+            S.ing_qty               = this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin * this.leverage / S.calcuQtyPrice / this.minEnExPosition / (this.MaxGrid - this.gridNum)))     ;
 
             await SendOrderToBroker(S);
             if (!S.respOK) { throw new Error('交易所返回数据不正确') }
