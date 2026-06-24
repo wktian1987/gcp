@@ -1305,7 +1305,7 @@ export const TradeBot = {
                 toBuy = true;
                 S.ing_orderPrice = this.commandData.price;
                 S.ing_orderType = this.commandData.orderType;
-                if (S.ing_orderType === CV.order_T_MKT) { S.ing_orderPrice = Math.max(S.ing_orderPrice, 1.01 * this.TradingSymbolPrice) }
+                if (S.ing_orderType === CV.order_T_MKT) { S.ing_orderPrice = CV.NA }
                 S.ing_reason = 'toBuy from GS';
             }
 
