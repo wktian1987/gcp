@@ -415,7 +415,7 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
         if (toSet_confirm) {
             ingOrderData.ing_orderStatus        = CV.order_confirm                                                          ;
             ingOrderData.ing_qty                = ingOrderData.ing_qty * ingOrderData.ing_partial                           ;
-            ingOrderData.ing_isPartial          = data_cancel.status === 'finished' ? CV.NA : ingOrderData.ing_partial      ;
+            ingOrderData.ing_isPartial          = abs_left === 0 ? CV.NA : ingOrderData.ing_partial                         ;
             ingOrderData.ing_confirmTimestamp   = Math.floor( ( data_cancel?.finish_time??(Date.now()/1000) ) * 1000)       ;
             ingOrderData.ing_confirmDate		= GetTimeStringWithOffset(8, ingOrderData.ing_confirmTimestamp)             ;
             ingOrderData.ing_confirmPrice		= data_cancel.fill_price                                                    ;
