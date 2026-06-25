@@ -1,10 +1,22 @@
 import { GetGS, GetSpreadsheetID, SendTG, Sleep, UpdateGS } from "./utility.js"
 
 export async function test(chat_id) {
-    await SendTG('TEST信号处理开始', '这里是test()正在处理...', chat_id) ;
+    await SendTG('TEST信号处理开始', '开始加载00文件中的A1函数...', chat_id) ;
 
-    await testFunctionFromGS0(chat_id) ;
+    const functionRegion    = 'test!A1' ;
+    const spreadsheetID     = await GetSpreadsheetID('TradingBot_00') ;
+    const functionString    = await GetGS(spreadsheetID, functionRegion) ;
+    eval(functionString) ;
 
+    await SendTG('A1函数加载成功', '开始执行A1函数...', chat_id);
+
+    try { 
+        await functionA1(spreadsheetID, chat_id);
+        await SendTG('A1执行成功', 'A1函数执行成功...', chat_id);
+
+    } catch (e) {
+        await SendTG('A1执行失败', 'A1函数执行失败: ' + e.message, chat_id);
+    }
     await SendTG('TEST信号处理结束', 'TEST信号处理结束', chat_id) ;
 }
 
