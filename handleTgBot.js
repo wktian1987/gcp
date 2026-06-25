@@ -20,7 +20,7 @@ import {
 import {TradeBot} from './handleTV.js';
 import { stopHandleNewSignals, ToStopSartNewSignals } from "./index.js";
 import { HandleUnreadGmails } from "./handleUnreadGmails.js";
-import { test } from "./Test.js";
+import { testA1FromGS00 } from "./Test.js";
 
 
 const tempStore = {} ;
@@ -69,8 +69,8 @@ export async function HandleTgBot(msg) {
     }
 
     if (text.toUpperCase().includes('TEST')) {
-        SendTG(`收到TEST信号`, '开始测试Test.js文件中的test()', chat_id).catch(() => { });
-        await test(chat_id) ;
+        SendTG(`收到TEST信号`, '开始测试Test.js文件中的testA1FromGS00()', chat_id).catch(() => { });
+        await testA1FromGS00(chat_id) ;
         return ;
     }
 

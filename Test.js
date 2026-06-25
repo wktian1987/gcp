@@ -1,6 +1,6 @@
 import { GetGS, GetSpreadsheetID, SendTG, Sleep, UpdateGS, ClearGS } from "./utility.js"
 
-export async function test(chat_id) {
+export async function testA1FromGS00(chat_id) {
     await SendTG('TEST信号处理开始', '开始加载00文件中的A1函数...', chat_id) ;
 
     const functionRegion    = 'test!A1' ;
