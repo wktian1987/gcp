@@ -1050,15 +1050,16 @@ export const TradeBot = {
         // enDifficulty     0.055
         // exDifficulty	    0.945
 
-        // this.enDifficultyBuyPrice = 
+        this.enDifficultyBuyPrice  = this.therePosition ? this.lowBuyPriceUnclose * (1+this.enDifficulty*this.waveDnChg) : null ;
+        this.exDifficultySellPrice = this.therePosition ? this.lowBuyPriceUnclose * (1+this.enDifficulty*this.waveUpChg) : null ;
 
         this.hghToBuy = Math.min(
             this.basicHghToBuy                                                  ,
-            this.closeToRndHgh                                                  ,
-            ToStrictNumber(this.lowBuyPriceUnclose, this.basicHghToBuy)         )   ;
+            this.closeToRndHgh                                                  ) ;
+        this.hghToBuy = Math.min(this.hghToBuy, this.enDifficultyBuyPrice) ;
 
         this.lowToBuy = Math.max(this.basicLowToBuy, this.closeToRndLow);
-        this.lowToSell = Math.max(this.basicLowToSell);
+        this.lowToSell = Math.max(this.basicLowToSell, this.exDifficultySellPrice);
 
         this.inTradingTime = this.timestamp > this.realTradeTime && this.timestamp < this.realTradeTimeTo;
 
@@ -1101,9 +1102,9 @@ export const TradeBot = {
             this.canBuy = false;
             this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'price closeToRndHgh');
         }
-        if (this.TradingSymbolPrice > this.lowBuyPriceUnclose) {
+        if (this.TradingSymbolPrice > this.enDifficultyBuyPrice) {
             this.canBuy = false;
-            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'price > lowBuyPriceUnclose');
+            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'price > enDifficultyBuyPrice');
         }
         if (this.TradingSymbolPrice < this.basicLowToBuy) {
             this.canBuy = false;
@@ -1122,6 +1123,12 @@ export const TradeBot = {
             this.canSell = false;
             this.cantSellReason = AddMessage(this.cantSellReason, 'cant sell: ' + 'price < basicLowToSell');
         }
+
+        if (this.TradingSymbolPrice < this.exDifficultySellPrice) {
+            this.canSell = false;
+            this.cantSellReason = AddMessage(this.cantSellReason, 'cant sell: ' + 'price < exDifficultySellPrice');
+        }
+
 
         if (!isStrictTrue(this.therePosition)) {
             this.canSell = false;

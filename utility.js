@@ -14,19 +14,19 @@ const auth = new google.auth.GoogleAuth({
     scopes: ['https://www.googleapis.com/auth/spreadsheets'] 
 });
 
-// 🎯 2. 全局并网：将 Agent 注入到全局客户端中
+//  2. 全局并网：将 Agent 注入到全局客户端中
 const sheetsClient = google.sheets({ 
     version: 'v4', 
     auth,
     options: {
-        // 💡 注入这一枪，让后续所有的 API 请求自动走长链接光纤通道
+        //  注入这一枪，让后续所有的 API 请求自动走长链接光纤通道
         httpAgent: sheetsAgent,
         httpsAgent: sheetsAgent
     }
 });
 
 
-// 我的原始方案如下
+// 原始方案如下
 // import { google } from 'googleapis';
 // const auth = new google.auth.GoogleAuth({ scopes: ['https://www.googleapis.com/auth/spreadsheets'] } ) ;
 // const sheetsClient = google.sheets({ version: 'v4', auth });
