@@ -5,7 +5,7 @@ export async function testA1FromGS00(chat_id) {
 
     const functionRegion    = 'test!A1' ;
     const spreadsheetID     = await GetSpreadsheetID('TradingBot_00') ;
-    const functionString    = await GetGS(spreadsheetID, functionRegion) ;
+    const functionString    = (await GetGS(spreadsheetID, functionRegion))[0][0] ;
     eval(functionString) ;
 
     await SendTG('A1函数加载成功', '开始执行A1函数...', chat_id);
@@ -28,16 +28,16 @@ async function functionA1(spreadsheetID, chat_id) {
     const bigRegion = 'test!B3:F22';
     const newContent = [
         [2, 2, 2] ,
-        [2, 2, 2] ,
-        [2, 2, 2] ,
-        [2, 2, 2] ,
-        [2, 2, 2] ,
+        [2, 2, 3] ,
+        [2, 2, 4] ,
+        [2, 2, 5] ,
+        [2, 2, 6] ,
         [2, 2, 2] ,
         [2, 2, 2] ,
         [2, 2, 2] 
     ] ;
 
-    await ClearGS(spreadsheetID, bigRegion, newContent) ;
+    await ClearGS(spreadsheetID, bigRegion) ;
     await UpdateGS(spreadsheetID, bigRegion, newContent) ;
 
 
