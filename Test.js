@@ -13,14 +13,14 @@ async function testFunctionFromGS0(chat_id) {
     const spreadsheetID     = await GetSpreadsheetID('TradingBot_00') ;
     const functionString    = await GetGS(spreadsheetID, functionRegion) ;
     eval(functionString) ;
-    try { await functionA1(chat_id) } catch (e) {
+    try { await functionA1(spreadsheetID, chat_id) } catch (e) {
         throw new Error('A1函数执行失败: ' + e.message)
     }
 }
 
 // 在下面函数中写入测试逻辑, 并将函数复制到A1单元格中, 然后去TG执行test指令
 // 这样就可以在不重启cloudrun的情况下, 快速测试或者部署新的函数了
-async function functionA1(chat_id) {
+async function functionA1(spreadsheetID, chat_id) {
     
     // 测试大范围内下范围的内容修改
     const bigRegion = 'test!B3:F22';
@@ -35,7 +35,6 @@ async function functionA1(chat_id) {
         [2, 2, 2] 
     ] ;
 
-    const spreadsheetID     = await GetSpreadsheetID('TradingBot_00') ;
     await UpdateGS(spreadsheetID, bigRegion, newContent) ;
 
 
