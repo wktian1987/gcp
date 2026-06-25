@@ -1,6 +1,37 @@
 import { google } from 'googleapis';
-const auth = new google.auth.GoogleAuth({ scopes: ['https://www.googleapis.com/auth/spreadsheets'] } ) ;
-const sheets = google.sheets({ version: 'v4', auth });
+import https from 'https';
+
+//  1. 注入长效物理套接字蓄水池（全局只初始化一次，焊死长链接）
+const sheetsAgent = new https.Agent({
+    keepAlive: true,             // 保持长连接，请求完了留在原地等下一个信号
+    keepAliveMsecs: 3000,        // 3秒发一次空包维持通道通畅
+    maxSockets: 64,              // 允许的最大并发套接字数
+    maxFreeSockets: 10,          // 闲置时最多保留的热连接数
+    timeout: 30000,              // 30秒无响应刚性断开 , 刚性断开后, 下次有信号进来调用sheetsClient会自动重连吗？？？
+});
+
+const auth = new google.auth.GoogleAuth({ 
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'] 
+});
+
+// 🎯 2. 全局并网：将 Agent 注入到全局客户端中
+const sheetsClient = google.sheets({ 
+    version: 'v4', 
+    auth,
+    options: {
+        // 💡 注入这一枪，让后续所有的 API 请求自动走长链接光纤通道
+        httpAgent: sheetsAgent,
+        httpsAgent: sheetsAgent
+    }
+});
+
+
+// 我的原始方案如下
+// import { google } from 'googleapis';
+// const auth = new google.auth.GoogleAuth({ scopes: ['https://www.googleapis.com/auth/spreadsheets'] } ) ;
+// const sheetsClient = google.sheets({ version: 'v4', auth });
+
+
 
 export function isStrictNumber  (val) { return typeof val === 'number' && Number.isFinite(val)          }
 export function isStrictBoolean (val) { return typeof val === "boolean"                                 }
@@ -359,7 +390,7 @@ export async function CheckIfSheetExists(spreadsheetID, sheetTitle, ifNoThenNew 
     }
 
     // 1. 极致网络优化：只捞取所有子表的 title 属性，斩断冗余数据流
-    const response = await sheets.spreadsheets.get({
+    const response = await sheetsClient.spreadsheets.get({
         spreadsheetId: spreadsheetID,
         fields: 'sheets.properties.title'
     });
@@ -371,7 +402,7 @@ export async function CheckIfSheetExists(spreadsheetID, sheetTitle, ifNoThenNew 
 
     // 3. 临门一脚：触发自动原子创建
     if (!exists && ifNoThenNew) {
-        await sheets.spreadsheets.batchUpdate({
+        await sheetsClient.spreadsheets.batchUpdate({
             spreadsheetId: spreadsheetID,
             requestBody: {
                 requests: [{
@@ -468,7 +499,7 @@ export async function GetActiveDataRange(spreadsheetID, sheetTitle) {
 export async function GetGS(spreadsheetID, fullRange, read_calculate = 'calculate') {
     if (!spreadsheetID || !fullRange) {throw new Error('GetDataFromSheet 参数错误: spreadsheetID 或 fullRange 不能为空')}
     const valueRenderOption = read_calculate === 'read' ? 'FORMATTED_VALUE' : 'UNFORMATTED_VALUE' ;
-    const response = await sheets.spreadsheets.values.get(  {
+    const response = await sheetsClient.spreadsheets.values.get(  {
         spreadsheetId           : spreadsheetID         ,
         range                   : fullRange             ,
         valueRenderOption       : valueRenderOption     , // 脱掉格式外衣，直接拿最底层的 Number, Boolean 和纯 String（保护精度）
@@ -492,7 +523,7 @@ export async function ClearGS(spreadsheetID, fullRange) {
     }
 
     // 临门一脚，直接调用原生的 clear 接口，干净利落
-    await sheets.spreadsheets.values.clear({
+    await sheetsClient.spreadsheets.values.clear({
         spreadsheetId   : spreadsheetID ,
         range           : fullRange     
     });
@@ -510,7 +541,7 @@ export async function UpdateGS(spreadsheetID, fullRange, values) {
         throw new Error('UpdateGS 参数错误: 输入结构非法或 values 不是合法的非空二维数组');
     }
 
-    await sheets.spreadsheets.values.update({
+    await sheetsClient.spreadsheets.values.update({
         spreadsheetId   : spreadsheetID ,
         range           : fullRange     ,
         valueInputOption: 'USER_ENTERED', // 锁死用户输入模式，保护数字与布尔的原生高精度
@@ -528,7 +559,7 @@ export async function AppendGS(spreadsheetID, fullRange, values) {
     if (!isStrictString(spreadsheetID) || !isStrictString(fullRange) || !Array.isArray(values) || values.length === 0 || !Array.isArray(values[0])) {
         throw new Error('UpdateGS 参数错误: 输入结构非法或 values 不是合法的非空二维数组');
     }
-    await sheets.spreadsheets.values.append(  {
+    await sheetsClient.spreadsheets.values.append(  {
         spreadsheetId       : spreadsheetID         ,
         range               : fullRange             ,
         valueInputOption    : 'USER_ENTERED'        , // 保持高精度感化
@@ -553,7 +584,7 @@ export async function BatchGetGS(spreadsheetID, rangesList) {
     }
 
     // 临门一脚，打包请求
-    const response = await sheets.spreadsheets.values.batchGet({
+    const response = await sheetsClient.spreadsheets.values.batchGet({
         spreadsheetId: spreadsheetID,
         ranges: rangesList, // 👈 直接把你的区域数组丢给 ranges 参数
         
@@ -581,7 +612,7 @@ export async function BatchGetGS(spreadsheetID, rangesList) {
 export async function BatchClearGS(spreadsheetID, toClearRangeList) {
     if (!Array.isArray(toClearRangeList) ) { throw new Error('BatchClearGS @param toClearRangeList 输入错误') }
     if (toClearRangeList.length === 0    ) { return }
-    await sheets.spreadsheets.values.batchClear(    {
+    await sheetsClient.spreadsheets.values.batchClear(    {
         spreadsheetId   : spreadsheetID             ,
         requestBody     : {ranges: toClearRangeList }   }   )   ;
 }
@@ -615,7 +646,7 @@ export async function BatchClearUpdateGS(spreadsheetID, toUpdateRangeList) {
 
     await Sleep(100) ;
 
-    await sheets.spreadsheets.values.batchUpdate(   {
+    await sheetsClient.spreadsheets.values.batchUpdate(   {
         spreadsheetId   :   spreadsheetID  ,
         resource        :   { 
             valueInputOption    : 'USER_ENTERED'    , 
