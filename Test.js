@@ -19,6 +19,10 @@ async function testFunctionFromGS0() {
 }
 
 async function functionA1(chat_id) {
-    await SendTG('成功测试来自A1的函数', 'A1函数执行成功...', chat_id) ;
+    
 
+
+
+
+    SendTG('成功测试来自A1的函数', 'A1函数执行成功...', chat_id).catch(() => { });
 }
