@@ -1043,12 +1043,9 @@ export const TradeBot = {
         if (this.allCoin > this.hghestCoin) { this.toWriteHghLow = true; this.hghestCoin = this.allCoin; AddSetMessage(this.alertMessageSet, "↑ new hghestCoin"); }
         if (this.allCoin < this.lowestCoin) { this.toWriteHghLow = true; this.lowestCoin = this.allCoin; AddSetMessage(this.alertMessageSet, "↓ new lowestCoin"); }
 
+        // 计算边界, 以后用
         this.closeToRndHgh = this.roundHgh / Math.pow((1 + this.waveUpChg), this.notBuyCloseToRndHghStep);
         this.closeToRndLow = this.roundLow / Math.pow((1 + this.waveDnChg), this.notBuyCloseToRndLowStep);
-
-        // gridDifficulty   1.1
-        // enDifficulty     0.055
-        // exDifficulty	    0.945
 
         this.enDifficultyBuyPrice  = this.therePosition ? this.lowBuyPriceUnclose * (1+this.enDifficulty*this.waveDnChg) : null ;
         this.exDifficultySellPrice = this.therePosition ? this.lowBuyPriceUnclose * (1+this.enDifficulty*this.waveUpChg) : null ;
@@ -1063,6 +1060,7 @@ export const TradeBot = {
 
         this.inTradingTime = this.timestamp > this.realTradeTime && this.timestamp < this.realTradeTimeTo;
 
+        // 判断严格地不能买卖条件
         this.canBuy         = true  ;
         this.cantBuyReason  = ""    ;
         this.canSell        = true  ;
@@ -1093,42 +1091,10 @@ export const TradeBot = {
             this.canBuy = false;
             this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + "gridNum >= MaxGrid");
         }
-
-        if (this.TradingSymbolPrice > this.basicHghToBuy) {
-            this.canBuy = false;
-            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'price > basicHghToBuy');
-        }
-        if (this.TradingSymbolPrice > this.closeToRndHgh) {
-            this.canBuy = false;
-            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'price closeToRndHgh');
-        }
-        if (this.TradingSymbolPrice > this.enDifficultyBuyPrice) {
-            this.canBuy = false;
-            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'price > enDifficultyBuyPrice');
-        }
-        if (this.TradingSymbolPrice < this.basicLowToBuy) {
-            this.canBuy = false;
-            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'price < basicLowToBuy');
-        }
-        if (this.TradingSymbolPrice < this.closeToRndLow) {
-            this.canBuy = false;
-            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'price closeToRndLow');
-        }
         if (this.freeMargin / (this.MaxGrid - this.gridNum) < 1.1 * this.minEnExPosition * this.TradingSymbolPrice / this.leverage) {
             this.canBuy = false;
             this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'Not enough freeMargin');
         }
-
-        if (this.TradingSymbolPrice < this.basicLowToSell) {
-            this.canSell = false;
-            this.cantSellReason = AddMessage(this.cantSellReason, 'cant sell: ' + 'price < basicLowToSell');
-        }
-
-        if (this.TradingSymbolPrice < this.exDifficultySellPrice) {
-            this.canSell = false;
-            this.cantSellReason = AddMessage(this.cantSellReason, 'cant sell: ' + 'price < exDifficultySellPrice');
-        }
-
 
         if (!isStrictTrue(this.therePosition)) {
             this.canSell = false;
@@ -1138,8 +1104,6 @@ export const TradeBot = {
         AddSetMessage(this.alertMessageSet, this.cantBuyReason);
         AddSetMessage(this.alertMessageSet, this.cantSellReason);
 
-        delete this.cantBuyReason;
-        delete this.cantSellReason;
     },
 
     /**
@@ -1177,8 +1141,11 @@ export const TradeBot = {
             const idx_confirmPrice  = uncloseOrdersTitleA.indexOf('confirmPrice')   ;
             const idx_qty           = uncloseOrdersTitleA.indexOf('qty')            ;
 
+            const inNormalSellRegion = this.TradingSymbolPrice > this.lowToSell ? true : false ;
+            AddSetMessage(this.alertMessageSet, inNormalSellRegion ? 'inNormalSellRegion' : 'not inNormalSellRegion');
+
             // touch targetHgh
-            if ((this.TradingSymbolPrice > (1 + this.waveUpChg) * this.lowBuyPriceUnclose) && this.markTouchTargetHgh) {
+            if (inNormalSellRegion && (this.TradingSymbolPrice > (1 + this.tradeFeeRate) * this.lowBuyPriceUnclose) && this.markTouchTargetHgh) {
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.lowBuySerialUnclose));
                 S.ing_orderPrice = this.lstRcdTargetHgh;
@@ -1300,7 +1267,10 @@ export const TradeBot = {
             let toBuy = false;
             const S = {};
 
-            if (isStrictTrue(this.markTouchTargetLow)) {
+            const inNormalBuyRegion = this.TradingSymbolPrice > this.lowToBuy && this.TradingSymbolPrice < this.hghToBuy ? true : false ; 
+            AddSetMessage(this.alertMessageSet, inNormalBuyRegion ? 'inNormalBuyRegion' : 'not inNormalBuyRegion') ;
+
+            if (inNormalBuyRegion && isStrictTrue(this.markTouchTargetLow)) {
                 toBuy = true;
                 S.ing_orderPrice = this.lstRcdTargetLow;
                 S.ing_orderType = CV.order_T_LMT;

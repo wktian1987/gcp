@@ -20,6 +20,7 @@ import {
 import {TradeBot} from './handleTV.js';
 import { stopHandleNewSignals, ToStopSartNewSignals } from "./index.js";
 import { HandleUnreadGmails } from "./handleUnreadGmails.js";
+import { test } from "./Test.js";
 
 
 const tempStore = {} ;
@@ -63,6 +64,17 @@ export async function HandleTgBot(msg) {
             SendTG(`HandleUnreadGmails信号处理结束`, 'HandleUnreadGmails信号处理成功', chat_id).catch(() => { });
         } catch(e) {
             SendTG(`HandleUnreadGmails信号处理结束`, 'HandleUnreadGmails信号处理失败 \n' + e.message, chat_id).catch(() => { });
+        }
+        return ;
+    }
+
+    if (text.toUpperCase().includes('TEST')) {
+        SendTG(`收到TEST信号`, '开始测试Test.js文件中的test()', chat_id).catch(() => { });
+        try {
+            await test(chat_id) ;
+            SendTG(`TEST信号处理结束`, 'TEST信号处理成功', chat_id).catch(() => { });
+        } catch(e) {
+            SendTG(`TEST信号处理结束`, 'TEST信号处理失败 \n' + e.message, chat_id).catch(() => { });
         }
         return ;
     }
