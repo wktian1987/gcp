@@ -1,4 +1,4 @@
-import http from 'http';
+import http from 'node:http';
 import { Sleep } from './utility.js';
 
 // 创建原生 HTTP 监听基座

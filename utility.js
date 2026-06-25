@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import https from 'https';
+import https from 'node:https';
 
 //  1. 注入长效物理套接字蓄水池（全局只初始化一次，焊死长链接）
 const sheetsAgent = new https.Agent({
