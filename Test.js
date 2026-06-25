@@ -13,10 +13,12 @@ async function testFunctionFromGS0() {
     const spreadsheetID     = await GetSpreadsheetID('TradingBot_00') ;
     const functionString    = await GetGS(spreadsheetID, functionRegion) ;
     eval(functionString) ;
-    await functionA1() ;
+    try { await functionA1() } catch (e) {
+        throw new Error('A1函数执行失败: ' + e.message)
+    }
 }
 
 async function functionA1() {
-    await SendTG('ceshiaA1', '这里是A1正在处理...', chat_id) ;
+    await SendTG('成功测试来自A1的函数', 'A1函数执行成功...', chat_id) ;
 
 }
