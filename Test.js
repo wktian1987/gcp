@@ -6,6 +6,7 @@ export async function testA1FromGS00(chat_id) {
     const functionRegion    = 'test!A1' ;
     const spreadsheetID     = await GetSpreadsheetID('TradingBot_00') ;
     const functionString    = (await GetGS(spreadsheetID, functionRegion))[0][0] ;
+    await SendTG('A1函数为: ', functionString, chat_id) ;
     eval(functionString) ;
 
     await SendTG('A1函数加载成功', '开始执行A1函数...', chat_id);
