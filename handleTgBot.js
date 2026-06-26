@@ -45,14 +45,20 @@ export async function HandleTgBot(msg) {
 
     if (text.toUpperCase().includes('STOPHANDLENEWSIGNALS')) {
         let message = '停止对新的信号进行处理';
-        if (stopHandleNewSignals) { message = '已经发送停止新信号处理命令, 无需再次发送' } else { ToStopSartNewSignals('toStop') }
+        if (stopHandleNewSignals) { message = '已经发送停止新信号处理命令, 无需再次发送' } else { 
+            const r = ToStopSartNewSignals('toStop') ;
+            if (!r) {message = 'there error in handle this message'}
+        }
         SendTG(`收到stop handle New Signals信号`, message, chat_id).catch(() => { });
         return ;
     }
 
     if (text.toUpperCase().includes('STARTHANDLENEWSIGNALS')) {
         let message = '开始对新的信号进行处理';
-        if (!stopHandleNewSignals) { message = '现在新的信号处理正常, 无需手动开始' } else { ToStopSartNewSignals('toStart') }
+        if (!stopHandleNewSignals) { message = '现在新的信号处理正常, 无需手动开始' } else { 
+            const r = ToStopSartNewSignals('toStart') ;
+            if (!r) {message = 'there error in handle this message'}
+        }
         SendTG(`收到start handle New Signals信号`, message, chat_id).catch(() => { });
         return ;
     }
