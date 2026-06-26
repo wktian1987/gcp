@@ -48,26 +48,47 @@ export async function testA1FromGS00(chat_id) {
 }
 
 // 在下面函数中写入测试逻辑, 并将函数复制到A1单元格中, 然后去TG执行test指令
-// 这样就可以在不重启cloudrun的情况下, 快速测试或者部署新的函数了
-async function functionA1(spreadsheetID, chat_id) {
+
+// 经测试只会更新直接有更新数据的区域的内容, 如果这个区域没有新的数据输入, 仍然保留旧数据
+async function test_updateSmallRegionDataToBigRegion(spreadsheetID, chat_id) {
     
     // 测试大范围内下范围的内容修改
     const bigRegion = 'test!B3:F22';
     const newContent = [
-        [2, 2, 2] ,
-        [2, 2, 3] ,
-        [2, 2, 4] ,
-        [2, 2, 5] ,
-        [2, 2, 6] ,
-        [2, 2, 2] ,
-        [2, 2, 2] ,
-        [2, 2, 2] 
+        [2, 2, 2, 9] ,
+        [2, 2, 3, 9] ,
+        [2, 2, 4, 9] ,
+        [2, 2, 5, 9] ,
+        [2, 2, 6, 9] ,
+        [2, 2, 2, 9] ,
+        [2, 2, 2, 9] ,
+        [2, 2, 2, 9] 
     ] ;
 
-    await ClearGS(spreadsheetID, bigRegion) ;
     await UpdateGS(spreadsheetID, bigRegion, newContent) ;
 
+    SendTG('成功测试来自A1的函数', 'A1函数执行成功...', chat_id).catch(() => { });
+}
 
+// 经测试目标区域必须比实际输入的内容所占区域大，至少相同, 否则会报错, 
+// 报错信息:
+// A1函数执行失败: Requested writing within range [test!B3:C], but tried writing to column [D]
+async function test_updateBigRegionDataToSmallRegion(spreadsheetID, chat_id) {
+    
+    // 测试大范围内下范围的内容修改
+    const smallRegion = 'test!B3:C';
+    const newContent = [
+        [2, 2, 2, 9] ,
+        [2, 2, 3, 9] ,
+        [2, 2, 4, 9] ,
+        [2, 2, 5, 9] ,
+        [2, 2, 6, 9] ,
+        [2, 2, 2, 9] ,
+        [2, 2, 2, 9] ,
+        [2, 2, 2, 9] 
+    ] ;
+
+    await UpdateGS(spreadsheetID, smallRegion, newContent) ;
 
     SendTG('成功测试来自A1的函数', 'A1函数执行成功...', chat_id).catch(() => { });
 }

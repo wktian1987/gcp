@@ -1050,13 +1050,16 @@ export const TradeBot = {
         this.enDifficultyBuyPrice  = this.therePosition ? this.lowBuyPriceUnclose * (1+this.enDifficulty*this.waveDnChg) : null ;
         this.exDifficultySellPrice = this.therePosition ? this.lowBuyPriceUnclose * (1+this.enDifficulty*this.waveUpChg) : null ;
 
+        this.lowToBuy = Math.max(this.basicLowToBuy, this.closeToRndLow);
+
         this.hghToBuy = Math.min(
             this.basicHghToBuy                                                  ,
             this.closeToRndHgh                                                  ) ;
-        this.hghToBuy = Math.min(this.hghToBuy, this.enDifficultyBuyPrice) ;
+        if (this.therePosition) { this.hghToBuy = Math.min(this.hghToBuy, this.enDifficultyBuyPrice) }
+        
+        this.lowToSell = this.basicLowToSell;
+        if (this.therePosition) { this.lowToSell = Math.max(this.basicLowToSell, this.exDifficultySellPrice) }
 
-        this.lowToBuy = Math.max(this.basicLowToBuy, this.closeToRndLow);
-        this.lowToSell = Math.max(this.basicLowToSell, this.exDifficultySellPrice);
 
         this.inTradingTime = this.timestamp > this.realTradeTime && this.timestamp < this.realTradeTimeTo;
 
