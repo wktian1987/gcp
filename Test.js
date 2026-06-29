@@ -1,4 +1,4 @@
-import { GetGS, GetSpreadsheetID, SendTG, Sleep, UpdateGS, ClearGS } from "./utility.js"
+import { GetGS, GetSpreadsheetID, SendTG, Sleep, UpdateGS, ClearGS, ObjToA2dNumBoolStr } from "./utility.js"
 
 export async function testA1FromGS00(chat_id) {
     await SendTG('TEST信号处理开始', '开始加载00文件中的A1函数...', chat_id) ;
@@ -91,4 +91,25 @@ async function test_updateBigRegionDataToSmallRegion(spreadsheetID, chat_id) {
     await UpdateGS(spreadsheetID, smallRegion, newContent) ;
 
     SendTG('成功测试来自A1的函数', 'A1函数执行成功...', chat_id).catch(() => { });
+}
+
+async function Get_GSData() {
+    const spreadsheetID = '1slawVrVNK7IVEyDpqtMRQ7AoEM9arkJCnvjw2J_amC4' ;
+    const response = await sheetsClient.spreadsheets.get({
+        spreadsheetId: spreadsheetID,
+        includeGridData: true // 💡 必须强制声明把格子里的肉带回来
+    }); // 得到的数据是什么，给我一个详细解析
+    const result = {} ;
+    result.spreadsheetId = response.spreadsheetID ;
+    result.title        = response.properties.title ;
+
+    for (const i in response.sheetse) {
+        result[`sheet${i}.title`]   = response.sheets[i].properties.title;
+        result[`sheet${i}.sheetId`] = response.sheets[i].properties.sheetId ;
+    }
+
+    const resultA = ObjToA2dNumBoolStr(result) ;
+
+    await UpdateGS(spreadsheetID, 'test!A39:Z', resultA) ;
+
 }

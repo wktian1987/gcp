@@ -15,7 +15,7 @@ const auth = new google.auth.GoogleAuth({
 });
 
 //  2. 全局并网：将 Agent 注入到全局客户端中
-const sheetsClient = google.sheets({ 
+export const sheetsClient = google.sheets({ 
     version: 'v4', 
     auth,
     options: {
