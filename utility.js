@@ -754,10 +754,10 @@ export function ToGoogleRowData(rawDataA2d) {
  * * @returns {Array<Object>} 包含 2 发适配结构轨道子弹（物理清洗范围 + 细胞化写入）的动作队列
  */
 export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
-    const { sheetId, range, values } = clearUpdateObj;
+    const { sheetID, range, values } = clearUpdateObj;
 
     // 入站刚性风控
-    if (typeof sheetId !== 'number' || !range || !Array.isArray(values) || values.length === 0 || !Array.isArray(values[0])) {
+    if (typeof sheetID !== 'number' || !range || !Array.isArray(values) || values.length === 0 || !Array.isArray(values[0])) {
         throw new Error('clearUpdate 配置内容残缺或类型错误');
     }
 
@@ -794,7 +794,7 @@ export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
 
     // 组装物理大清洗 Footprint
     const clearGridRange = {
-        sheetId: sheetId,
+        sheetId: sheetID,
         startIndex: googleStartRow,
         endIndex: endRow, 
         startColumnIndex: googleStartCol
@@ -816,7 +816,7 @@ export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
 
     // 组装新数据实际入驻 Footprint (卡死真实长宽)
     const writeGridRange = {
-        sheetId: sheetId,
+        sheetId: sheetID,
         startIndex: googleStartRow,
         endIndex: googleStartRow + rowQty,
         startColumnIndex: googleStartCol,
