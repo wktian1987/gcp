@@ -664,7 +664,7 @@ export async function BatchClearGS(spreadsheetID, toClearRangeList) {
 /**
  * 金融级原子化：批量清空并更新区域内容（一枪流锁死）
  * @param {string} spreadsheetID 大表ID
- * @param {Array<{range: string, values: Array<Array<any>>}>} toUpdateRangeList 待更新的矩阵队列
+ * @param {Array<{sheetID: number, range: string, values: Array<Array<any>>}>} toUpdateRangeList 待更新的矩阵队列
  */
 export async function BatchClearUpdateGS(spreadsheetID, toUpdateRangeList) {
     // 1. 入站硬性风控风控
@@ -766,6 +766,80 @@ export function ToGoogleRowData(rawDataA2d) {
 }
 
 /**
+ * 拼装器：生成 batchUpdate 结构轨道所需的【指定区域/整行纯物理大清洗】单个原子请求
+ * * [核心优势] 纯粹的结构擦除器，不含任何细胞写入套娃。用于清空过期流水、重置静态展示大盘。
+ * * [物理特性] 严格遵循 Google Sheets API 官方 GridRange 骨架（0-based，且 endIndex 为开区间）。
+ * * [极限风控] 支持人类习惯的所有缩写变体（如 "A20:25"）。若缺省结束列字母，底层将触发“边界留空因果律”，
+ * * 自动将清洗长矛强行横向延展轰击至表格的最右侧物理边界（最后一列），绝不留下一丝历史数据残渣污染。
+ * * @example
+ * // 场景 A：精准擦除 test4 标签页的 A20 到 Z25 区域
+ * const bulletsA = makeRequestBodyArrayofBatchUpdate_clear({ sheetID: 0, range: "A20:Z25" });
+ * * // 场景 B：无限延展擦除第 20 行到 25 行的所有列（支持缩写）
+ * const bulletsB = makeRequestBodyArrayofBatchUpdate_clear({ sheetID: 0, range: "test!A20:25" });
+ * * @param {Object} clearObj - 触发清洗的任务配置大包
+ * @param {number} clearObj.sheetID - 目标标签页的终身制纯数字物理 ID (如 0)
+ * @param {string} clearObj.range - 目标 A1 区域坐标字符串 (如 "A20:Z25"、"A20:25"、"Sheet1!B5:D10")
+ * @returns {Array<Object>} 包含一发官方正宗 `updateCells` (仅带 fields 无 rows) 擦除动作的请求数组
+ * @throws {Error} 当传入字段缺失、类型畸形或 A1 坐标正则解析失败时抛出错误并强行熔断
+ */
+export function makeRequestBodyArrayofBatchUpdate_clear(clearObj) {
+    const { sheetID, range} = clearObj;
+
+    // 🔒 入站刚性风控
+    if (typeof sheetID !== 'number' || !range ) {
+        throw new Error('clear 配置内容残缺或类型错误');
+    }
+
+    // 📡 坐标雷达
+    const a1Notation = range.includes('!') ? range.split('!')[1] : range;
+    const match = a1Notation.match(/^([A-Z]+)([0-9]+):([A-Z]*)([0-9]+)$/i);
+
+    if (!match) {
+        throw new Error(`A1坐标格式畸形，无法解析。收到: [${range}]`);
+    }
+
+    // 26进制字母转数字进制翻译官
+    const colToNumber = (colStr) => {
+        if (!colStr) return null;
+        let num = 0;
+        const str = colStr.toUpperCase();
+        for (let i = 0; i < str.length; i++) {
+            num = num * 26 + (str.charCodeAt(i) - 64);
+        }
+        return num;
+    };
+
+    const startCol = colToNumber(match[1]);   // 如 "A" ➔ 1
+    const startRow = parseInt(match[2], 10);  // 如 "20" ➔ 20
+    const endColStr = match[3];               // 如 "25" 变体下匹配出空字符串 ""
+    const endRow = parseInt(match[4], 10);    // 如 "25" ➔ 25
+
+    const googleStartRow = startRow - 1; 
+    const googleStartCol = startCol - 1; 
+
+    // 组装物理大清洗 GridRange (严格遵循谷歌官方细胞轨道字段名)
+    const clearGridRange = {
+        sheetId: sheetID,
+        startRowIndex: googleStartRow,       // 🎯 物理校准：必须叫 startRowIndex 
+        endRowIndex: endRow,                 // 🎯 物理校准：必须叫 endRowIndex
+        startColumnIndex: googleStartCol     // 🎯 物理校准：必须叫 startColumnIndex
+    };
+
+    // 边界留空因果律：若无结束列，则不给 endColumnIndex，谷歌会自动轰空到表格最右侧边缘
+    if (endColStr) {
+        clearGridRange.endColumnIndex = colToNumber(endColStr);
+    }
+
+    // 子动作 一枪大清洗，目标范围内历史废弃残渣瞬间蒸发
+    return {
+        updateCells: {
+            range: clearGridRange,
+            fields: "userEnteredValue" 
+        }
+    };
+}
+
+/**
  * 全兼容 A1 范围的结构轨道【强制清空 + 覆盖更新】
  * * [核心特性] 完美兼容 "A20:25"、"A29:Z29" 等所有物理变体。
  * * [风控设计] 若人类未写结束列 (如 A20:25)，底层利用“边界留空因果律”自动横扫清洗至表格最右侧边缘，物理超渡历史残渣污染！
@@ -780,7 +854,7 @@ export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
 
     // 🔒 入站刚性风控
     if (typeof sheetID !== 'number' || !range || !Array.isArray(values) || values.length === 0 || !Array.isArray(values[0])) {
-        throw new Error('❌ [工具库熔断] clearUpdate 配置内容残缺或类型错误');
+        throw new Error('clearUpdate 配置内容残缺或类型错误');
     }
 
     // 📡 坐标雷达
@@ -788,7 +862,7 @@ export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
     const match = a1Notation.match(/^([A-Z]+)([0-9]+):([A-Z]*)([0-9]+)$/i);
 
     if (!match) {
-        throw new Error(`❌ [工具库熔断] A1坐标格式畸形，无法解析。收到: [${range}]`);
+        throw new Error(`A1坐标格式畸形，无法解析。收到: [${range}]`);
     }
 
     // 🔢 26进制字母转数字进制翻译官
@@ -812,7 +886,7 @@ export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
     const rowQty = values.length;
     const dataColQty = values[0].length; 
 
-    const requests = [];
+    const requestsA = [];
 
     // 📐 组装物理大清洗 GridRange (严格遵循谷歌官方细胞轨道字段名)
     const clearGridRange = {
@@ -828,7 +902,7 @@ export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
     }
 
     // 🟢 子动作 A：一枪大清洗，目标范围内历史废弃残渣瞬间蒸发
-    requests.push({
+    requestsA.push({
         updateCells: {
             range: clearGridRange,
             fields: "userEnteredValue" 
@@ -845,7 +919,7 @@ export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
     };
 
     // 🟢 子动作 B：无缝紧跟，定点写入脱水好的新细胞矩阵
-    requests.push({
+    requestsA.push({
         updateCells: {
             range: writeGridRange,
             rows: ToGoogleRowData(values), // 复用 ToGoogleRowData 细胞工人
@@ -853,28 +927,19 @@ export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
         }
     });
 
-    return requests;
+    return requestsA;
 }
 
 
-/**
- * 拼装器：生成 batchUpdate 所需的【尾部追加】单个原子请求对象
- * * 针对固定追加到工作表底部的场景设计，无需关心具体行号，自动锁死云端物理尾部。
- * * @example
- * const action = makeRequestBodyArrayofBatchUpdate_append(0, [["ETH", 3200, false]]);
- * // 返回: { appendCells: { sheetId: 0, rows: [...], fields: "userEnteredValue" } }
- * * @param {number} sheetID - 目标标签页的终身制纯数字 ID (注意：删除默认页后通常是一串随机数字)
- * @param {Array<Array<string|number|boolean>>} rawA2dData - 待追加的纯净二维数组
- * @returns {Object} 包装好的 appendCells 单个 request 动作对象
- */
-export function makeRequestBodyArrayofBatchUpdate_append(sheetID, rawA2dData) {
+export function makeRequestBodyArrayofBatchUpdate_append(appendObj) {
+    const {sheetID, values} = appendObj ;
     // 纯数字 ID 严格验证：防止误传人类习惯的字符串表名
     if (typeof sheetID !== 'number') {
         throw new Error('append 构造器硬性要求 sheetID 必须为纯数字类型（如 0 或 1482942）');
     }
 
     // 复水工人无缝并网，转换出谷歌需要的细胞基因骨架
-    const googleRowData = ToGoogleRowData(rawA2dData);
+    const googleRowData = ToGoogleRowData(values);
     
     return {
         appendCells: {
@@ -885,20 +950,9 @@ export function makeRequestBodyArrayofBatchUpdate_append(sheetID, rawA2dData) {
     };
 }
 
-/**
- * 拼装器：生成 batchUpdate 所需的【批量删除连续行】单个原子请求对象
- * * [重要风控] 本函数入参 `deleteLineStart` 已在内部自动执行 0-based 纠偏。
- * * 业务层调用时，直接传入人类在表格前端看得到的真实行号即可（如删第 10 行，直接传 10）。
- * * @example
- * // 场景：从第 10 行开始，连续向下物理删除 5 行（即删除第 10, 11, 12, 13, 14 行）
- * const action = makeRequestBodyArrayofBatchUpdate_deleteLines(147285932, 10, 5);
- * // 返回: { deleteDimension: { range: { sheetId: 147285932, dimension: "ROWS", startIndex: 9, endIndex: 14 } } }
- * * @param {number} sheetID - 目标标签页的终身制纯数字 ID
- * @param {number} deleteLineStart - 人类视觉习惯的起始行号 (1-based，如第一行传 1)
- * @param {number} deleteLineQty - 连续向下删除的行数数量 (必须为大于 0 的正整数)
- * @returns {Object} 包装好的 deleteDimension 单个 request 动作对象
- */
-export function makeRequestBodyArrayofBatchUpdate_deleteLines(sheetID, deleteLineStart, deleteLineQty) {
+
+export function makeRequestBodyArrayofBatchUpdate_deleteLines(deleteObj) {
+    const {sheetID, deleteLineStart, deleteLineQty} = deleteObj ;
     // 进站刚性风控：严格卡死类型
     if (typeof sheetID !== 'number') {
         throw new Error('deleteLines 构造器硬性要求 sheetID 必须为纯数字类型');
