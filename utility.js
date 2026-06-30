@@ -707,10 +707,10 @@ export async function BatchClearUpdateGS(spreadsheetID, toUpdateRangeList) {
 export async function GetSheetIDfromSheet(spreadsheetID) {
     // 入站刚性风控
     if (!spreadsheetID || typeof spreadsheetID !== 'string') {
-        throw new Error('❌ [工具库熔断] GetSheetIDfromSheet 拒绝执行：spreadsheetID 缺失或类型错误');
+        throw new Error('GetSheetIDfromSheet 拒绝执行：spreadsheetID 缺失或类型错误');
     }
 
-    // 🚀 闪击云端元数据骨架（死死关闭 includeGridData，确保毫秒级极速回执）
+    // 闪击云端元数据骨架（死死关闭 includeGridData，确保毫秒级极速回执）
     const response = await sheetsClient.spreadsheets.get({
         spreadsheetId: spreadsheetID,
         includeGridData: false // 🎯 降维打击性能漏洞！只拿骨架，不要肉身，拒绝长拉单
@@ -718,7 +718,7 @@ export async function GetSheetIDfromSheet(spreadsheetID) {
 
     const sheetsMetadata = response.data.sheets;
     if (!Array.isArray(sheetsMetadata)) {
-        throw new Error('❌ [工具库熔断] GetSheetIDfromSheet 抓取云端元数据大包失败或结构畸形');
+        throw new Error('GetSheetIDfromSheet 抓取云端元数据大包失败或结构畸形');
     }
 
     const sheetIDMap = {};
@@ -730,18 +730,13 @@ export async function GetSheetIDfromSheet(spreadsheetID) {
 
         // 🔒 安全门禁：确保元数据字段完好
         if (typeof title === 'string' && typeof id === 'number') {
-            // 💡 核心风控：强行将表名转为小写压入字典，抹平人类前端大小写滑点
+            // 核心风控：强行将表名转为小写压入字典，抹平人类前端大小写滑点
             sheetIDMap[title.toLowerCase()] = id;
         }
     }
 
     return sheetIDMap;
 }
-
-
-
-
-
 
 /**
  * 细胞级数据包装器 (Google Sheets API 专用复水工人)
