@@ -730,8 +730,7 @@ export async function GetSheetIDfromSheet(spreadsheetID) {
 
         // 🔒 安全门禁：确保元数据字段完好
         if (typeof title === 'string' && typeof id === 'number') {
-            // 核心风控：强行将表名转为小写压入字典，抹平人类前端大小写滑点
-            sheetIDData[title.toLowerCase()] = id;
+            sheetIDData[title] = id;
         }
     }
 

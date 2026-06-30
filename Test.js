@@ -1,4 +1,4 @@
-import { GetGS, GetSpreadsheetID, SendTG, Sleep, UpdateGS, ClearGS, ObjToA2dNumBoolStr, GetSheetIDfromSheet } from "./utility.js"
+import { GetGS, GetSpreadsheetID, SendTG, Sleep, UpdateGS, ClearGS, ObjToA2dNumBoolStr, GetSheetIDfromSheet, makeRequestBodyArrayofBatchUpdate_deleteLines, makeRequestBodyArrayofBatchUpdate_append, makeRequestBodyArrayofBatchUpdate_clearUpdate, BatchUpdateGS } from "./utility.js"
 
 export async function testA1FromGS00(chat_id) {
     await SendTG('TEST信号处理开始', '开始加载00文件中的A1函数...', chat_id) ;
@@ -96,77 +96,17 @@ async function test_updateBigRegionDataToSmallRegion(spreadsheetID, chat_id) {
 async function TestBatchUpdate(spreadsheetID, chat_id) {
     const sheetIDData = await GetSheetIDfromSheet(spreadsheetID) ;
 
-    
+    const requests = [] ;
 
+    const request_delete2Lines = makeRequestBodyArrayofBatchUpdate_deleteLines(sheetIDData.test2,9,2 ) ;
+    const request_append2Lines = makeRequestBodyArrayofBatchUpdate_append(sheetIDData.test3, [[0,1,true, false, 's'], [false, true, 'sss', 1]]) ;
+    const request_clearupdate = makeRequestBodyArrayofBatchUpdate_clearUpdate({range: 'test4!A29:29', values: [[1,2,3,4,5,6,7]]}) ;
 
+    requests.push(request_delete2Lines) ;
+    requests.push(request_append2Lines) ;
+    requests.push(...request_clearupdate) ;
 
-
-
-
-
-
-
-
-
-    const {sheetsClient} = await import ('./utility.js') ;
-
-    const dataArray = [[true, false, 0, 1, 'Hi', '你好']] ;
-
-    const sheetID_response = await sheetsClient.spreadsheets.get({
-        spreadsheetId: spreadsheetID,
-        includeGridData: true 
-    });
-
-    const sheetID_response_data = sheetID_response.data ;
-
-    const sheetID = {} ;
-
-    for (const i_sheet of sheetID_response_data.sheets) {
-        sheetID[`${i_sheet.properties.title}`] = i_sheet.properties.sheetId ; 
-    }
-
-
-    // 🧬 细胞级扁平映射：在本地内存里，瞬间把普通的 [[1,2,3]] 打包成谷歌底层的 RowData 格式
-    const googleRowData = dataArray.map(row => {
-        return {
-            values: row.map(cell => {
-                if (typeof cell === 'number') return { userEnteredValue: { numberValue: cell } };
-                if (typeof cell === 'boolean') return { userEnteredValue: { boolValue: cell } };
-                return { userEnteredValue: { stringValue: String(cell) } };
-            })
-        };
-    });
-
-
-    const deleteRowIndex = 10 ;
-
-    // 🚀 扣动一枪流原子扳机
-    await sheetsClient.spreadsheets.batchUpdate({
-        spreadsheetId: spreadsheetID,
-        requestBody: {
-            requests: [
-                // 🟢 1. 结构手术刀：在区域 A 物理删除某一行
-                {
-                    deleteDimension: {
-                        range: {
-                            sheetId: sheetID.test2,
-                            dimension: "ROWS",
-                            startIndex: deleteRowIndex,
-                            endIndex: deleteRowIndex + 1
-                        }
-                    }
-                },
-                // 🟢 2. 自动追加枪：无视行号，直接在当前表的最后一行屁股后面追加塞入数据！
-                {
-                    appendCells: {
-                        sheetId: sheetID.test3,
-                        rows: googleRowData,       // 👈 刚刚打包好的纯数据行
-                        fields: "userEnteredValue" // 告诉谷歌直接修改用户输入值舱位
-                    }
-                }
-            ]
-        }
-    });
+    await BatchUpdateGS(spreadsheetID, requests) ;
 
 
 
