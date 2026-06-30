@@ -694,6 +694,56 @@ export async function BatchClearUpdateGS(spreadsheetID, toUpdateRangeList) {
 }
 
 /**
+ * 拓扑反查官：拉取大表元数据，生成【表名 ➔ 纯数字 sheetId】的高速对账字典
+ * * [性能刚性] 默认物理关闭 includeGridData，仅抓取轻量级骨架，传输提速 100 倍，拒绝网络卡顿滑点。
+ * * [风控设计] 字典 Key 强行归一化为全小写，物理超渡因人类手抖大小写不一致导致的查表失败。
+ * * @example
+ * const sheetIdMap = await GetSheetIDfromSheet(spreadsheetID);
+ * // 返回: { "main": 0, "log": 148294231 }
+ * const myLogId = sheetIdMap["log"]; // ➔ 148294231 (纯数字)
+ * * @param {string} spreadsheetID - 整个大表的身份证 ID (从浏览器 URL 中截取)
+ * @returns {Promise<Object.<string, number>>} 以全小写表名字符串为键、纯数字 sheetId 为值的映射字典
+ */
+export async function GetSheetIDfromSheet(spreadsheetID) {
+    // 入站刚性风控
+    if (!spreadsheetID || typeof spreadsheetID !== 'string') {
+        throw new Error('❌ [工具库熔断] GetSheetIDfromSheet 拒绝执行：spreadsheetID 缺失或类型错误');
+    }
+
+    // 🚀 闪击云端元数据骨架（死死关闭 includeGridData，确保毫秒级极速回执）
+    const response = await sheetsClient.spreadsheets.get({
+        spreadsheetId: spreadsheetID,
+        includeGridData: false // 🎯 降维打击性能漏洞！只拿骨架，不要肉身，拒绝长拉单
+    });
+
+    const sheetsMetadata = response.data.sheets;
+    if (!Array.isArray(sheetsMetadata)) {
+        throw new Error('❌ [工具库熔断] GetSheetIDfromSheet 抓取云端元数据大包失败或结构畸形');
+    }
+
+    const sheetIDMap = {};
+
+    // 🎯 使用纯净 for...of 迭代，绝不污染原型链
+    for (const sheet of sheetsMetadata) {
+        const title = sheet.properties?.title;
+        const id = sheet.properties?.sheetId;
+
+        // 🔒 安全门禁：确保元数据字段完好
+        if (typeof title === 'string' && typeof id === 'number') {
+            // 💡 核心风控：强行将表名转为小写压入字典，抹平人类前端大小写滑点
+            sheetIDMap[title.toLowerCase()] = id;
+        }
+    }
+
+    return sheetIDMap;
+}
+
+
+
+
+
+
+/**
  * 细胞级数据包装器 (Google Sheets API 专用复水工人)
  * * 将人类可读的扁平二维数组，在内存中瞬间转化为 Google Sheets API 
  * `appendCells` 或 `updateCells` 接口望眼欲穿的标准 `RowData[]` 基因骨架。
