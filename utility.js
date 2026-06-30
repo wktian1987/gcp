@@ -794,8 +794,12 @@ export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
 
     // 子动作 A：在同一个事务内，先把这个指定区域彻底洗干净
     requests.push({
-        clearValues: {
-            range: range
+        updateValues: {
+            range: range,
+            valueInputOption: 'USER_ENTERED',
+            data: {
+                values: [] // 👈 传空，物理擦除整条 Range
+            }
         }
     });
 
