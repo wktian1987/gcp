@@ -842,6 +842,50 @@ export function makeRequestBodyArrayofBatchUpdate_append(sheetID, rawA2dData) {
     };
 }
 
+/**
+ * 拼装器：生成 batchUpdate 所需的【批量删除连续行】单个原子请求对象
+ * * [重要风控] 本函数入参 `deleteLineStart` 已在内部自动执行 0-based 纠偏。
+ * * 业务层调用时，直接传入人类在表格前端看得到的真实行号即可（如删第 10 行，直接传 10）。
+ * * @example
+ * // 场景：从第 10 行开始，连续向下物理删除 5 行（即删除第 10, 11, 12, 13, 14 行）
+ * const action = makeRequestBodyArrayofBatchUpdate_deleteLines(147285932, 10, 5);
+ * // 返回: { deleteDimension: { range: { sheetId: 147285932, dimension: "ROWS", startIndex: 9, endIndex: 14 } } }
+ * * @param {number} sheetID - 目标标签页的终身制纯数字 ID
+ * @param {number} deleteLineStart - 人类视觉习惯的起始行号 (1-based，如第一行传 1)
+ * @param {number} deleteLineQty - 连续向下删除的行数数量 (必须为大于 0 的正整数)
+ * @returns {Object} 包装好的 deleteDimension 单个 request 动作对象
+ */
+export function makeRequestBodyArrayofBatchUpdate_deleteLines(sheetID, deleteLineStart, deleteLineQty) {
+    // 进站刚性风控：严格卡死类型
+    if (typeof sheetID !== 'number') {
+        throw new Error('deleteLines 构造器硬性要求 sheetID 必须为纯数字类型');
+    }
+    if (typeof deleteLineStart !== 'number' || deleteLineStart < 1) {
+        throw new Error(`deleteLines 起始行号畸形，传入值: [${deleteLineStart}]。行号必须从 1 开始！`);
+    }
+    if (typeof deleteLineQty !== 'number' || deleteLineQty < 1) {
+        throw new Error(`deleteLines 删除数量畸形，传入值: [${deleteLineQty}]。删除数量必须大于等于 1！`);
+    }
+
+    // 核心物理对账：将人类看得到的行号（1-based）完美翻译为谷歌底层的索引（0-based）
+    // 举例：人类说删第 10 行，底层 startIndex 实际为 9
+    const googleStartIndex = deleteLineStart - 1;
+    
+    // 谷歌 API 的 endIndex 是“开区间”（不包含 endIndex 本身）
+    // 举例：从底层索引 9 开始删除 5 行，endIndex = 9 + 5 = 14。它会切掉索引 9,10,11,12,13，完美契合！
+    const googleEndIndex = googleStartIndex + deleteLineQty;
+
+    return {
+        deleteDimension: {
+            range: {
+                sheetId: sheetID,
+                dimension: "ROWS",
+                startIndex: googleStartIndex,
+                endIndex: googleEndIndex
+            }
+        }
+    };
+}
 
 /**
  * 顶级全原子执行官：一枪流闪击云端事务总大闸
