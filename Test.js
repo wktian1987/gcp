@@ -1,4 +1,4 @@
-import { GetGS, GetSpreadsheetID, SendTG, Sleep, UpdateGS, ClearGS, ObjToA2dNumBoolStr, GetSheetIDfromSheet, makeRequestBodyArrayofBatchUpdate_deleteLines, makeRequestBodyArrayofBatchUpdate_append, makeRequestBodyArrayofBatchUpdate_clearUpdate, BatchUpdateGS } from "./utility.js"
+import { GetGS, GetSpreadsheetID, SendTG, Sleep, UpdateGS, ClearGS, ObjToA2dNumBoolStr, GetSheetsIDfromSheet, makeRequestBodyArrayofBatchUpdate_deleteLines, makeRequestBodyArrayofBatchUpdate_append, makeRequestBodyArrayofBatchUpdate_clearUpdate, BatchUpdateGS } from "./utility.js"
 
 export async function testA1FromGS00(chat_id) {
     await SendTG('TEST信号处理开始', '开始加载00文件中的A1函数...', chat_id) ;
@@ -94,7 +94,7 @@ async function test_updateBigRegionDataToSmallRegion(spreadsheetID, chat_id) {
 }
 
 async function TestBatchUpdate(spreadsheetID, chat_id) {
-    const sheetIDData = await GetSheetIDfromSheet(spreadsheetID) ;
+    const sheetIDData = await GetSheetsIDfromSheet(spreadsheetID) ;
 
     const requests = [] ;
 
@@ -115,10 +115,5 @@ async function TestBatchUpdate(spreadsheetID, chat_id) {
 
     await BatchUpdateGS(spreadsheetID, requests) ;
 
-
-
-
-    await SendTG('TEST信号处理结束', 'TEST信号处理结束', chat_id);
-
-
+    await SendTG('成功测试来自A1的函数', 'A1函数执行成功...', chat_id);
 }

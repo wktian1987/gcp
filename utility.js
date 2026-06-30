@@ -66,6 +66,29 @@ export function isObjectOfKeyValue(obj) {
 }
 
 /**
+ * 空置率核查官：刚性判定一个输入目标是否为纯净的空对象 `{}`
+ * * * [安全防御] 内置绝对门禁，自动熔断 `null`、`undefined`、数组及所有基础数据类型。
+ * * [性能模型] 采用 O(1) 级的可枚举键名脚印扫描，拒绝内存长拉单。
+ * * [实盘避坑] 严禁使用 `JSON.stringify(A) === '{}'` 这种会遗漏 undefined/Function 的欺骗性盲区打法。
+ * * @example
+ * isEmptyObject({});          // ➔ true
+ * isEmptyObject({ a: 1 });    // ➔ false
+ * isEmptyObject(null);        // ➔ false (被刚性熔断拦截)
+ * isEmptyObject([]);          // ➔ false (数组不是纯空对象)
+ * * @param {any} A - 待检测的任意入参目标
+ * @returns {boolean} 若目标是 100% 自身不带任何可枚举属性的纯空对象，返回 true；否则一律返回 false
+ */
+export function isEmptyObject(A) {
+    // 刚性前置风控：防止 null、undefined 或非对象类型引发报错
+    if (A === null || typeof A !== 'object') return false; 
+    
+    // 额外风控：排除数组 `[]` 的干扰（因为 typeof [] 也是 'object'）
+    if (Array.isArray(A)) return false;
+
+    return Object.keys(A).length === 0;
+}
+
+/**
  * 👑 工业级高阶万能字符串确权器（完全体）
  * 100% 免疫任何反人类崩溃，绝不吐出 [object Object]，保留对象与数组的真实业务肉身
  */
@@ -681,7 +704,7 @@ export async function BatchClearUpdateGS(spreadsheetID, toUpdateRangeList) {
  * * @param {string} spreadsheetID - 整个大表的身份证 ID (从浏览器 URL 中截取)
  * @returns {Promise<Object.<string, number>>} 以全小写表名字符串为键、纯数字 sheetId 为值的映射字典
  */
-export async function GetSheetIDfromSheet(spreadsheetID) {
+export async function GetSheetsIDfromSheet(spreadsheetID) {
     // 入站刚性风控
     if (!spreadsheetID || typeof spreadsheetID !== 'string') {
         throw new Error('GetSheetIDfromSheet 拒绝执行：spreadsheetID 缺失或类型错误');
@@ -742,7 +765,6 @@ export function ToGoogleRowData(rawDataA2d) {
     }));
 }
 
-
 /**
  * 全兼容 A1 范围的结构轨道【强制清空 + 覆盖更新】
  * * [核心特性] 完美兼容 "A20:25"、"A29:Z29" 等所有物理变体。
@@ -756,20 +778,20 @@ export function ToGoogleRowData(rawDataA2d) {
 export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
     const { sheetID, range, values } = clearUpdateObj;
 
-    // 入站刚性风控
+    // 🔒 入站刚性风控
     if (typeof sheetID !== 'number' || !range || !Array.isArray(values) || values.length === 0 || !Array.isArray(values[0])) {
-        throw new Error('clearUpdate 配置内容残缺或类型错误');
+        throw new Error('❌ [工具库熔断] clearUpdate 配置内容残缺或类型错误');
     }
 
-    // 升级版坐标雷达：完美支持 [字母][数字]:[可选字母][数字] 的物理拆解
+    // 📡 坐标雷达
     const a1Notation = range.includes('!') ? range.split('!')[1] : range;
     const match = a1Notation.match(/^([A-Z]+)([0-9]+):([A-Z]*)([0-9]+)$/i);
 
     if (!match) {
-        throw new Error(`A1坐标格式畸形，无法解析。收到: [${range}]`);
+        throw new Error(`❌ [工具库熔断] A1坐标格式畸形，无法解析。收到: [${range}]`);
     }
 
-    // 26进制字母转数字进制翻译官
+    // 🔢 26进制字母转数字进制翻译官
     const colToNumber = (colStr) => {
         if (!colStr) return null;
         let num = 0;
@@ -792,21 +814,20 @@ export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
 
     const requests = [];
 
-    // 组装物理大清洗 Footprint
+    // 📐 组装物理大清洗 GridRange (严格遵循谷歌官方细胞轨道字段名)
     const clearGridRange = {
         sheetId: sheetID,
-        startIndex: googleStartRow,
-        endIndex: endRow, 
-        startColumnIndex: googleStartCol
+        startRowIndex: googleStartRow,       // 🎯 物理校准：必须叫 startRowIndex 
+        endRowIndex: endRow,                 // 🎯 物理校准：必须叫 endRowIndex
+        startColumnIndex: googleStartCol     // 🎯 物理校准：必须叫 startColumnIndex
     };
 
-    // 核心风控：如果人类省略了结束列，则不给这个对象赋 endColumnIndex 属性，
-    // 谷歌云端引擎将自动开启“无限长矛”逻辑，一枪横向物理洗空到表格最右侧物理边界！
+    // 💡 边界留空因果律：若无结束列，则不给 endColumnIndex，谷歌会自动轰空到表格最右侧边缘
     if (endColStr) {
         clearGridRange.endColumnIndex = colToNumber(endColStr);
     }
 
-    // 子动作 A：一枪大清洗，目标范围内历史废弃残渣瞬间蒸发
+    // 🟢 子动作 A：一枪大清洗，目标范围内历史废弃残渣瞬间蒸发
     requests.push({
         updateCells: {
             range: clearGridRange,
@@ -814,28 +835,26 @@ export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
         }
     });
 
-    // 组装新数据实际入驻 Footprint (卡死真实长宽)
+    // 📐 组装新数据实际入驻 GridRange (卡死真实长宽)
     const writeGridRange = {
         sheetId: sheetID,
-        startIndex: googleStartRow,
-        endIndex: googleStartRow + rowQty,
-        startColumnIndex: googleStartCol,
-        endColumnIndex: googleStartCol + dataColQty
+        startRowIndex: googleStartRow,       // 🎯 物理校准：必须叫 startRowIndex
+        endRowIndex: googleStartRow + rowQty,// 🎯 物理校准：必须叫 endRowIndex
+        startColumnIndex: googleStartCol,    // 🎯 物理校准：必须叫 startColumnIndex
+        endColumnIndex: googleStartCol + dataColQty // 🎯 物理校准：必须叫 endColumnIndex
     };
 
-    // 子动作 B：无缝紧跟，定点写入脱水好的新细胞矩阵
+    // 🟢 子动作 B：无缝紧跟，定点写入脱水好的新细胞矩阵
     requests.push({
         updateCells: {
             range: writeGridRange,
-            rows: ToGoogleRowData(values), 
+            rows: ToGoogleRowData(values), // 复用 ToGoogleRowData 细胞工人
             fields: "userEnteredValue"
         }
     });
 
     return requests;
 }
-
-
 
 
 /**

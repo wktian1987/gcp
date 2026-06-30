@@ -7,6 +7,7 @@ import {
     isStrictSet,
     isPlainObject,
     isObjectOfKeyValue,
+    isEmptyObject,
     ToStrictNumber,
     MinABSnumber,
     ToStrictString,
@@ -96,12 +97,15 @@ export const TradeBot = {
         this.tbName_lastLockTime   =  tvData.botNumber + '_lastLockTime'   ; // 全局中的锁名
         this.tbName_runningWell    =  tvData.botNumber + '_runningWell'    ; // 全局中的出错名
         this.tbName_spreadsheetID  =  tvData.botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID, 避免每次重新读取
+        this.tbName_sheetID        =  tvData.botNumber + '_sheetID'  ; // 全局中保存的spreadsheetID, 避免每次重新读取
 
         if (!Object.hasOwn(TradeBot, this.tbName_isLocked      )) { TradeBot[this.tbName_isLocked     ] = false       } // 在全局中设置是否已经被锁
         if (!Object.hasOwn(TradeBot, this.tbName_tgReset       )) { TradeBot[this.tbName_tgReset      ] = false       } // 在全局中设置归零信号
         if (!Object.hasOwn(TradeBot, this.tbName_lastLockTime  )) { TradeBot[this.tbName_lastLockTime ] = 0           } // 在全局中设锁
         if (!Object.hasOwn(TradeBot, this.tbName_runningWell   )) { TradeBot[this.tbName_runningWell  ] = new Set()   } // 在全局中设runningWell
         if (!Object.hasOwn(TradeBot, this.tbName_spreadsheetID )) { TradeBot[this.tbName_spreadsheetID] = null        } // 在全局中设置spreadsheetID
+        if (!Object.hasOwn(TradeBot, this.tbName_sheetID       )) { TradeBot[this.tbName_sheetID      ] = {}          } // 在全局中设置sheetID
+
 
         // 可以通过TG-RESET信号来重置全局锁 和 报错信息
         if (isStrictTrue(TradeBot[this.tbName_tgReset])) { 
@@ -110,6 +114,7 @@ export const TradeBot = {
             TradeBot[this.tbName_lastLockTime ] = 0           ;
             TradeBot[this.tbName_runningWell  ] = new Set()   ;
             TradeBot[this.tbName_spreadsheetID] = null        ;
+            TradeBot[this.tbName_sheetID      ] = {}          ;
 
             SendTG(`${tvData.botNumber} RESET命令已收到`, 'RESET已设置', TradeBot[this.tbName_resetTGID]).catch(() => { });
         }
@@ -143,6 +148,42 @@ export const TradeBot = {
             }
         }
         if (isStrictString(TradeBot[this.tbName_spreadsheetID])) {this.spreadsheetID = TradeBot[this.tbName_spreadsheetID] }
+
+
+
+
+        // if (isEmptyObject[this.tbName_sheetID] ) {
+        //     try {
+        //         TradeBot[this.tbName_sheetID] = await GetSpreadsheetID(tvData.botNumber);
+        //     } catch (e) {
+        //         let errMessage = e.message + '\n' ;
+        //         const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
+        //         errMessage += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK + '\n' : '大锁已释放' + '\n' ;
+        //         return '获取sheetID失败: \n' + errMessage.trim() ;
+        //     }
+        // }
+        // if (isStrictString(TradeBot[this.tbName_spreadsheetID])) {this.spreadsheetID = TradeBot[this.tbName_spreadsheetID] }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         // 开始设GS锁
         // 只要进入这一步,说明抢到了 大TradeBot 锁
