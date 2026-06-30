@@ -713,7 +713,7 @@ export async function GetSheetIDfromSheet(spreadsheetID) {
     // 闪击云端元数据骨架（死死关闭 includeGridData，确保毫秒级极速回执）
     const response = await sheetsClient.spreadsheets.get({
         spreadsheetId: spreadsheetID,
-        includeGridData: false // 🎯 降维打击性能漏洞！只拿骨架，不要肉身，拒绝长拉单
+        includeGridData: false // 降维打击性能漏洞！只拿骨架，不要肉身，拒绝长拉单
     });
 
     const sheetsMetadata = response.data.sheets;
@@ -721,7 +721,7 @@ export async function GetSheetIDfromSheet(spreadsheetID) {
         throw new Error('GetSheetIDfromSheet 抓取云端元数据大包失败或结构畸形');
     }
 
-    const sheetIDMap = {};
+    const sheetIDData = {};
 
     // 🎯 使用纯净 for...of 迭代，绝不污染原型链
     for (const sheet of sheetsMetadata) {
@@ -731,11 +731,11 @@ export async function GetSheetIDfromSheet(spreadsheetID) {
         // 🔒 安全门禁：确保元数据字段完好
         if (typeof title === 'string' && typeof id === 'number') {
             // 核心风控：强行将表名转为小写压入字典，抹平人类前端大小写滑点
-            sheetIDMap[title.toLowerCase()] = id;
+            sheetIDData[title.toLowerCase()] = id;
         }
     }
 
-    return sheetIDMap;
+    return sheetIDData;
 }
 
 /**
