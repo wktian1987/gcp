@@ -419,6 +419,26 @@ export async function CheckIfSheetExists(spreadsheetID, sheetTitle, ifNoThenNew 
 }
 
 /**
+ * 从 A1 表达式中精准提取起始行号（数字类型）
+ * @param {string} rangeStr 标准 range 字符串 (如 'sheet1!A25:B32' 或 "'持仓 明细'!AA25:C30")
+ * @returns {number|null} 返回纯数字行号，解析失败返回 null
+ */
+export function GetStartRowFromRange(rangeStr) {
+    // 核心正则：捕获惊叹号后面紧跟的【字母+数字】组合
+    const regex = /!([A-Za-z]+)(\d+)/;
+    const match = rangeStr.match(regex);
+
+    if (match && match[2]) {
+        // match[2] 锁定的就是第二捕获组（纯数字部分）
+        // 刚性转换：捞出来的是字符串 "25"，必须强转成 Number 类型才能参与下一步算力
+        return parseInt(match[2], 10); 
+    }
+    
+    return null;
+}
+
+
+/**
  * 精准扫描指定工作表，计算并返回含有任何有效数据（数字、字符串、布尔值等）的最小闭环 A1 范围边界
  * @async
  * @function GetActiveDataRange
@@ -617,41 +637,208 @@ export async function BatchClearGS(spreadsheetID, toClearRangeList) {
         requestBody     : {ranges: toClearRangeList }   }   )   ;
 }
 
+
 /**
- * 批量更新区域内容；
- * 先清空，后写入;
- * 这个函数使用时，必须保证清空更新范围，必须是一个大的无限类型的区域;
- * 例如: A:B 这样，
- * @param {Array} toUpdateRangeList 
- * 必须保证输入的toUpdateRangeList是一个数组;
- * 数组中每个元素都是一个对象，对象包括range 和 values两个属性
- * 例如[{range: 'MAIN!A:B', values:[[3,4],[5,6]]}, {range: 'MAIN2!A:B', values:[['A','B'],['C','D']]}]
- * @returns 无返回值，只要正确运行就说明操作成功
+ * 金融级原子化：批量清空并更新区域内容（一枪流锁死）
+ * @param {string} spreadsheetID 大表ID
+ * @param {Array<{range: string, values: Array<Array<any>>}>} toUpdateRangeList 待更新的矩阵队列
  */
 export async function BatchClearUpdateGS(spreadsheetID, toUpdateRangeList) {
-    if (!Array.isArray(toUpdateRangeList) ) { throw new Error('BatchClearUpdateGS @param toUpdateRangeList 输入错误 type1') }
-    if (toUpdateRangeList.length === 0    ) { return }
-    const toClearListSet    = new Set() ;
-    const toClearUpdateList = []        ;
-    toUpdateRangeList.forEach(element => {
-        const {range, values} = element ;
-        if (!range || !values || !Array.isArray(values) || values.length===0 || !Array.isArray(values[0])) {
-            throw new Error("BatchClearUpdateGS @param toUpdateRangeList 输入错误 type2") ;
-        } 
-        toClearListSet.add(range)    ;
-        toClearUpdateList.push( {range , values     } )    ;
+    // 1. 入站硬性风控风控
+    if (!Array.isArray(toUpdateRangeList)) { 
+        throw new Error('BatchClearUpdateGS @param toUpdateRangeList 必须为数组类型'); 
+    }
+    if (toUpdateRangeList.length === 0) return;
+
+    // 2. 在内存中将任务解构并网
+    const requests = [];
+
+    // 🎯 极致防空洞：使用现代 for...of 纯净迭代，绝不污染原型链
+    for (const element of toUpdateRangeList) {
+        const { range, values } = element;
+        
+        // 细胞级校验防御
+        if (!range || !values || !Array.isArray(values) || values.length === 0 || !Array.isArray(values[0])) {
+            throw new Error(`区域数据包结构畸形，拒绝入站: ${JSON.stringify(element)}`);
+        }
+
+        // 子动作 A：在同一个事务内，先把这个无限区域清洗干净
+        requests.push({
+            clearValues: {
+                range: range
+            }
+        });
+
+        // 🟢 子动作 B：无缝紧跟，把满血的数据矩阵定点平铺写入
+        requests.push({
+            updateValues: {
+                range: range,
+                valueInputOption: 'USER_ENTERED',
+                data: {
+                    values: values
+                }
+            }
+        });
+    }
+
+    // 3. 扣动大一统原子扳机
+    // 直接一发全包闪击云端！
+    await sheetsClient.spreadsheets.batchUpdate({
+        spreadsheetId: spreadsheetID,
+        requestBody: {
+            requests: requests // 包含了所有清空和写入的完美原子流
+        }
     });
 
-    await BatchClearGS(spreadsheetID, Array.from(toClearListSet) ) ;
-
-    await Sleep(100) ;
-
-    await sheetsClient.spreadsheets.values.batchUpdate(   {
-        spreadsheetId   :   spreadsheetID  ,
-        resource        :   { 
-            valueInputOption    : 'USER_ENTERED'    , 
-            data                : toClearUpdateList }   }   )   ;
+    // 只要代码能走到这里，说明在云端“要么全清全写成功了”，绝不存在半途崩盘的可能！
 }
+
+/**
+ * 细胞级数据包装器 (Google Sheets API 专用复水工人)
+ * * 将人类可读的扁平二维数组，在内存中瞬间转化为 Google Sheets API 
+ * `appendCells` 或 `updateCells` 接口望眼欲穿的标准 `RowData[]` 基因骨架。
+ * * @example
+ * const rawInput = [["BTC", 65000, true]];
+ * const googleRowData = ToGoogleRowData(rawInput);
+ * // 输出: [ { values: [ { userEnteredValue: { stringValue: "BTC" } }, ... ] } ]
+ * * @param {Array<Array<string|number|boolean>>} rawDataA2d - 待转换的标准二维数组（数据矩阵）
+ * @returns {Array<{values: Array<{userEnteredValue: {stringValue?: string, numberValue?: number, boolValue?: boolean}}}>}>} 符合谷歌底层 RowData 规范的细胞级嵌套数组
+ */
+export function ToGoogleRowData(rawDataA2d) {
+    // 入站刚性风控
+    if (!Array.isArray(rawDataA2d) || rawDataA2d.length === 0 || !Array.isArray(rawDataA2d[0])) {
+        throw new Error('ToGoogleRowData 入参必须是合规的非空二维数组');
+    }
+
+    return rawDataA2d.map(row => ({
+        values: row.map(cell => {
+            // 黄金分流门禁：精准捕获原子数据类型，注入对应的谷歌原生舱位
+            if (typeof cell === 'number')  return { userEnteredValue: { numberValue: cell } };
+            if (typeof cell === 'boolean') return { userEnteredValue: { boolValue: cell } };
+            // 安全防护兜底：非数字非布尔值，统一转为字符串合规防护服，绝不漏水
+            return { userEnteredValue: { stringValue: String(cell) } };
+        })
+    }));
+}
+
+/**
+ * 拼装器：生成单区域【先清空、后写入】的原子请求动作阵列
+ * * 在同一个 batchUpdate 事务内，打包“清空当前区域”与“定点覆盖写入”两发子弹，实现 0 毫秒时差覆盖。
+ * * @example
+ * const task = { range: 'MAIN!A:B', values: [[1, 2], [3, 4]] };
+ * const requests = makeRequestBodyArrayofBatchUpdate_clearUpdate(task);
+ * // 返回: [ { clearValues: {...} }, { updateValues: {...} } ]
+ * * @param {Object} clearUpdateObj - 待处理的清空更新配置对象
+ * @param {string} clearUpdateObj.range - 目标 A1 坐标区域 (如 'Sheet1!A:B')
+ * @param {Array<Array<any>>} clearUpdateObj.values - 准备平铺覆盖写入的纯净二维数组
+ * @returns {Array<Object>} 包含 2 发子弹（清空 + 覆盖）的 batchUpdate 动作队列
+ */
+export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
+    // 入站刚性风控：确保配置对象物理存在
+    if (!clearUpdateObj || typeof clearUpdateObj !== 'object') {
+        throw new Error('clearUpdate 构造器入参畸形，必须传入配置对象');
+    }
+
+    const { range, values } = clearUpdateObj;
+
+    // 细胞级矩阵防御：深度验证 A1 坐标和数据矩阵的完整性
+    if (!range || !values || !Array.isArray(values) || values.length === 0 || !Array.isArray(values[0])) {
+        throw new Error(`clearUpdate 配置内容残缺，拒绝并网: ${JSON.stringify(clearUpdateObj)}`);
+    }
+
+    const requests = [];
+
+    // 子动作 A：在同一个事务内，先把这个指定区域彻底洗干净
+    requests.push({
+        clearValues: {
+            range: range
+        }
+    });
+
+    // 🟢 子动作 B：无缝紧跟，把满血的数据矩阵定点平铺写入
+    requests.push({
+        updateValues: {
+            range: range,
+            valueInputOption: 'USER_ENTERED',
+            data: {
+                values: values
+            }
+        }
+    });
+
+    return requests;
+}
+
+/**
+ * 拼装器：生成 batchUpdate 所需的【尾部追加】单个原子请求对象
+ * * 针对固定追加到工作表底部的场景设计，无需关心具体行号，自动锁死云端物理尾部。
+ * * @example
+ * const action = makeRequestBodyArrayofBatchUpdate_append(0, [["ETH", 3200, false]]);
+ * // 返回: { appendCells: { sheetId: 0, rows: [...], fields: "userEnteredValue" } }
+ * * @param {number} sheetID - 目标标签页的终身制纯数字 ID (注意：删除默认页后通常是一串随机数字)
+ * @param {Array<Array<string|number|boolean>>} rawA2dData - 待追加的纯净二维数组
+ * @returns {Object} 包装好的 appendCells 单个 request 动作对象
+ */
+export function makeRequestBodyArrayofBatchUpdate_append(sheetID, rawA2dData) {
+    // 纯数字 ID 严格验证：防止误传人类习惯的字符串表名
+    if (typeof sheetID !== 'number') {
+        throw new Error('append 构造器硬性要求 sheetID 必须为纯数字类型（如 0 或 1482942）');
+    }
+
+    // 复水工人无缝并网，转换出谷歌需要的细胞基因骨架
+    const googleRowData = ToGoogleRowData(rawA2dData);
+    
+    return {
+        appendCells: {
+            sheetId: sheetID,
+            rows: googleRowData,       // 刚刚打包好的满血细胞矩阵行
+            fields: "userEnteredValue" // 告诉谷歌直接修改用户输入值舱位，抹平格式干扰
+        }
+    };
+}
+
+
+/**
+ * 顶级全原子执行官：一枪流闪击云端事务总大闸
+ * * 将底座积木拼装好的所有 requests 动作队列（如清空、覆盖、尾部追加、删行等），
+ * * 打包成单次 HTTPS 原子请求轰向谷歌服务器。云端强力保证 ACID 事务完整性。
+ * * @example
+ * const partA = makeRequestBodyArrayofBatchUpdate_clearUpdate(task);
+ * const partB = makeRequestBodyArrayofBatchUpdate_append(0, [["BTC", 65000]]);
+ * await BatchUpdateGS(spreadsheetID, [...partA, partB]);
+ * * @param {string} spreadsheetID - 整个大表的身份证 ID (从浏览器 URL 中截取)
+ * @param {Array<Object>} requests - 已经通过工具积木平铺好的 Google Sheets API 动作请求队列
+ * @returns {Promise<Object>} 返回谷歌云端执行成功的元数据回执 (Data Response)
+ */
+export async function BatchUpdateGS(spreadsheetID, requests) {
+    // 进站刚性风控：防止由于上层逻辑手抖传入空弹夹导致网络空转
+    if (!spreadsheetID || typeof spreadsheetID !== 'string') {
+        throw new Error('BatchUpdateGS 拒绝执行：spreadsheetID 缺失或类型错误');
+    }
+    if (!Array.isArray(requests)) {
+        throw new Error('BatchUpdateGS 拒绝执行：requests 必须是包含原子动作的数组');
+    }
+    if (requests.length === 0) {
+        console.warn('传入的 requests 弹夹为空，本次原子更新已自动跳过');
+        return null;
+    }
+
+    // 扣动一枪流总扳机：利用底层套接字长连接闪击云端
+    // 不用try catch 直接将报错传递给上层调用者
+    const response = await sheetsClient.spreadsheets.batchUpdate({
+        spreadsheetId: spreadsheetID,
+        requestBody: {
+            requests: requests
+        }
+    });
+
+    console.log(`🟢 [中台总闸] 成功执行全原子事务！本次打包吞吐量: [${requests.length}] 发动作。`);
+
+    // 🎯 返回谷歌服务器的真实执行回执（内部包含每一发子弹的结构变动结果，供高阶对账使用）
+    return response.data; // 实际上正常情况下不会用到这个返回值
+
+}
+
 
 export async function SendTG(subject, text, toChatID = process.env.TG_CHAT_ID) {
     const TG_TOKEN = process.env.TG_TOKEN;

@@ -93,23 +93,71 @@ async function test_updateBigRegionDataToSmallRegion(spreadsheetID, chat_id) {
     SendTG('成功测试来自A1的函数', 'A1函数执行成功...', chat_id).catch(() => { });
 }
 
-async function Get_GSData() {
-    const spreadsheetID = '1slawVrVNK7IVEyDpqtMRQ7AoEM9arkJCnvjw2J_amC4' ;
-    const response = await sheetsClient.spreadsheets.get({
-        spreadsheetId: spreadsheetID,
-        includeGridData: true // 💡 必须强制声明把格子里的肉带回来
-    }); // 得到的数据是什么，给我一个详细解析
-    const result = {} ;
-    result.spreadsheetId = response.spreadsheetID ;
-    result.title        = response.properties.title ;
+async function TestBatchUpdate(spreadsheetID, chat_id) {
+    const {sheetsClient} = await import ('./utility.js') ;
 
-    for (const i in response.sheetse) {
-        result[`sheet${i}.title`]   = response.sheets[i].properties.title;
-        result[`sheet${i}.sheetId`] = response.sheets[i].properties.sheetId ;
+    const dataArray = [[true, false, 0, 1, 'Hi', '你好']] ;
+
+    const sheetID_response = await sheetsClient.spreadsheets.get({
+        spreadsheetId: spreadsheetID,
+        includeGridData: true 
+    });
+
+    const sheetID_response_data = sheetID_response.data ;
+
+    const sheetID = {} ;
+
+    for (const i_sheet of sheetID_response_data.sheets) {
+        sheetID[`${i_sheet.properties.title}`] = i_sheet.properties.sheetId ; 
     }
 
-    const resultA = ObjToA2dNumBoolStr(result) ;
 
-    await UpdateGS(spreadsheetID, 'test!A39:Z', resultA) ;
+    // 🧬 细胞级扁平映射：在本地内存里，瞬间把普通的 [[1,2,3]] 打包成谷歌底层的 RowData 格式
+    const googleRowData = dataArray.map(row => {
+        return {
+            values: row.map(cell => {
+                if (typeof cell === 'number') return { userEnteredValue: { numberValue: cell } };
+                if (typeof cell === 'boolean') return { userEnteredValue: { boolValue: cell } };
+                return { userEnteredValue: { stringValue: String(cell) } };
+            })
+        };
+    });
+
+
+    const deleteRowIndex = 10 ;
+
+    // 🚀 扣动一枪流原子扳机
+    await sheetsClient.spreadsheets.batchUpdate({
+        spreadsheetId: spreadsheetID,
+        requestBody: {
+            requests: [
+                // 🟢 1. 结构手术刀：在区域 A 物理删除某一行
+                {
+                    deleteDimension: {
+                        range: {
+                            sheetId: sheetID.test2,
+                            dimension: "ROWS",
+                            startIndex: deleteRowIndex,
+                            endIndex: deleteRowIndex + 1
+                        }
+                    }
+                },
+                // 🟢 2. 自动追加枪：无视行号，直接在当前表的最后一行屁股后面追加塞入数据！
+                {
+                    appendCells: {
+                        sheetId: sheetID.test3,
+                        rows: googleRowData,       // 👈 刚刚打包好的纯数据行
+                        fields: "userEnteredValue" // 告诉谷歌直接修改用户输入值舱位
+                    }
+                }
+            ]
+        }
+    });
+
+
+
+
+    await SendTG('TEST信号处理结束', 'TEST信号处理结束', chat_id);
+
 
 }
