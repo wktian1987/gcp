@@ -102,13 +102,12 @@ async function TestBatchUpdate(spreadsheetID, chat_id) {
     const request_append2Lines = makeRequestBodyArrayofBatchUpdate_append(sheetIDData.test3, [[0,1,true, false, 's'], [false, true, 'sss', 1]]) ;
 
     const clearUpdateBody = {
-        sheetID: 
+        sheetID: sheetIDData.test4,
+        range: 'test4!A29:29' ,
+        values: [[1,2,3,4,5,6,7]]
     } ;
 
-
-
-
-    const request_clearupdate = makeRequestBodyArrayofBatchUpdate_clearUpdate({range: 'test4!A29:29', values: [[1,2,3,4,5,6,7]]}) ;
+    const request_clearupdate = makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateBody) ;
 
     requests.push(request_delete2Lines) ;
     requests.push(request_append2Lines) ;
