@@ -100,14 +100,14 @@ export const TradeBot = {
         this.tbName_lastLockTime   =  tvData.botNumber + '_lastLockTime'   ; // 全局中的锁名
         this.tbName_runningWell    =  tvData.botNumber + '_runningWell'    ; // 全局中的出错名
         this.tbName_spreadsheetID  =  tvData.botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID, 避免每次重新读取
-        this.tbName_sheetsID       =  tvData.botNumber + '_sheetsID'       ; // 全局中保存的spreadsheetID, 避免每次重新读取
+        this.tbName_sheetsID       =  tvData.botNumber + '_sheetsID'       ; // 全局中保存的sheetsID, 避免每次重新读取
 
         if (!Object.hasOwn(TradeBot, this.tbName_isLocked      )) { TradeBot[this.tbName_isLocked     ] = false       } // 在全局中设置是否已经被锁
         if (!Object.hasOwn(TradeBot, this.tbName_tgReset       )) { TradeBot[this.tbName_tgReset      ] = false       } // 在全局中设置归零信号
         if (!Object.hasOwn(TradeBot, this.tbName_lastLockTime  )) { TradeBot[this.tbName_lastLockTime ] = 0           } // 在全局中设锁
         if (!Object.hasOwn(TradeBot, this.tbName_runningWell   )) { TradeBot[this.tbName_runningWell  ] = new Set()   } // 在全局中设runningWell
         if (!Object.hasOwn(TradeBot, this.tbName_spreadsheetID )) { TradeBot[this.tbName_spreadsheetID] = null        } // 在全局中设置spreadsheetID
-        if (!Object.hasOwn(TradeBot, this.tbName_sheetsID      )) { TradeBot[this.tbName_sheetsID     ] = {}          } // 在全局中设置sheetID
+        if (!Object.hasOwn(TradeBot, this.tbName_sheetsID      )) { TradeBot[this.tbName_sheetsID     ] = {}          } // 在全局中设置sheetsID
 
 
         // 可以通过TG-RESET信号来重置全局锁 和 报错信息
@@ -152,7 +152,7 @@ export const TradeBot = {
         }
         if (isStrictString(TradeBot[this.tbName_spreadsheetID])) {this.spreadsheetID = TradeBot[this.tbName_spreadsheetID] }
 
-        if (isEmptyObject[this.tbName_sheetsID] ) {
+        if (isEmptyObject(TradeBot[this.tbName_sheetsID]) ) {
             try {
                 TradeBot[this.tbName_sheetsID] = await GetSheetsIDfromSheet(this.spreadsheetID) ;
             } catch (e) {
