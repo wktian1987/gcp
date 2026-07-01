@@ -37,7 +37,8 @@ import {
     Sleep,
     makeRequestBodyArrayofBatchUpdate_clear,
     makeRequestBodyArrayofBatchUpdate_clearUpdate,
-    makeRequestBodyArrayofBatchUpdate_append
+    makeRequestBodyArrayofBatchUpdate_append,
+    BatchUpdateGS
 } from "./utility.js";
 
 import { SendOrderToBroker, CheckOrderConfirm, CheckFundFee } from "./broker.js";
@@ -90,10 +91,7 @@ export const TradeBot = {
         this.LockTime           =  tvData.timestamp             ;
         this.lockName           =  'T' + String(this.LockTime)  ;
         this.batchUpdateList    =  []                           ;
-        this.toUpdateRangeList  =  []                           ;
-        this.toClearRangeSet    =  new Set()                    ;
         this.alertMessageSet    =  new Set()                    ;
-        this.promiseArray       =  []                           ;
         AddSetMessage(this.alertMessageSet, tvData.thisAlertMessage) ;
 
         this.tbName_isLocked       =  tvData.botNumber + '_isLocked'       ; // 全局中判断是否locked的名
@@ -418,7 +416,7 @@ export const TradeBot = {
             iD.lowestCoin           =   iD.initialCoin                                                              ;
 
             const i_toClearRangeSet     =  new Set()    ;
-            const i_toUpdateRangeList   =  []           ;
+            const i_toBatchUpdateList   =  []           ;
 
             i_toClearRangeSet.add( this.toGCPData.ingOrderLine       )  ;
             i_toClearRangeSet.add( this.toGCPData.uncloseOrdersRange )  ;
@@ -427,6 +425,13 @@ export const TradeBot = {
             i_toClearRangeSet.add( this.toGCPData.simBrokerRange     )  ;
             i_toClearRangeSet.add( this.toGCPData.BrokerRange        )  ;
             i_toClearRangeSet.add( this.toGCPData.toWriteMainRange   )  ;
+
+            const toClearRangeList = Array.from(i_toClearRangeSet).map(v => makeRequestBodyArrayofBatchUpdate_clear({
+                sheetID: this.sheetsID[v.split('!')[0]],
+                range: v
+            }));
+
+            i_toBatchUpdateList.push(...toClearRangeList) ;
 
             const newHghLowV    = [ [iD.initiated           ]    ,
                                     [iD.initiateTime        ]    ,
@@ -439,15 +444,16 @@ export const TradeBot = {
                                     [iD.hghestCoin          ]    ,
                                     [iD.lowestCoin          ]    ]   ;
 
-            i_toUpdateRangeList.push(    {
-                sheetID : this.sheetsID[this.toGCPData.HghLowRange.split('!')[0]],
-                range   : this.toGCPData.HghLowRange     ,
-                values  : newHghLowV                } ) ;
 
-            await BatchClearGS(this.spreadsheetID, Array.from(i_toClearRangeSet));
-            await Sleep(100) ;
-            await BatchClearUpdateGS(this.spreadsheetID, i_toUpdateRangeList);
-            await Sleep(100) ;
+
+            i_toBatchUpdateList.push(...makeRequestBodyArrayofBatchUpdate_clearUpdate(
+                {
+                    sheetID: this.sheetsID[this.toGCPData.HghLowRange.split('!')[0]],
+                    range: this.toGCPData.HghLowRange,
+                    values: newHghLowV
+                }));
+
+            await BatchUpdateGS(this.spreadsheetID, i_toBatchUpdateList) ;
 
             const r_Get_gsData = await this.Get_gsData() ;
             if (isStrictString(r_Get_gsData)) {throw new Error('Get_gsData() 失败: \n' + r_Get_gsData)}
@@ -468,228 +474,6 @@ export const TradeBot = {
             return e.message ;
         }
     } ,
-
-    /**
-     * 检查fundfee
-     * @param 调用前必须保证已更新过 Get_gsData()
-     * @returns 因为有try/catch 不会抛错
-     * @returns true: 表示收取fundFee并写入成功, 或者不需要检查fundfee并成功退出
-     * @returns String: 具体的出错信息
-     */
-    async ToCheckFundFee() {
-        try {
-            const mainData              = this.mainData                     ;
-            const tvData                = this.tvData                       ;
-            const tradeHistoryTitleA    = this.tradeHistoryTitleA           ; // array
-            const tradeHistoryRange     = this.toGCPData.tradeHistoryRange  ; // string
-
-            let toCheckFundFee = false;
-            if (isStrictNumber(mainData.lstFundTime)) {
-                const lstRound = Math.floor(mainData.lstFundTime / 28800000); // 8 * 60 * 60 * 1000
-                const thisRound = Math.floor(tvData.timestamp / 28800000);
-                toCheckFundFee = lstRound === thisRound ? false : true;
-            } else { toCheckFundFee = true }
-
-            if (isStrictFalse(toCheckFundFee)) { return true } 
-
-            const fund = {}  ;
-            fund.orderID          = 'F-' + GetTimeStringWithOffset(8, 28800000 * Math.floor(tvData.timestamp / 28800000))  ;
-            fund.orderTimestamp   = Date.now()                                                                             ;
-            fund.orderDate        = GetTimeStringWithOffset(8, fund.orderTimestamp)                                        ;
-            fund.buysell          = CV.order_FUND                                                                          ;
-            fund.avgBuyPrice      = mainData.avgBuyPrice                                                                   ;
-            fund.reason           = "FundFee"                                                                              ;
-            fund.orderStatus      = CV.order_pending                                                                       ;
-            fund.lst_allFundFee   = ToStrictNumber(mainData.allFundFee     , 0                       )                     ;
-            fund.inCoin           = ToStrictNumber(mainData.inCoin         , 0                       )                     ;
-            fund.inFund           = ToStrictNumber(mainData.inFund         , 0                       )                     ;
-            fund.BaseCoinPrice    = ToStrictNumber(tvData.BaseCoinPrice    , mainData.BaseCoinPrice  )                     ;
-            fund.isReal           = mainData.isReal                                                                        ;
-            fund.TradingSymbol    = tvData.TradingSymbol                                                                   ;
-            fund.spreadsheetID    = this.spreadsheetID                                                                     ;
-
-            await CheckFundFee(fund);
-            if (!fund.respOK) {throw new Error('交易所返回数据不正确')}
-
-            const newFundHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(fund[v]) ? fund[v] : (fund[v] || CV.NA));
-
-            await AppendGS(this.spreadsheetID, tradeHistoryRange, [newFundHistoryA]);
-
-            const r_Get_gsData = await this.Get_gsData() ;
-            if (isStrictString(r_Get_gsData)) {throw new Error('Get_gsData() 失败: \n' + r_Get_gsData)}
-            // 校验写入的最后fund时间是否与本次写入一致
-            if (this.mainData.lstFundTime !== fund.confirmTimestamp) {
-                await Sleep(2000) ; // 第一次校验不成功的话, 等2s再校验一次
-                const r_Get_gsData = await this.Get_gsData() ;
-                if (isStrictString(r_Get_gsData)) {throw new Error('Get_gsData() 失败: \n' + r_Get_gsData)}
-                if (this.mainData.lstFundTime !== fund.confirmTimestamp) {throw new Error('检查fundFee后经校验GS数据未更新') }
-            }
-
-            AddSetMessage(this.alertMessageSet, `New fund fee: ${fund.fundFee}`)  ;
-
-            return true;
-        } catch (e) { 
-            // 这里的错误是非核心错误, 可以在释放两个锁后, 抛出错误退出
-            let errMessage = e.message + '\n' ;
-
-            const r_ReleaseLockOfGS     =  await this.ReleaseLockOfGS() ; // 尝试给GS解锁
-            const r_ReleaseTradeBotLOCK =  isStrictTrue(r_ReleaseLockOfGS) ? this.ReleaseTradeBotLOCK() : 'ReleaseLockOfGS() fail, no need to release TradeBot Lock' ;
-            errMessage  += isStrictString(r_ReleaseLockOfGS)     ? r_ReleaseLockOfGS     + '\n' : 'GS LOCK释放成功'       + '\n';
-            errMessage  += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK + '\n' : 'TradeBot LOCK释放成功' + '\n';
-            return errMessage.trim() ;
-        }
-
-    },
-
-    /**
-     * 判断waiting 订单状态
-     * @returns 因为有try/catch, 不会抛错
-     * @returns true: 检查成功, 只表示检查过程无误, 可能没有需要检查的订单, 也可能是有订单但没有成交, 也可能是有成交并成功写入
-     * @returns string: 具体的出错信息
-     */
-    async ToCheckWaitingOrder() {
-        try {
-            const tvData                =  this.tvData                  ;
-            const mainData              =  this.mainData                ;
-            const toGCPData             =  this.toGCPData               ;
-            const ingOrderData          =  this.ingOrderData            ;
-            const ingOrderTitleA        =  this.ingOrderTitleA          ;
-            const uncloseOrdersA2d      =  this.uncloseOrdersA2d        ;
-            const uncloseOrdersTitleA   =  this.uncloseOrdersTitleA     ;
-            const tradeHistoryTitleA    =  this.tradeHistoryTitleA      ;
-
-            if (!isStrictTrue(mainData.ifOrderWaiting)) { return true }
-
-            ingOrderData.isReal             = mainData.isReal                                                       ;
-            ingOrderData.TradingSymbol      = tvData.TradingSymbol                                                  ;
-            ingOrderData.spreadsheetID      = this.spreadsheetID                                                    ;
-            ingOrderData.lst_allGotProfit   = ToStrictNumber(mainData.allGotProfit  , 0                      )      ;
-            ingOrderData.lst_allTradeFee    = ToStrictNumber(mainData.allTradeFee   , 0                      )      ;
-            ingOrderData.inCoin             = ToStrictNumber(mainData.inCoin        , 0                      )      ;
-            ingOrderData.inFund             = ToStrictNumber(mainData.inFund        , 0                      )      ;
-            ingOrderData.BaseCoinPrice      = ToStrictNumber(tvData.BaseCoinPrice   , mainData.BaseCoinPrice )      ;
-
-            ingOrderData.ifWaitingThenCancel = true;
-            if (ingOrderData.ing_buysell === CV.order_BUY  && tvData.TradingSymbolPrice < ToStrictNumber(ingOrderData.ing_orderPrice, 0) * (1 + tvData.waveUpChg)) { ingOrderData.ifWaitingThenCancel = false }
-            if (ingOrderData.ing_buysell === CV.order_SELL && tvData.TradingSymbolPrice > ToStrictNumber(ingOrderData.ing_orderPrice, 0) * (1 + tvData.waveDnChg)) { ingOrderData.ifWaitingThenCancel = false }
-            if (ingOrderData.ing_reason.includes('from GS')) {ingOrderData.ifWaitingThenCancel = false}
-            if (this.thereCommandFromGS && this.commandData.toCancel) { // 查看是否有来自最高等级的GS交易命令
-                AddMessage(this.alertMessage, 'Get toCancel signal from GS');
-                ingOrderData.ifWaitingThenCancel = true;
-            } 
-
-            // 去交易所查看成交情况
-            await CheckOrderConfirm(ingOrderData);
-            if (!ingOrderData.respOK) {throw new Error('交易所返回数据有错')}
-
-            const w_toUpdateRangeList       = []            ;
-            const w_toClearRangeSet         = new Set()     ;
-            const w_toAppendTradeHistory    = {}            ;
-
-            // 对于部分成交的情况,
-            // 按照成交逻辑, 如果返回order_cancel的话, 表示订单没有任何成交
-            // 如果传入了撤单命令, 但是订单有成交的话, 返回的订单状态为order_confirm, 但是ing_qty参数做了修改
-            // 如果ifWaitingThenCancel = false,  只修改ing_orderStatus一个变量
-            // 如果ifWaitingThenCancel = true ,  当做confirm来判断
-            // 需要注意的是卖单, 如果部分成交的话, 不能简单地将uncloseOrders中的那个订单删掉, 需要修改那一行, 而不是删掉那一行
-
-            if (ingOrderData.ing_orderStatus === CV.order_confirm ) {
-
-                if (ingOrderData.ing_buysell === CV.order_BUY) {
-                    const newUncloseOrderLine = uncloseOrdersTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || CV.NA));
-                    uncloseOrdersA2d.push(newUncloseOrderLine);
-                }
-                if (ingOrderData.ing_buysell === CV.order_SELL) {
-                    const index_orderID         =  uncloseOrdersTitleA.indexOf('orderID')       ;
-                    const index_serial          =  uncloseOrdersTitleA.indexOf('serial')        ;
-                    const index_confirmPrice    =  uncloseOrdersTitleA.indexOf('confirmPrice')  ;
-                    const index_qty             =  uncloseOrdersTitleA.indexOf('qty')           ;
-                    const index_pXq             =  uncloseOrdersTitleA.indexOf('pXq')           ;
-
-                    const thisSellSerial = -1 * ingOrderData.ing_serial;
-                    const indexOfBoughtOrder = uncloseOrdersA2d.findIndex(orderA => Math.abs(orderA[index_serial] - thisSellSerial) < 0.1);
-                    if (indexOfBoughtOrder < 0) {throw new Error('无法在未成交买单中找到对应的现在的卖单')}
-                    if (isStrictNumber(ingOrderData.ing_isPartial) && ingOrderData.ing_isPartial < 1) {
-                        // 卖单部分成交的情况, 相对比较复杂
-                        const theBoughtOrder = uncloseOrdersA2d[indexOfBoughtOrder] ; // 直接拿到的就是对应的订单的地址, 对他的修改相当于直接修改原始订单
-                        theBoughtOrder[index_orderID]   =  'PB-' + GetTimeStringWithOffset(8, this.timestamp)               ;
-                        theBoughtOrder[index_qty]       =  (1-ingOrderData.ing_isPartial) * theBoughtOrder[index_qty]       ;
-                        theBoughtOrder[index_pXq]       =  theBoughtOrder[index_confirmPrice] * theBoughtOrder[index_qty]   ;
-                        // uncloseOrdersA2d[indexOfBoughtOrder] = theBoughtOrder ; // 这一行可以去掉, 因为引用的直接是地址
-                    } else {uncloseOrdersA2d.splice(indexOfBoughtOrder, 1)}
-                }
-
-                w_toClearRangeSet.add(toGCPData.ingOrderLine);
-                w_toClearRangeSet.add(toGCPData.uncloseOrdersRange);
-
-                const newTradeHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || CV.NA));
-                w_toAppendTradeHistory.toAppend     = true;
-                w_toAppendTradeHistory.range        = toGCPData.tradeHistoryRange;
-                w_toAppendTradeHistory.values       = [newTradeHistoryA];
-
-                if (uncloseOrdersA2d.length > 0) { w_toUpdateRangeList.push({ range: toGCPData.uncloseOrdersRange, values: uncloseOrdersA2d }) }
-
-                const thisMessage = isStrictNumber(ingOrderData.ing_isPartial) ?
-                    (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + `Order partially ${Math.round(1000*ingOrderData.ing_isPartial)/10}% confirmed, but order canceled` :
-                    (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + `Order fully confirmed`;
-
-                AddSetMessage(this.alertMessageSet, thisMessage) ;
-            }
-
-            if (ingOrderData.ing_orderStatus === CV.order_partial && ingOrderData.ing_partial - ingOrderData.lst_partial> 0.1 ) {
-                const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(ingOrderData[v]) ? ingOrderData[v] : ingOrderData[v] || CV.NA);
-                w_toUpdateRangeList.push({ range: toGCPData.ingOrderLine, values: [new_ingOrderLineA] });
-                AddSetMessage(this.alertMessageSet, (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + "Order more partial confirmed");
-            }
-
-            if (ingOrderData.ing_orderStatus === CV.order_cancel) {
-                w_toClearRangeSet.add(toGCPData.ingOrderLine);
-                AddSetMessage(this.alertMessageSet, (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + "Order canceled");
-            }
-
-            const toBatchUpdateList = [] ;
-            const toClearRangeList = Array.from(w_toClearRangeSet).map(v => makeRequestBodyArrayofBatchUpdate_clear({
-                sheetID: this.sheetsID[v.split('!')[0]],
-                range: v
-            }));
-            
-            const toClearUpdateRangeList = w_toUpdateRangeList.map(v => makeRequestBodyArrayofBatchUpdate_clearUpdate({
-                sheetID: this.sheetsID[v.range.split('!')[0]],
-                range: v.range,
-                values: values
-            })).flat();
-
-            toBatchUpdateList.push(...toClearRangeList) ;
-            toBatchUpdateList.push(...toClearUpdateRangeList);
-
-            if (isStrictTrue(w_toAppendTradeHistory.toAppend)) {
-                const w_toAppendTradeLine = makeRequestBodyArrayofBatchUpdate_append({
-                    sheetID: this.sheetsID[w_toAppendTradeHistory.range.split('!')[0]],
-                    values: w_toAppendTradeHistory.values
-                });
-                toBatchUpdateList.push(w_toAppendTradeLine);
-            }
-
-            await BatchUpdateGS(this.spreadsheetID, toBatchUpdateList) ;
-
-
-            // 交易记录更新后, 需要重新获取GS数据
-            const r_Get_gsData = await this.Get_gsData() ;
-            if (isStrictString(r_Get_gsData)) {throw new Error('Get_gsData() 失败: \n' + r_Get_gsData)}
-            
-            return true;
-        } catch(e) {
-            // 这里的错误是非核心错误, 可以在释放两个锁后, 抛出错误退出
-            let errMessage = e.message + '\n' ;
-
-            const r_ReleaseLockOfGS     =  await this.ReleaseLockOfGS() ; // 尝试给GS解锁
-            const r_ReleaseTradeBotLOCK =  isStrictTrue(r_ReleaseLockOfGS) ? this.ReleaseTradeBotLOCK() : 'ReleaseLockOfGS() fail, no need to release TradeBot Lock' ;
-            errMessage  += isStrictString(r_ReleaseLockOfGS)     ? r_ReleaseLockOfGS     + '\n' : 'GS LOCK释放成功'       + '\n';
-            errMessage  += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK + '\n' : 'TradeBot LOCK释放成功' + '\n';
-            return errMessage.trim() ;
-
-        }
-    },
 
     /**
      * 判断可写入的新数据key
@@ -1155,6 +939,70 @@ export const TradeBot = {
     },
 
     /**
+     * 检查fundfee
+     * @param 调用前必须保证已更新过 Get_gsData()
+     * @returns 因为有try/catch 不会抛错
+     * @returns true: 表示收取fundFee并写入成功, 或者不需要检查fundfee并成功退出
+     * @returns String: 具体的出错信息
+     */
+    async ToCheckFundFee() {
+        try {
+            const mainData              = this.mainData                     ;
+            const tvData                = this.tvData                       ;
+            const tradeHistoryTitleA    = this.tradeHistoryTitleA           ; // array
+            const tradeHistoryRange     = this.toGCPData.tradeHistoryRange  ; // string
+
+            let toCheckFundFee = false;
+            if (isStrictNumber(mainData.lstFundTime)) {
+                const lstRound = Math.floor(mainData.lstFundTime / 28800000); // 8 * 60 * 60 * 1000
+                const thisRound = Math.floor(tvData.timestamp / 28800000);
+                toCheckFundFee = lstRound === thisRound ? false : true;
+            } else { toCheckFundFee = true }
+
+            if (isStrictFalse(toCheckFundFee)) { return true } 
+
+            const fund = {}  ;
+            fund.orderID          = 'F-' + GetTimeStringWithOffset(8, 28800000 * Math.floor(tvData.timestamp / 28800000))  ;
+            fund.orderTimestamp   = Date.now()                                                                             ;
+            fund.orderDate        = GetTimeStringWithOffset(8, fund.orderTimestamp)                                        ;
+            fund.buysell          = CV.order_FUND                                                                          ;
+            fund.avgBuyPrice      = mainData.avgBuyPrice                                                                   ;
+            fund.reason           = "FundFee"                                                                              ;
+            fund.orderStatus      = CV.order_pending                                                                       ;
+            fund.lst_allFundFee   = ToStrictNumber(mainData.allFundFee     , 0                       )                     ;
+            fund.inCoin           = ToStrictNumber(mainData.inCoin         , 0                       )                     ;
+            fund.inFund           = ToStrictNumber(mainData.inFund         , 0                       )                     ;
+            fund.BaseCoinPrice    = ToStrictNumber(tvData.BaseCoinPrice    , mainData.BaseCoinPrice  )                     ;
+            fund.isReal           = mainData.isReal                                                                        ;
+            fund.TradingSymbol    = tvData.TradingSymbol                                                                   ;
+            fund.spreadsheetID    = this.spreadsheetID                                                                     ;
+
+            await CheckFundFee(fund);
+            if (!fund.respOK) {throw new Error('交易所返回数据不正确')}
+
+            this.freeMargin += fund.fundFee ;
+
+            const newFundHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(fund[v]) ? fund[v] : (fund[v] || CV.NA));
+
+            this.batchUpdateList.push(makeRequestBodyArrayofBatchUpdate_append({ sheetID: this.sheetsID[tradeHistoryRange.split('!')[0]], values: [newFundHistoryA] }));
+
+            AddSetMessage(this.alertMessageSet, `New fund fee: ${fund.fundFee}`)  ;
+
+            return true;
+        } catch (e) { 
+            // 这里的错误是非核心错误, 可以在释放两个锁后, 抛出错误退出
+            let errMessage = e.message + '\n' ;
+
+            const r_ReleaseLockOfGS     =  await this.ReleaseLockOfGS() ; // 尝试给GS解锁
+            const r_ReleaseTradeBotLOCK =  isStrictTrue(r_ReleaseLockOfGS) ? this.ReleaseTradeBotLOCK() : 'ReleaseLockOfGS() fail, no need to release TradeBot Lock' ;
+            errMessage  += isStrictString(r_ReleaseLockOfGS)     ? r_ReleaseLockOfGS     + '\n' : 'GS LOCK释放成功'       + '\n';
+            errMessage  += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK + '\n' : 'TradeBot LOCK释放成功' + '\n';
+            return errMessage.trim() ;
+        }
+
+    },
+
+    /**
      * 判断是否要发出卖单, 并实际下单
      * @returns 因为有try/catch, 不会抛出错误
      * @returns true: 执行完毕, 可能卖出, 也可能不卖出, 只是整个流程没有遇到问题
@@ -1272,7 +1120,15 @@ export const TradeBot = {
 
             const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(S[v]) ? S[v] : (S[v] || CV.NA));
 
-            this.toUpdateRangeList.push({ range: ingOrderLine, values: [new_ingOrderLineA] });
+            this.ifOrderWaiting             =  true ;
+            this.mainData.ifOrderWaiting    =  true ;
+            this.ingOrderData               =  S    ;
+
+            this.batchUpdateList.push(...makeRequestBodyArrayofBatchUpdate_clearUpdate({
+                sheetID: this.sheetsID[ingOrderLine.split('!')[0]],
+                range: ingOrderLine,
+                values: [new_ingOrderLineA]
+            }));
 
             AddSetMessage(this.alertMessageSet, "New sell order, waiting confirmed");
 
@@ -1356,7 +1212,15 @@ export const TradeBot = {
 
             const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(S[v]) ? S[v] : (S[v] || CV.NA));
 
-            this.toUpdateRangeList.push({ range: ingOrderLine, values: [new_ingOrderLineA] });
+            this.ifOrderWaiting             =  true ;
+            this.mainData.ifOrderWaiting    =  true ;
+            this.ingOrderData               =  S    ;
+
+            this.batchUpdateList.push(...makeRequestBodyArrayofBatchUpdate_clearUpdate({
+                sheetID: this.sheetsID[ingOrderLine.split('!')[0]],
+                range: ingOrderLine,
+                values: [new_ingOrderLineA]
+            }));
 
             AddSetMessage(this.alertMessageSet, "New buy order: waiting confirmed");
 
@@ -1374,6 +1238,152 @@ export const TradeBot = {
     },
 
     /**
+     * 判断waiting 订单状态
+     * @returns 因为有try/catch, 不会抛错
+     * @returns true: 检查成功, 只表示检查过程无误, 可能没有需要检查的订单, 也可能是有订单但没有成交, 也可能是有成交并成功写入
+     * @returns string: 具体的出错信息
+     */
+    async ToCheckWaitingOrder() {
+        try {
+            const tvData                =  this.tvData                  ;
+            const mainData              =  this.mainData                ;
+            const toGCPData             =  this.toGCPData               ;
+            const ingOrderData          =  this.ingOrderData            ;
+            const ingOrderTitleA        =  this.ingOrderTitleA          ;
+            const uncloseOrdersA2d      =  this.uncloseOrdersA2d        ;
+            const uncloseOrdersTitleA   =  this.uncloseOrdersTitleA     ;
+            const tradeHistoryTitleA    =  this.tradeHistoryTitleA      ;
+
+            if (!isStrictTrue(mainData.ifOrderWaiting)) { return true }
+
+            ingOrderData.isReal             = mainData.isReal                                                       ;
+            ingOrderData.TradingSymbol      = tvData.TradingSymbol                                                  ;
+            ingOrderData.spreadsheetID      = this.spreadsheetID                                                    ;
+            ingOrderData.lst_allGotProfit   = ToStrictNumber(mainData.allGotProfit  , 0                      )      ;
+            ingOrderData.lst_allTradeFee    = ToStrictNumber(mainData.allTradeFee   , 0                      )      ;
+            ingOrderData.inCoin             = ToStrictNumber(mainData.inCoin        , 0                      )      ;
+            ingOrderData.inFund             = ToStrictNumber(mainData.inFund        , 0                      )      ;
+            ingOrderData.BaseCoinPrice      = ToStrictNumber(tvData.BaseCoinPrice   , mainData.BaseCoinPrice )      ;
+
+            ingOrderData.ifWaitingThenCancel = true;
+            if (ingOrderData.ing_buysell === CV.order_BUY  && tvData.TradingSymbolPrice < ToStrictNumber(ingOrderData.ing_orderPrice, 0) * (1 + tvData.waveUpChg)) { ingOrderData.ifWaitingThenCancel = false }
+            if (ingOrderData.ing_buysell === CV.order_SELL && tvData.TradingSymbolPrice > ToStrictNumber(ingOrderData.ing_orderPrice, 0) * (1 + tvData.waveDnChg)) { ingOrderData.ifWaitingThenCancel = false }
+            if (ingOrderData.ing_reason.includes('from GS')) {ingOrderData.ifWaitingThenCancel = false}
+            if (this.thereCommandFromGS && this.commandData.toCancel) { // 查看是否有来自最高等级的GS交易命令
+                AddMessage(this.alertMessage, 'Get toCancel signal from GS');
+                ingOrderData.ifWaitingThenCancel = true;
+            } 
+
+            // 去交易所查看成交情况
+            await CheckOrderConfirm(ingOrderData);
+            if (!ingOrderData.respOK) {throw new Error('交易所返回数据有错')}
+
+            const w_toUpdateRangeList       = []            ;
+            const w_toClearRangeSet         = new Set()     ;
+            const w_toAppendTradeHistory    = {}            ;
+
+            // 对于部分成交的情况,
+            // 按照成交逻辑, 如果返回order_cancel的话, 表示订单没有任何成交
+            // 如果传入了撤单命令, 但是订单有成交的话, 返回的订单状态为order_confirm, 但是ing_qty参数做了修改
+            // 如果ifWaitingThenCancel = false,  只修改ing_orderStatus一个变量
+            // 如果ifWaitingThenCancel = true ,  当做confirm来判断
+            // 需要注意的是卖单, 如果部分成交的话, 不能简单地将uncloseOrders中的那个订单删掉, 需要修改那一行, 而不是删掉那一行
+
+            if (ingOrderData.ing_orderStatus === CV.order_confirm ) {
+
+                if (ingOrderData.ing_buysell === CV.order_BUY) {
+                    const newUncloseOrderLine = uncloseOrdersTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || CV.NA));
+                    uncloseOrdersA2d.push(newUncloseOrderLine);
+                }
+                if (ingOrderData.ing_buysell === CV.order_SELL) {
+                    const index_orderID         =  uncloseOrdersTitleA.indexOf('orderID')       ;
+                    const index_serial          =  uncloseOrdersTitleA.indexOf('serial')        ;
+                    const index_confirmPrice    =  uncloseOrdersTitleA.indexOf('confirmPrice')  ;
+                    const index_qty             =  uncloseOrdersTitleA.indexOf('qty')           ;
+                    const index_pXq             =  uncloseOrdersTitleA.indexOf('pXq')           ;
+
+                    const thisSellSerial = -1 * ingOrderData.ing_serial;
+                    const indexOfBoughtOrder = uncloseOrdersA2d.findIndex(orderA => Math.abs(orderA[index_serial] - thisSellSerial) < 0.1);
+                    if (indexOfBoughtOrder < 0) {throw new Error('无法在未成交买单中找到对应的现在的卖单')}
+                    if (isStrictNumber(ingOrderData.ing_isPartial) && ingOrderData.ing_isPartial < 1) {
+                        // 卖单部分成交的情况, 相对比较复杂
+                        const theBoughtOrder = uncloseOrdersA2d[indexOfBoughtOrder] ; // 直接拿到的就是对应的订单的地址, 对他的修改相当于直接修改原始订单
+                        theBoughtOrder[index_orderID]   =  'PB-' + GetTimeStringWithOffset(8, this.timestamp)               ;
+                        theBoughtOrder[index_qty]       =  (1-ingOrderData.ing_isPartial) * theBoughtOrder[index_qty]       ;
+                        theBoughtOrder[index_pXq]       =  theBoughtOrder[index_confirmPrice] * theBoughtOrder[index_qty]   ;
+                        // uncloseOrdersA2d[indexOfBoughtOrder] = theBoughtOrder ; // 这一行可以去掉, 因为引用的直接是地址
+                    } else {uncloseOrdersA2d.splice(indexOfBoughtOrder, 1)}
+                }
+
+                w_toClearRangeSet.add(toGCPData.ingOrderLine);
+                w_toClearRangeSet.add(toGCPData.uncloseOrdersRange);
+
+                const newTradeHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || CV.NA));
+                w_toAppendTradeHistory.toAppend     = true;
+                w_toAppendTradeHistory.range        = toGCPData.tradeHistoryRange;
+                w_toAppendTradeHistory.values       = [newTradeHistoryA];
+
+                if (uncloseOrdersA2d.length > 0) { w_toUpdateRangeList.push({ range: toGCPData.uncloseOrdersRange, values: uncloseOrdersA2d }) }
+
+                const thisMessage = isStrictNumber(ingOrderData.ing_isPartial) ?
+                    (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + `Order partially ${Math.round(1000*ingOrderData.ing_isPartial)/10}% confirmed, but order canceled` :
+                    (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + `Order fully confirmed`;
+
+                AddSetMessage(this.alertMessageSet, thisMessage) ;
+            }
+
+            if (ingOrderData.ing_orderStatus === CV.order_partial && ingOrderData.ing_partial - ingOrderData.lst_partial> 0.1 ) {
+                const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(ingOrderData[v]) ? ingOrderData[v] : ingOrderData[v] || CV.NA);
+                w_toUpdateRangeList.push({ range: toGCPData.ingOrderLine, values: [new_ingOrderLineA] });
+                AddSetMessage(this.alertMessageSet, (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + "Order more partial confirmed");
+            }
+
+            if (ingOrderData.ing_orderStatus === CV.order_cancel) {
+                w_toClearRangeSet.add(toGCPData.ingOrderLine);
+                AddSetMessage(this.alertMessageSet, (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + "Order canceled");
+            }
+
+
+            if (w_toClearRangeSet.size > 0) {
+                const toClearRangeList = Array.from(w_toClearRangeSet).map(v => makeRequestBodyArrayofBatchUpdate_clear({
+                    sheetID: this.sheetsID[v.split('!')[0]],
+                    range: v
+                }));
+                this.batchUpdateList.push(...toClearRangeList);
+            }
+
+            if (w_toUpdateRangeList.length > 0) {
+                const toClearUpdateRangeList = w_toUpdateRangeList.map(v => makeRequestBodyArrayofBatchUpdate_clearUpdate({
+                    sheetID: this.sheetsID[v.range.split('!')[0]],
+                    range: v.range,
+                    values: values
+                })).flat();
+                this.batchUpdateList.push(...toClearUpdateRangeList);
+            }
+            
+            if (isStrictTrue(w_toAppendTradeHistory.toAppend)) {
+                const w_toAppendTradeLine = makeRequestBodyArrayofBatchUpdate_append({
+                    sheetID: this.sheetsID[w_toAppendTradeHistory.range.split('!')[0]],
+                    values: w_toAppendTradeHistory.values
+                });
+                this.batchUpdateList.push(w_toAppendTradeLine);
+            }
+            
+            return true;
+        } catch(e) {
+            // 这里的错误是非核心错误, 可以在释放两个锁后, 抛出错误退出
+            let errMessage = e.message + '\n' ;
+
+            const r_ReleaseLockOfGS     =  await this.ReleaseLockOfGS() ; // 尝试给GS解锁
+            const r_ReleaseTradeBotLOCK =  isStrictTrue(r_ReleaseLockOfGS) ? this.ReleaseTradeBotLOCK() : 'ReleaseLockOfGS() fail, no need to release TradeBot Lock' ;
+            errMessage  += isStrictString(r_ReleaseLockOfGS)     ? r_ReleaseLockOfGS     + '\n' : 'GS LOCK释放成功'       + '\n';
+            errMessage  += isStrictString(r_ReleaseTradeBotLOCK) ? r_ReleaseTradeBotLOCK + '\n' : 'TradeBot LOCK释放成功' + '\n';
+            return errMessage.trim() ;
+
+        }
+    },
+
+    /**
      * 将this大对象中的数据写入GS
      * @returns 因为有try/catch, 不会抛出错误
      * @returns true表示写入成功
@@ -1381,7 +1391,6 @@ export const TradeBot = {
      */
     async WriteToGS() {
         try {
-            await BatchClearGS(this.spreadsheetID, Array.from(this.toClearRangeSet));
             if (this.alertMessageSet.size > 0) { this.alertMessage = StrFromSetMessage(this.alertMessageSet) }
 
             this.gcpWriteTime = Date.now();
@@ -1398,12 +1407,20 @@ export const TradeBot = {
                                         [this.hghestCoin            ]   ,
                                         [this.lowestCoin            ]   ]   ;
 
-                this.toUpdateRangeList.push({ range: this.toGCPData.HghLowRange, values: newHghLowV });
+                this.batchUpdateList.push(...makeRequestBodyArrayofBatchUpdate_clearUpdate({
+                    sheetID: this.sheetsID[this.toGCPData.HghLowRange.split('!')[0]] ,
+                    range: this.toGCPData.HghLowRange,
+                    values: newHghLowV
+                })) ;
             }
 
-            this.toUpdateRangeList.push({ range: this.toGCPData.toWriteMainRange, values: ObjToA2dNumBoolStr(this) });
+            this.batchUpdateList.push(...makeRequestBodyArrayofBatchUpdate_clearUpdate({
+                sheetID: this.sheetsID[this.toGCPData.toWriteMainRange.split('!')[0]],
+                range: this.toGCPData.toWriteMainRange,
+                values: ObjToA2dNumBoolStr(this)
+            }));
 
-            await BatchClearUpdateGS(this.spreadsheetID, this.toUpdateRangeList);
+            await BatchUpdateGS(this.spreadsheetID, this.batchUpdateList) ;
 
             return true;
         } catch (e) {

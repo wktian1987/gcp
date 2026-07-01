@@ -664,20 +664,20 @@ export async function BatchClearGS(spreadsheetID, toClearRangeList) {
 /**
  * 金融级原子化：批量清空并更新区域内容（一枪流锁死）
  * @param {string} spreadsheetID 大表ID
- * @param {Array<{sheetID: number, range: string, values: Array<Array<any>>}>} toUpdateRangeList 待更新的矩阵队列
+ * @param {Array<{sheetID: number, range: string, values: Array<Array<any>>}>} toClearUpdateRangeList 待更新的矩阵队列
  */
-export async function BatchClearUpdateGS(spreadsheetID, toUpdateRangeList) {
+export async function BatchClearUpdateGS(spreadsheetID, toClearUpdateRangeList) {
     // 1. 入站硬性风控风控
-    if (!Array.isArray(toUpdateRangeList)) { 
-        throw new Error('BatchClearUpdateGS @param toUpdateRangeList 必须为数组类型'); 
+    if (!Array.isArray(toClearUpdateRangeList)) { 
+        throw new Error('BatchClearUpdateGS @param toClearUpdateRangeList aa须为数组类型'); 
     }
-    if (toUpdateRangeList.length === 0) return;
+    if (toClearUpdateRangeList.length === 0) return;
 
     // 2. 在内存中将任务解构并网
     const requests = [];
 
     // 🎯 极致防空洞：使用现代 for...of 纯净迭代，绝不污染原型链
-    for (const element of toUpdateRangeList) {
+    for (const element of toClearUpdateRangeList) {
         requests.push(...(makeRequestBodyArrayofBatchUpdate_clearUpdate(element)))
     }
 
