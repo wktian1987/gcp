@@ -1066,9 +1066,7 @@ export async function BatchUpdateGS(spreadsheetID, requests) {
         }
     });
 
-    console.log(`🟢 [中台总闸] 成功执行全原子事务！本次打包吞吐量: [${requests.length}] 发动作。`);
-
-    // 🎯 返回谷歌服务器的真实执行回执（内部包含每一发子弹的结构变动结果，供高阶对账使用）
+    // 返回谷歌服务器的真实执行回执（内部包含每一发子弹的结构变动结果，供高阶对账使用）
     return response.data; // 实际上正常情况下不会用到这个返回值
 
 }
