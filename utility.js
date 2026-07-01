@@ -788,6 +788,14 @@ export function makeRequestBodyArrayofBatchUpdate_clear(clearObj) {
     a1Notation = a1Notation.replace(/\$/g, '');
 
     // 终极可选阀门门禁正则，完美吞咽所有坐标变体
+    // ^ 和 $/i：头尾死锁，且不区分大小写。意味着整行文本必须纯净，前后多一个空格都会被拒绝。
+    // ([A-Z]+)（第 1 捕获组：起始列）：匹配至少一个英文字母。
+    // ([0-9]+)（第 2 捕获组：起始行）：匹配至少一个数字。
+    // (?:: ... )?（后半截大轨道：整体可选）：
+    // ?: 告诉引擎：这个外层圆括号只用来把冒号后面的东西“打包打包”，不占用捕获组的舱位。
+    // 末尾的 ? 是核心外挂，代表后半截可有可无。这就是为什么它能兼容没有冒号的单单元格（如 A1）。
+    // ([A-Z]*)（第 3 捕获组：结束列）：冒号右边的字母，* 代表允许出现 0 次或多次（可有可无）。
+    // ([0-9]*)（第 4 捕获组：结束行）：冒号右边的数字，* 代表允许出现 0 次或多次（可有可无）。
     const match = a1Notation.match(/^([A-Z]+)([0-9]+)(?::([A-Z]*)([0-9]*))?$/i);
 
     if (!match) {
@@ -808,8 +816,9 @@ export function makeRequestBodyArrayofBatchUpdate_clear(clearObj) {
     // 基础变量提取分配
     const startColStr = match[1];
     const startRowStr = match[2];
-    const endColStr   = match[3] !== undefined ? match[3] : null;
-    const endRowStr   = match[4] !== undefined ? match[4] : null;
+    // 刚性安全网：先用 match.length 卡死物理边界，防止数组缩水时强行读取溢出
+    const endColStr = (match.length > 3 && match[3] !== undefined) ? match[3] : null;
+    const endRowStr = (match.length > 4 && match[4] !== undefined) ? match[4] : null;
 
     const startCol = colToNumber(startColStr);
     const startRow = parseInt(startRowStr, 10);
@@ -887,10 +896,12 @@ export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
         return num;
     };
 
+    // 基础变量提取分配
     const startColStr = match[1];
     const startRowStr = match[2];
-    const endColStr   = match[3] !== undefined ? match[3] : null;
-    const endRowStr   = match[4] !== undefined ? match[4] : null;
+    // 刚性安全网：先用 match.length 卡死物理边界，防止数组缩水时强行读取溢出
+    const endColStr = (match.length > 3 && match[3] !== undefined) ? match[3] : null;
+    const endRowStr = (match.length > 4 && match[4] !== undefined) ? match[4] : null;
 
     const startCol = colToNumber(startColStr);
     const startRow = parseInt(startRowStr, 10);

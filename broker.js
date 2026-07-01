@@ -27,22 +27,11 @@ import { CV } from "./handleTV.js";
  * 向交易所发送交易命令 
  * @param {object} S 
  * @returns 会抛出错误, 用是否跑错来判断是否执行成功
- * @returns 直接在传入的对象上进行数据修改, 不会另外返回数据
  */
-export async function CheckAllPositionWithBroker(S) {
-    if (!isStrictFalse(S.isReal) && S.TradingSymbol.startsWith("GATE:")) { await GATE_SendOrderToBroker(S); return; }
+export async function CheckAllPosition(S) {
+    if (!isStrictFalse(S.isReal) && S.TradingSymbol.startsWith("GATE:")) {await GATE_CheckAllPosition(S); return ;}
 
-    const simRange_00 = 'simBroker!A30:B'   ;
-    const simRange_01 = 'simBroker!A1:B29'  ;
-
-    await UpdateGS(S.spreadsheetID, simRange_00, ObjToA2dNumBoolStr(S)) ;
-    await Sleep(100) ;
-    
-    const res = A2dToCleanObj(await GetGS(S.spreadsheetID, simRange_01)); //交易状态返回
-
-    S.ing_orderID		    = res.orderID        ;
-    S.ing_orderStatus		= res.orderStatus    ;
-    S.respOK                = true               ;
+    S.brokerPosition = S.r;
 }
 
 /**
@@ -314,6 +303,33 @@ async function GATE_Fetch(fetchBody) {
 
 // 当有了上面那个无缝签名的 gateProtectedFetch 大闸后，
 // 你在外面的发单、对账、查统一账户资产的函数，瞬间变得像喝水一样简单利落：
+
+
+async function GATE_CheckAllPosition(S) {
+    const brokerSymbol = tvSymbol_TO_GATE_Symbol(S.TradingSymbol);
+
+    // Get quanto_multiplier
+    const path_contract     = '/futures/' + brokerSymbol.settle + '/contracts/' + brokerSymbol.contract ;
+    const fetchBody_contract = new GateFetchBody(S.isReal, 'GET', path_contract, null, 200, {name: brokerSymbol.contract} ) ;
+    await GATE_Fetch(fetchBody_contract) ;
+    if (!fetchBody_contract.isOK) {throw new Error(fetchBody_contract.errMessage)}
+    const data_contract = fetchBody_contract.resData ;
+    const quanto_multiplier   = ToStrictNumber(data_contract.quanto_multiplier) ;
+
+    // 去查看当前的仓位信息
+    // 获取单个仓位信息:    GET  /futures/{settle}/positions/{contract}
+    // » size	        string	头寸大小
+    const path_position  =  '/futures/' + brokerSymbol.settle + '/positions/' + brokerSymbol.contract ;
+    const fetchBody_position = new GateFetchBody(S.isReal, 'GET', path_position, null, 200, {contract: brokerSymbol.contract} ) ;
+    await GATE_Fetch(fetchBody_position) ;
+    if (!fetchBody_position.isOK) {throw new Error(fetchBody_position.errMessage)}
+    const data_position = fetchBody_position.resData ;
+    const size = data_position.size ;
+
+    S.brokerPosition = quanto_multiplier * size ;
+}
+
+
 
 /**
  * 往交易所发送订单; 

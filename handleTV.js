@@ -41,7 +41,7 @@ import {
     BatchUpdateGS
 } from "./utility.js";
 
-import { SendOrderToBroker, CheckOrderConfirm, CheckFundFee } from "./broker.js";
+import { CheckAllPosition, SendOrderToBroker, CheckOrderConfirm, CheckFundFee } from "./broker.js";
 
 
 export const CV = {
@@ -475,8 +475,9 @@ export const TradeBot = {
         }
     } ,
 
-    async CheckAllPosition_withBroker() {
-        return true;
+    async CheckAllPosition_withBroker(tollerance) {
+        const S = {} ;
+        return CheckAllPosition(S) ;
     } ,
 
     /**
@@ -1485,6 +1486,10 @@ export async function HandleTradeBot(tvData) {
     const r_ToCheckInitiate = await bot.ToCheckInitiate();
     if (!r_ToCheckInitiate || isStrictString(r_ToCheckInitiate)) { throw new Error('ToCheckInitiate() 失败: \n' + r_ToCheckInitiate) }
     // if (isStrictTrue(r_ToCheckInitiate)) { console.log(bot.cLogHead + 'ToCheckInitiate() success') }
+
+    const r_CheckAllPosition_withBroker = await bot.CheckAllPosition_withBroker();
+    if (!r_CheckAllPosition_withBroker || isStrictString(r_CheckAllPosition_withBroker)) { throw new Error('CheckAllPosition_withBroker() 失败: \n' + r_CheckAllPosition_withBroker) }
+    // if (isStrictTrue(r_CheckAllPosition_withBroker)) { console.log(bot.cLogHead + 'CheckAllPosition_withBroker() success') }
 
     // 将 mainData 和 tvData 写入到this大对象中
     // 必须先写入mainData, 再写入tvData
