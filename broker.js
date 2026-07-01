@@ -29,6 +29,28 @@ import { CV } from "./handleTV.js";
  * @returns 会抛出错误, 用是否跑错来判断是否执行成功
  * @returns 直接在传入的对象上进行数据修改, 不会另外返回数据
  */
+export async function CheckAllPositionWithBroker(S) {
+    if (!isStrictFalse(S.isReal) && S.TradingSymbol.startsWith("GATE:")) { await GATE_SendOrderToBroker(S); return; }
+
+    const simRange_00 = 'simBroker!A30:B'   ;
+    const simRange_01 = 'simBroker!A1:B29'  ;
+
+    await UpdateGS(S.spreadsheetID, simRange_00, ObjToA2dNumBoolStr(S)) ;
+    await Sleep(100) ;
+    
+    const res = A2dToCleanObj(await GetGS(S.spreadsheetID, simRange_01)); //交易状态返回
+
+    S.ing_orderID		    = res.orderID        ;
+    S.ing_orderStatus		= res.orderStatus    ;
+    S.respOK                = true               ;
+}
+
+/**
+ * 向交易所发送交易命令 
+ * @param {object} S 
+ * @returns 会抛出错误, 用是否跑错来判断是否执行成功
+ * @returns 直接在传入的对象上进行数据修改, 不会另外返回数据
+ */
 export async function SendOrderToBroker(S) {
     if (!isStrictFalse(S.isReal) && S.TradingSymbol.startsWith("GATE:")) { await GATE_SendOrderToBroker(S); return; }
 

@@ -475,6 +475,10 @@ export const TradeBot = {
         }
     } ,
 
+    async CheckAllPosition_withBroker() {
+        return true;
+    } ,
+
     /**
      * 判断可写入的新数据key
      * @param {String} key 
@@ -1356,7 +1360,7 @@ export const TradeBot = {
                 const toClearUpdateRangeList = w_toUpdateRangeList.map(v => makeRequestBodyArrayofBatchUpdate_clearUpdate({
                     sheetID: this.sheetsID[v.range.split('!')[0]],
                     range: v.range,
-                    values: values
+                    values: v.values
                 })).flat();
                 this.batchUpdateList.push(...toClearUpdateRangeList);
             }
