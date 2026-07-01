@@ -930,9 +930,19 @@ export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
     return requestsA;
 }
 
-
+/**
+ * 拼装器：生成 batchUpdate 结构轨道所需的指定表格尾部追加数据单个原子请求
+ * * 业务特性：针对固定追加到工作表底部的场景设计，自动锁死云端物理尾部，不会覆盖已有数据。
+ * * 骨架转换：内部通过调用 ToGoogleRowData 细胞工人，将扁平的二维数组转化为谷歌官方标准行数据。
+ * * @param {Object} appendObj - 触发尾部追加的任务配置对象
+ * @param {number} appendObj.sheetID - 目标标签页的终身制纯数字物理 ID (如 0)
+ * @param {Array<Array<string|number|boolean>>} appendObj.values - 准备追加的纯净二维数组（数据矩阵）
+ * @returns {Object} 官方规范的 appendCells 单个原子请求对象（不带外层数组）
+ * @throws {Error} 当传入的 sheetID 不是纯数字类型时抛出错误并强行熔断
+ */
 export function makeRequestBodyArrayofBatchUpdate_append(appendObj) {
     const {sheetID, values} = appendObj ;
+    
     // 纯数字 ID 严格验证：防止误传人类习惯的字符串表名
     if (typeof sheetID !== 'number') {
         throw new Error('append 构造器硬性要求 sheetID 必须为纯数字类型（如 0 或 1482942）');
@@ -941,6 +951,7 @@ export function makeRequestBodyArrayofBatchUpdate_append(appendObj) {
     // 复水工人无缝并网，转换出谷歌需要的细胞基因骨架
     const googleRowData = ToGoogleRowData(values);
     
+    // 此处已确认直接返回单个请求对象，与注释完全合流对账
     return {
         appendCells: {
             sheetId: sheetID,
@@ -950,7 +961,24 @@ export function makeRequestBodyArrayofBatchUpdate_append(appendObj) {
     };
 }
 
-
+/**
+ * 拼装器：生成 batchUpdate 结构轨道所需的指定连续行批量物理切除单个原子请求
+ * * 业务特性：用于删除表格中不再需要的流水行，后面的行会自动上移填补空缺。
+ * * 坐标翻译：输入参数采用人类习惯的真实可见行号（1-based）。函数内部会自动将其转换为谷歌官方底层的 0-based 索引，并严格遵循其 endIndex 开区间规则。
+ * * @example
+ * // 场景：切除 test 标签页人类视觉可见的第 10 行和第 11 行（共 2 行）
+ * const bullet = makeRequestBodyArrayofBatchUpdate_deleteLines({
+ * sheetID: 0,
+ * deleteLineStart: 10,
+ * deleteLineQty: 2
+ * });
+ * * @param {Object} deleteObj - 触发物理删行的任务配置对象
+ * @param {number} deleteObj.sheetID - 目标标签页的终身制纯数字物理 ID (如 0)
+ * @param {number} deleteObj.deleteLineStart - 人类习惯的起始物理行号 (从 1 开始，如第一行传 1)
+ * @param {number} deleteObj.deleteLineQty - 连续向下切除的物理行数数量 (必须为大于或等于 1 的整数)
+ * @returns {Object} 官方规范的 deleteDimension 单个原子请求对象（不带外层数组）
+ * @throws {Error} 当传入字段缺失、类型不匹配或数值越界（小于1）时抛出错误并强行熔断
+ */
 export function makeRequestBodyArrayofBatchUpdate_deleteLines(deleteObj) {
     const {sheetID, deleteLineStart, deleteLineQty} = deleteObj ;
     // 进站刚性风控：严格卡死类型
@@ -972,6 +1000,7 @@ export function makeRequestBodyArrayofBatchUpdate_deleteLines(deleteObj) {
     // 举例：从底层索引 9 开始删除 5 行，endIndex = 9 + 5 = 14。它会切掉索引 9,10,11,12,13，完美契合！
     const googleEndIndex = googleStartIndex + deleteLineQty;
 
+    // 此处确认返回的是单个原子请求对象，与当前底座工具箱的单对象返回流完全合流对账
     return {
         deleteDimension: {
             range: {
