@@ -766,33 +766,29 @@ export function ToGoogleRowData(rawDataA2d) {
 }
 
 /**
- * 拼装器：生成 batchUpdate 结构轨道所需的【指定区域/整行纯物理大清洗】单个原子请求
- * * [核心优势] 纯粹的结构擦除器，不含任何细胞写入套娃。用于清空过期流水、重置静态展示大盘。
- * * [物理特性] 严格遵循 Google Sheets API 官方 GridRange 骨架（0-based，且 endIndex 为开区间）。
- * * [极限风控] 支持人类习惯的所有缩写变体（如 "A20:25"）。若缺省结束列字母，底层将触发“边界留空因果律”，
- * * 自动将清洗长矛强行横向延展轰击至表格的最右侧物理边界（最后一列），绝不留下一丝历史数据残渣污染。
- * * @example
- * // 场景 A：精准擦除 test4 标签页的 A20 到 Z25 区域
- * const bulletsA = makeRequestBodyArrayofBatchUpdate_clear({ sheetID: 0, range: "A20:Z25" });
- * * // 场景 B：无限延展擦除第 20 行到 25 行的所有列（支持缩写）
- * const bulletsB = makeRequestBodyArrayofBatchUpdate_clear({ sheetID: 0, range: "test!A20:25" });
- * * @param {Object} clearObj - 触发清洗的任务配置大包
+ * 拼装器：生成 batchUpdate 结构轨道所需的指定区域物理大清洗单个原子请求
+ * * 业务特性：支持全地形坐标。无论传入单格子（A1）、整行（A25:25）、无限向下（A25:B）还是标准区域（A25:B26），均能精准擦除。
+ * * 坐标翻译：输入参数支持带 $ 的绝对引用。内部自动完成表名防火墙隔离、$ 符号物理蒸发，以及 0-based 索引转换。
+ * * @param {Object} clearObj - 触发物理大清洗的任务配置对象
  * @param {number} clearObj.sheetID - 目标标签页的终身制纯数字物理 ID (如 0)
- * @param {string} clearObj.range - 目标 A1 区域坐标字符串 (如 "A20:Z25"、"A20:25"、"Sheet1!B5:D10")
- * @returns {Array<Object>} 包含一发官方正宗 `updateCells` (仅带 fields 无 rows) 擦除动作的请求数组
- * @throws {Error} 当传入字段缺失、类型畸形或 A1 坐标正则解析失败时抛出错误并强行熔断
+ * @param {string} clearObj.range - 目标 A1 区域坐标字符串
+ * @returns {Object} 官方规范的 updateCells 单个原子请求对象（不带外层数组）
+ * @throws {Error} 当传入字段缺失、类型错误或 A1 坐标正则解析失败时抛出错误并强行熔断
  */
 export function makeRequestBodyArrayofBatchUpdate_clear(clearObj) {
-    const { sheetID, range} = clearObj;
+    const { sheetID, range } = clearObj;
 
-    // 🔒 入站刚性风控
-    if (typeof sheetID !== 'number' || !range ) {
-        throw new Error('clear 配置内容残缺或类型错误');
+    // 入站刚性风控
+    if (typeof sheetID !== 'number' || !range) {
+        throw new Error('clear 构造器配置内容残缺或类型错误');
     }
 
-    // 📡 坐标雷达
-    const a1Notation = range.includes('!') ? range.split('!')[1] : range;
-    const match = a1Notation.match(/^([A-Z]+)([0-9]+):([A-Z]*)([0-9]+)$/i);
+    // 📡 终极全地形坐标雷达（先隔离、后清洗）
+    let a1Notation = range.includes('!') ? range.split('!')[1] : range;
+    a1Notation = a1Notation.replace(/\$/g, '');
+
+    // 终极可选阀门门禁正则，完美吞咽所有坐标变体
+    const match = a1Notation.match(/^([A-Z]+)([0-9]+)(?::([A-Z]*)([0-9]*))?$/i);
 
     if (!match) {
         throw new Error(`A1坐标格式畸形，无法解析。收到: [${range}]`);
@@ -809,63 +805,78 @@ export function makeRequestBodyArrayofBatchUpdate_clear(clearObj) {
         return num;
     };
 
-    const startCol = colToNumber(match[1]);   // 如 "A" ➔ 1
-    const startRow = parseInt(match[2], 10);  // 如 "20" ➔ 20
-    const endColStr = match[3];               // 如 "25" 变体下匹配出空字符串 ""
-    const endRow = parseInt(match[4], 10);    // 如 "25" ➔ 25
+    // 基础变量提取分配
+    const startColStr = match[1];
+    const startRowStr = match[2];
+    const endColStr   = match[3] !== undefined ? match[3] : null;
+    const endRowStr   = match[4] !== undefined ? match[4] : null;
+
+    const startCol = colToNumber(startColStr);
+    const startRow = parseInt(startRowStr, 10);
 
     const googleStartRow = startRow - 1; 
     const googleStartCol = startCol - 1; 
 
-    // 组装物理大清洗 GridRange (严格遵循谷歌官方细胞轨道字段名)
+    // 组装 GridRange 核心骨架（首发 0-based 物理校准锁死）
     const clearGridRange = {
         sheetId: sheetID,
-        startRowIndex: googleStartRow,       // 🎯 物理校准：必须叫 startRowIndex 
-        endRowIndex: endRow,                 // 🎯 物理校准：必须叫 endRowIndex
-        startColumnIndex: googleStartCol     // 🎯 物理校准：必须叫 startColumnIndex
+        startRowIndex: googleStartRow,
+        startColumnIndex: googleStartCol
     };
 
-    // 边界留空因果律：若无结束列，则不给 endColumnIndex，谷歌会自动轰空到表格最右侧边缘
-    if (endColStr) {
-        clearGridRange.endColumnIndex = colToNumber(endColStr);
+    // 终极边界留空因果律矩阵
+    if (range.includes(':')) {
+        // 场景 A：带有冒号的多元变体族群 (A25:B26, A25:25, A25:B)
+        if (endColStr) {
+            clearGridRange.endColumnIndex = colToNumber(endColStr);
+        }
+        if (endRowStr) {
+            clearGridRange.endRowIndex = parseInt(endRowStr, 10);
+        }
+    } else {
+        // 场景 B：绝对无冒号的纯单细胞格子变体 (如 "A1", "B25")
+        clearGridRange.endRowIndex = googleStartRow + 1;
+        clearGridRange.endColumnIndex = googleStartCol + 1;
     }
 
-    // 子动作 一枪大清洗，目标范围内历史废弃残渣瞬间蒸发
+    // 直接返回单个 Request 对象，切断多维嵌套风险
     return {
         updateCells: {
             range: clearGridRange,
-            fields: "userEnteredValue" 
+            fields: "userEnteredValue"
         }
     };
 }
 
 /**
- * 全兼容 A1 范围的结构轨道【强制清空 + 覆盖更新】
- * * [核心特性] 完美兼容 "A20:25"、"A29:Z29" 等所有物理变体。
- * * [风控设计] 若人类未写结束列 (如 A20:25)，底层利用“边界留空因果律”自动横扫清洗至表格最右侧边缘，物理超渡历史残渣污染！
- * * @param {Object} clearUpdateObj 
- * * @param {number} clearUpdateObj.sheetId - 目标标签页的纯数字 ID
- * * @param {string} clearUpdateObj.range - 目标 A1 区域坐标 (如 "A20:25" 或 "Sheet1!A29:Z29")
- * * @param {Array<Array<any>>} clearUpdateObj.values - 准备平铺覆盖写入的纯净二维数组
- * * @returns {Array<Object>} 包含 2 发适配结构轨道子弹（物理清洗范围 + 细胞化写入）的动作队列
+ * 拼装器：生成 batchUpdate 结构轨道所需的指定区域大清洗并定点平铺覆盖写入原子请求数组
+ * * 业务特性：支持全地形坐标。自动处理 0-based 索引与开区间对账，先后两发子弹顺序串行，微秒级原子交割。
+ * * @param {Object} clearUpdateObj - 触发清洗并定点覆盖写入的任务配置对象
+ * @param {number} clearUpdateObj.sheetID - 目标标签页的纯数字物理 ID
+ * @param {string} clearUpdateObj.range - 目标 A1 区域坐标字符串
+ * @param {Array<Array<string|number|boolean>>} clearUpdateObj.values - 准备平铺覆盖写入的纯净二维数组
+ * @returns {Array<Object>} 包含一发大清洗和一发覆盖写入的顺序串行请求数组（外部需配合 .flat() 或展开运算符）
+ * @throws {Error} 当传入字段缺失、类型错误或 A1 坐标正则解析失败时抛出错误
  */
 export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
     const { sheetID, range, values } = clearUpdateObj;
 
-    // 🔒 入站刚性风控
-    if (typeof sheetID !== 'number' || !range || !Array.isArray(values) || values.length === 0 || !Array.isArray(values[0])) {
-        throw new Error('clearUpdate 配置内容残缺或类型错误');
+    // 入站刚性风控
+    if (typeof sheetID !== 'number' || !range || !values) {
+        throw new Error('clearUpdate 构造器配置内容残缺或类型错误');
     }
 
-    // 📡 坐标雷达
-    const a1Notation = range.includes('!') ? range.split('!')[1] : range;
-    const match = a1Notation.match(/^([A-Z]+)([0-9]+):([A-Z]*)([0-9]+)$/i);
+    // 📡 终极全地形坐标雷达（先隔离、后清洗）
+    let a1Notation = range.includes('!') ? range.split('!')[1] : range;
+    a1Notation = a1Notation.replace(/\$/g, '');
+
+    const match = a1Notation.match(/^([A-Z]+)([0-9]+)(?::([A-Z]*)([0-9]*))?$/i);
 
     if (!match) {
         throw new Error(`A1坐标格式畸形，无法解析。收到: [${range}]`);
     }
 
-    // 🔢 26进制字母转数字进制翻译官
+    // 26进制字母转数字进制翻译官
     const colToNumber = (colStr) => {
         if (!colStr) return null;
         let num = 0;
@@ -876,58 +887,66 @@ export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
         return num;
     };
 
-    const startCol = colToNumber(match[1]);   // 如 "A" ➔ 1
-    const startRow = parseInt(match[2], 10);  // 如 "20" ➔ 20
-    const endColStr = match[3];               // 如 "25" 变体下匹配出空字符串 ""
-    const endRow = parseInt(match[4], 10);    // 如 "25" ➔ 25
+    const startColStr = match[1];
+    const startRowStr = match[2];
+    const endColStr   = match[3] !== undefined ? match[3] : null;
+    const endRowStr   = match[4] !== undefined ? match[4] : null;
+
+    const startCol = colToNumber(startColStr);
+    const startRow = parseInt(startRowStr, 10);
 
     const googleStartRow = startRow - 1; 
     const googleStartCol = startCol - 1; 
-    const rowQty = values.length;
-    const dataColQty = values[0].length; 
 
-    const requestsA = [];
+    // 复水工人无缝并网，将二维数组转换出谷歌需要的细胞基因骨架
+    const googleRowData = ToGoogleRowData(values);
 
-    // 📐 组装物理大清洗 GridRange (严格遵循谷歌官方细胞轨道字段名)
+    const requests = [];
+
+    // 1. 组装第一发子弹：物理大清洗 GridRange
     const clearGridRange = {
         sheetId: sheetID,
-        startRowIndex: googleStartRow,       // 🎯 物理校准：必须叫 startRowIndex 
-        endRowIndex: endRow,                 // 🎯 物理校准：必须叫 endRowIndex
-        startColumnIndex: googleStartCol     // 🎯 物理校准：必须叫 startColumnIndex
+        startRowIndex: googleStartRow,
+        startColumnIndex: googleStartCol
     };
 
-    // 💡 边界留空因果律：若无结束列，则不给 endColumnIndex，谷歌会自动轰空到表格最右侧边缘
-    if (endColStr) {
-        clearGridRange.endColumnIndex = colToNumber(endColStr);
+    if (range.includes(':')) {
+        if (endColStr) {
+            clearGridRange.endColumnIndex = colToNumber(endColStr);
+        }
+        if (endRowStr) {
+            clearGridRange.endRowIndex = parseInt(endRowStr, 10);
+        }
+    } else {
+        clearGridRange.endRowIndex = googleStartRow + 1;
+        clearGridRange.endColumnIndex = googleStartCol + 1;
     }
 
-    // 🟢 子动作 A：一枪大清洗，目标范围内历史废弃残渣瞬间蒸发
-    requestsA.push({
+    requests.push({
         updateCells: {
             range: clearGridRange,
-            fields: "userEnteredValue" 
-        }
-    });
-
-    // 📐 组装新数据实际入驻 GridRange (卡死真实长宽)
-    const writeGridRange = {
-        sheetId: sheetID,
-        startRowIndex: googleStartRow,       // 🎯 物理校准：必须叫 startRowIndex
-        endRowIndex: googleStartRow + rowQty,// 🎯 物理校准：必须叫 endRowIndex
-        startColumnIndex: googleStartCol,    // 🎯 物理校准：必须叫 startColumnIndex
-        endColumnIndex: googleStartCol + dataColQty // 🎯 物理校准：必须叫 endColumnIndex
-    };
-
-    // 🟢 子动作 B：无缝紧跟，定点写入脱水好的新细胞矩阵
-    requestsA.push({
-        updateCells: {
-            range: writeGridRange,
-            rows: ToGoogleRowData(values), // 复用 ToGoogleRowData 细胞工人
             fields: "userEnteredValue"
         }
     });
 
-    return requestsA;
+    // 2. 组装第二发子弹：精准定点平铺写入新细胞矩阵
+    const updateGridRange = {
+        sheetId: sheetID,
+        startRowIndex: googleStartRow,
+        endRowIndex: googleStartRow + values.length,
+        startColumnIndex: googleStartCol,
+        endColumnIndex: googleStartCol + values[0].length
+    };
+
+    requests.push({
+        updateCells: {
+            range: updateGridRange,
+            rows: googleRowData,
+            fields: "userEnteredValue"
+        }
+    });
+
+    return requests;
 }
 
 /**
