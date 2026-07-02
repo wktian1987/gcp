@@ -954,7 +954,7 @@ export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
         updateCells: {
             range: updateGridRange,
             rows: googleRowData,
-            fields: "userEnteredValue"
+            fields: "userEnteredValue"  // 这样写入的数字前面会有个符号'吗
         }
     });
 

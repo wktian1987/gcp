@@ -254,7 +254,7 @@ async function GATE_Fetch(fetchBody) {
         // 1. 在 `.json()` 前，先拿原汁原味的纯文本数据，此时精度一粒沙都没丢
         const rawText = await res.text();
         // 2. 极客正则拦截：把所有超过 16 位的长数字，在文本状态下原地套上双引号，伪装成普通字符串
-        const safeText = rawText.replace(/:\s*(\d{16,})/g, ': "$1"');
+        const safeText = rawText.replace(/:\s*(\d{16,})/g, ': "T$1"'); //里面的这个$符号是干嘛的
         // 3. 此时再解析，大数字安全降维变成 String 类型，完美复活！
         const resData = JSON.parse(safeText);
         // 至此, 虽然交易所发来的ID是数字形式, 但是我硬硬将它变成了不失去精度的字符串形式
@@ -273,7 +273,7 @@ async function GATE_Fetch(fetchBody) {
 
 
         fetchBody.status = res.status ;
-        if (isObjectOfKeyValue(resData)) {fetchBody.resData = resData}
+        if (isObjectOfKeyValue(resData)) {fetchBody.resData = CleanObjToNumBoolStr(resData)}
 
         if (res.status === 400) { throw new Error(`GATE_Fetch Error: 400 无效请求`) }
         if (res.status === 401) { throw new Error(`GATE_Fetch Error: 401 认证失败`) }

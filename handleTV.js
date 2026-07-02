@@ -1074,7 +1074,6 @@ export const TradeBot = {
             let toSellOrderA;
             const S = {};
 
-            const idx_orderID       = uncloseOrdersTitleA.indexOf('orderID')        ;
             const idx_serial        = uncloseOrdersTitleA.indexOf('serial')         ;
             const idx_confirmPrice  = uncloseOrdersTitleA.indexOf('confirmPrice')   ;
             const idx_qty           = uncloseOrdersTitleA.indexOf('qty')            ;
