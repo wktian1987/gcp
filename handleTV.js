@@ -94,32 +94,35 @@ export const TradeBot = {
         this.alertMessageSet    =  new Set()                    ;
         AddSetMessage(this.alertMessageSet, tvData.thisAlertMessage) ;
 
-        this.tbName_isLocked       =  tvData.botNumber + '_isLocked'       ; // 全局中判断是否locked的名
-        this.tbName_resetTGID      =  tvData.botNumber + '_resetTGID'      ; // 全局中保存的发送命令的ID
+        this.tbName_TGID           =  tvData.botNumber + '_TGID'           ; // 全局中保存的发送命令的ID
+        this.tbName_tgResetGSLOCK  =  tvData.botNumber + '_tgResetGSLOCK'  ; // 全局中的GS归零信号名
         this.tbName_tgReset        =  tvData.botNumber + '_tgReset'        ; // 全局中的归零信号名
+
+        this.tbName_isLocked       =  tvData.botNumber + '_isLocked'       ; // 全局中判断是否locked的名
         this.tbName_lastLockTime   =  tvData.botNumber + '_lastLockTime'   ; // 全局中的锁名
         this.tbName_runningWell    =  tvData.botNumber + '_runningWell'    ; // 全局中的出错名
         this.tbName_spreadsheetID  =  tvData.botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID, 避免每次重新读取
         this.tbName_sheetsID       =  tvData.botNumber + '_sheetsID'       ; // 全局中保存的sheetsID, 避免每次重新读取
 
-        if (!Object.hasOwn(TradeBot, this.tbName_isLocked      )) { TradeBot[this.tbName_isLocked     ] = false       } // 在全局中设置是否已经被锁
+        if (!Object.hasOwn(TradeBot, this.tbName_tgResetGSLOCK )) { TradeBot[this.tbName_tgResetGSLOCK] = false       } // 在全局中设置归零信号
         if (!Object.hasOwn(TradeBot, this.tbName_tgReset       )) { TradeBot[this.tbName_tgReset      ] = false       } // 在全局中设置归零信号
+
+        if (!Object.hasOwn(TradeBot, this.tbName_isLocked      )) { TradeBot[this.tbName_isLocked     ] = false       } // 在全局中设置是否已经被锁
         if (!Object.hasOwn(TradeBot, this.tbName_lastLockTime  )) { TradeBot[this.tbName_lastLockTime ] = 0           } // 在全局中设锁
         if (!Object.hasOwn(TradeBot, this.tbName_runningWell   )) { TradeBot[this.tbName_runningWell  ] = new Set()   } // 在全局中设runningWell
         if (!Object.hasOwn(TradeBot, this.tbName_spreadsheetID )) { TradeBot[this.tbName_spreadsheetID] = null        } // 在全局中设置spreadsheetID
         if (!Object.hasOwn(TradeBot, this.tbName_sheetsID      )) { TradeBot[this.tbName_sheetsID     ] = {}          } // 在全局中设置sheetsID
 
-
         // 可以通过TG-RESET信号来重置全局锁 和 报错信息
         if (isStrictTrue(TradeBot[this.tbName_tgReset])) { 
-            TradeBot[this.tbName_isLocked     ] = false       ;
             TradeBot[this.tbName_tgReset      ] = false       ;
+            TradeBot[this.tbName_isLocked     ] = false       ;
             TradeBot[this.tbName_lastLockTime ] = 0           ;
             TradeBot[this.tbName_runningWell  ] = new Set()   ;
             TradeBot[this.tbName_spreadsheetID] = null        ;
             TradeBot[this.tbName_sheetsID     ] = {}          ;
 
-            SendTG(`${tvData.botNumber} RESET命令已收到`, 'RESET已设置', TradeBot[this.tbName_resetTGID]).catch(() => { });
+            SendTG(`${tvData.botNumber} RESET命令已收到`, 'RESET已设置', TradeBot[this.tbName_TGID]).catch(() => { });
         }
 
         // 在全局中有报错的话, 直接退出
@@ -172,6 +175,25 @@ export const TradeBot = {
             let currentLock = toGCPData.LOCK ;
             if (toGCPData.lstLockSignalTime > this.LockTime) { throw new Error('检查GS发现已处理过更新的信号') }
             if (TradeBot[this.tbName_lastLockTime] !== this.LockTime) { throw new Error('临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去') }
+
+            if (currentLock !== CV.noLOCK && isStrictTrue(TradeBot[this.tbName_tgResetGSLOCK])) {
+                let resetGSLOCKMessage = '收到resetGSLOCK信号, GSLOCK已释放' ;
+                await UpdateGS(this.spreadsheetID, toGCPData.lockRange, [[CV.noLOCK]]);
+                await Sleep(100); // 等0.1后再确认是否成功,防止GS频繁写入读取限制
+                toGCPData = await this.Get_toGCPData();
+                currentLock = toGCPData.LOCK;
+                if (isStrictTrue(currentLock !== CV.noLOCK)) {
+                    await Sleep(2000); // 第一次校验失败的话, 等2s再次校验
+                    toGCPData = await this.Get_toGCPData();
+                    currentLock = toGCPData.LOCK;
+                    if (currentLock !== CV.noLOCK) { resetGSLOCKMessage = '收到RESETGSLOCK信号, 但往GS写入noLOCK失败' }
+                }
+
+                SendTG(`${tvData.botNumber} resetGSLOCK命令已收到`, resetGSLOCKMessage, TradeBot[this.tbName_TGID]).catch(() => { });
+            }
+
+
+
             if (currentLock !== CV.noLOCK) {
                 const errMessage = '上一次运行大TradeBot锁被释放的情况下, GS锁未被释放';
                 this.AddRunningWellMessage(errMessage) ;
