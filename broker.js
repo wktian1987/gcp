@@ -403,7 +403,7 @@ async function GATE_SendOrderToBroker(S) {
 async function GATE_CheckOrderConfirm(ingOrderData) {
     const brokerSymbol  =  tvSymbol_TO_GATE_Symbol(ingOrderData.TradingSymbol) ;
 
-    const brokerID = ingOrderData.ing_orderID.substring(1); // 先把前面自己加的id前面的字符去掉
+    const brokerID = ingOrderData.ing_orderID.substring(2); // 先把前面自己加的id前面的字符去掉
 
     // 如果需要撤单的话, 也不能先去撤单, 因为对于一个已经成交的订单执行撤单命令会报错
 
