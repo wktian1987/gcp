@@ -177,6 +177,7 @@ export const TradeBot = {
             if (TradeBot[this.tbName_lastLockTime] !== this.LockTime) { throw new Error('临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去') }
 
             if (currentLock !== CV.noLOCK && isStrictTrue(TradeBot[this.tbName_tgResetGSLOCK])) {
+                TradeBot[this.tbName_tgResetGSLOCK] = false ;
                 let resetGSLOCKMessage = '收到resetGSLOCK信号, GSLOCK已释放' ;
                 await UpdateGS(this.spreadsheetID, toGCPData.lockRange, [[CV.noLOCK]]);
                 await Sleep(100); // 等0.1后再确认是否成功,防止GS频繁写入读取限制

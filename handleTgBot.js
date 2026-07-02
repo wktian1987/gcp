@@ -93,63 +93,67 @@ export async function HandleTgBot(msg) {
     }
 
     if (text.toUpperCase().includes('RESETGSLOCK')) {
-        const tbName_TGID           =  botNumber + '_TGID'              ;
-        const tbName_tgResetGSLOCK  =  botNumber + '_tgResetGSLOCK'     ;
+        const tbName_TGID = botNumber + '_TGID';
+        const tbName_tgResetGSLOCK = botNumber + '_tgResetGSLOCK';
 
-        let resetGSLOCKMessage = '' ;
+        let resetGSLOCKMessage = '';
 
         if (!Object.hasOwn(TradeBot, tbName_tgResetGSLOCK)) {
-            resetGSLOCKMessage = `机器人还未创建, 没必要RESET GSLOCK` ;
-            SendTG(`${botNumber} 收到RESETGSLOCK信号`, resetGSLOCKMessage, chat_id).catch(()=>{}) ;
-            return ;
-        } 
+            resetGSLOCKMessage = `机器人还未创建, 没必要RESET GSLOCK`;
+            SendTG(`${botNumber} 收到RESETGSLOCK信号`, resetGSLOCKMessage, chat_id).catch(() => { });
+            return;
+        }
 
         if (Object.hasOwn(TradeBot, tbName_tgResetGSLOCK) && isStrictTrue(TradeBot[tbName_tgResetGSLOCK])) {
-            resetGSLOCKMessage = `RESETGSLOCK已设, 但TradeBot还未接收, 没必要重设` ;
-            SendTG(`${botNumber} 收到RESETGSLOCK信号`, resetGSLOCKMessage, chat_id).catch(()=>{}) ;
-            return ;
-        }
-        
-        if (Object.hasOwn(TradeBot, tbName_tgResetGSLOCK) && isStrictFalse(TradeBot[tbName_tgResetGSLOCK]) ) {
-            resetGSLOCKMessage  = 'RESETGSLOCK信号已创建, 等待TradeBot接收' ;
-            TradeBot[tbName_TGID]           = chat_id   ;
-            TradeBot[tbName_tgResetGSLOCK]  = true      ;
-
-            SendTG(`${botNumber} 收到RESETGSLOCK信号`, resetGSLOCKMessage, chat_id).catch(()=>{}) ;
-            return ;
+            resetGSLOCKMessage = `RESETGSLOCK已设, 但TradeBot还未接收, 没必要重设`;
+            SendTG(`${botNumber} 收到RESETGSLOCK信号`, resetGSLOCKMessage, chat_id).catch(() => { });
+            return;
         }
 
-    if (text.toUpperCase().includes('RESET')) {
-        const tbName_TGID           =  botNumber + '_TGID'              ;
-        const tbName_tgReset        =  botNumber + '_tgReset'           ;
+        if (Object.hasOwn(TradeBot, tbName_tgResetGSLOCK) && isStrictFalse(TradeBot[tbName_tgResetGSLOCK])) {
+            resetGSLOCKMessage = 'RESETGSLOCK信号已创建, 等待TradeBot接收';
+            TradeBot[tbName_TGID] = chat_id;
+            TradeBot[tbName_tgResetGSLOCK] = true;
 
-        let resetMessage = '' ;
-
-        if (!Object.hasOwn(TradeBot, tbName_tgReset)) {
-            resetMessage = `机器人还未创建, 没必要RESET` ;
-            SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(()=>{}) ;
-            return ;
-        } 
-
-        if (Object.hasOwn(TradeBot, tbName_tgReset) && isStrictTrue(TradeBot[tbName_tgReset])) {
-            resetMessage = `RESET已设, 但TradeBot还未接收, 没必要重设` ;
-            SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(()=>{}) ;
-            return ;
-        }
-        
-        if (Object.hasOwn(TradeBot, tbName_tgReset) && isStrictFalse(TradeBot[tbName_tgReset]) ) {
-            resetMessage = `RESET信号已创建, 等待TradeBot接收` ;
-            TradeBot[tbName_TGID]       = chat_id   ;
-            TradeBot[tbName_tgReset]    = true      ;
-
-            SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(()=>{}) ;
-            return ;
+            SendTG(`${botNumber} 收到RESETGSLOCK信号`, resetGSLOCKMessage, chat_id).catch(() => { });
+            return;
         }
 
+        resetGSLOCKMessage = '出现内部逻辑错误, 本次信号丢弃';
+        SendTG(`${botNumber} 收到RESETGSLOCK信号`, resetGSLOCKMessage, chat_id).catch(() => { });
+        return;
     }
 
+    if (text.toUpperCase().includes('RESET')) {
+        const tbName_TGID = botNumber + '_TGID';
+        const tbName_tgReset = botNumber + '_tgReset';
 
+        let resetMessage = '';
 
+        if (!Object.hasOwn(TradeBot, tbName_tgReset)) {
+            resetMessage = `机器人还未创建, 没必要RESET`;
+            SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(() => { });
+            return;
+        }
+
+        if (Object.hasOwn(TradeBot, tbName_tgReset) && isStrictTrue(TradeBot[tbName_tgReset])) {
+            resetMessage = `RESET已设, 但TradeBot还未接收, 没必要重设`;
+            SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(() => { });
+            return;
+        }
+
+        if (Object.hasOwn(TradeBot, tbName_tgReset) && isStrictFalse(TradeBot[tbName_tgReset])) {
+            resetMessage = `RESET信号已创建, 等待TradeBot接收`;
+            TradeBot[tbName_TGID] = chat_id;
+            TradeBot[tbName_tgReset] = true;
+
+            SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(() => { });
+            return;
+        }
+
+        resetMessage = '出现内部逻辑错误, 本次信号丢弃';
+        SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(() => { });
+        return;
     }
 
     const tbName_spreadsheetID  =  botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID
