@@ -788,6 +788,7 @@ export function makeRequestBodyArrayofBatchUpdate_clear(clearObj) {
     a1Notation = a1Notation.replace(/\$/g, '');
 
     // 终极可选阀门门禁正则，完美吞咽所有坐标变体
+    // 所用正则表达式意思：
     // ^ 和 $/i：头尾死锁，且不区分大小写。意味着整行文本必须纯净，前后多一个空格都会被拒绝。
     // ([A-Z]+)（第 1 捕获组：起始列）：匹配至少一个英文字母。
     // ([0-9]+)（第 2 捕获组：起始行）：匹配至少一个数字。

@@ -475,16 +475,23 @@ export const TradeBot = {
         }
     } ,
 
-    async CheckAllPosition_withBroker(tollerance) {
+    async CheckAllPosition_withBroker(tollerance = 0.01) {
         const S                     = {}                                ;
         S.isReal                    = this.mainData.isReal              ;
         S.TradingSymbol             = this.mainData.TradingSymbol       ;
         S.allPosition               = this.mainData.allPosition         ;
         S.waitingPosition           = this.ingOrderData?.ing_qty ?? 0   ;
         S.allPositionWithWaiting    = S.allPosition + S.waitingPosition ;
-        await CheckAllPosition(S) ;
+        try {
+            await CheckAllPosition(S)
+            // 在这里输入p判
+            return true;
+        } catch (e) {
+            const errMessage = `CheckAllPosition_withBroker() error: ${e.message}` ;
+            this.AddRunningWellMessage(errMessage);
+            return errMessage ;
+        }
 
-        return true ;
     } ,
 
     /**
