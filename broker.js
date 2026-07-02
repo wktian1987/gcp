@@ -410,7 +410,7 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
     // 先去查看是否有新的成交记录
     // GET  '/futures/{settle}/orders/{order_id}'
     const path_confirm = '/futures/' + brokerSymbol.settle + '/orders/' + brokerID;
-    const fetchBody_confirm = new GateFetchBody(ingOrderData.isReal, 'GET', path_confirm, null, 200, { id: brokerID });
+    const fetchBody_confirm = new GateFetchBody(ingOrderData.isReal, 'GET', path_confirm, null, 200, { id: 'T'+ brokerID });
     await GATE_Fetch(fetchBody_confirm);
     if (!fetchBody_confirm.isOK) { throw new Error(fetchBody_confirm.errMessage) }
     const data_confirm = fetchBody_confirm.resData;
@@ -437,7 +437,7 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
 
     if ( data_confirm.status !== 'finished' && isStrictTrue(ingOrderData.ifWaitingThenCancel) ) {
         const path_cancel   =  '/futures/' + brokerSymbol.settle + '/orders/' + brokerID ;
-        const fetchBody_cancel = new GateFetchBody(ingOrderData.isReal, 'DELETE', path_cancel, null, 200, {id: brokerID, finish_as:'cancelled', status: 'finished'} ) ;
+        const fetchBody_cancel = new GateFetchBody(ingOrderData.isReal, 'DELETE', path_cancel, null, 200, {id: 'T' + brokerID, finish_as:'cancelled', status: 'finished'} ) ;
         // 对于撤单, 交易所传回的数据中,  "finish_as": "cancelled", "status": "finished",
         // 所以不能用status: finished来判断是否有成交
 
