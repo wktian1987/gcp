@@ -476,8 +476,15 @@ export const TradeBot = {
     } ,
 
     async CheckAllPosition_withBroker(tollerance) {
-        const S = {} ;
-        return CheckAllPosition(S) ;
+        const S                     = {}                                ;
+        S.isReal                    = this.mainData.isReal              ;
+        S.TradingSymbol             = this.mainData.TradingSymbol       ;
+        S.allPosition               = this.mainData.allPosition         ;
+        S.waitingPosition           = this.ingOrderData?.ing_qty ?? 0   ;
+        S.allPositionWithWaiting    = S.allPosition + S.waitingPosition ;
+        await CheckAllPosition(S) ;
+
+        return true ;
     } ,
 
     /**
