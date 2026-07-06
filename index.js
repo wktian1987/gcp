@@ -59,15 +59,30 @@ const server = http.createServer(async (req, res) => {
                 console.error(JSON.stringify(errObj));
             }
         } else {
+            let stopHandleThisSigal = false ;
             if (stopHandleNewSignals) {
+                stopHandleThisSigal = true ;
                 const stopMessage = '... ... stopHandleNewSignals is set, 不再处理新的信号' ;
                 SendTG(`stopMessage`, stopMessage).catch(() => { });
                 console.log(`stopMessage: ${stopMessage}`) ;
             }
             if (method !== 'POST' || !urlList.includes(url)) { 
+                stopHandleThisSigal = true ;
                 const stopMessage = '... ... 只接受POST信号, 且信号发往指定URL' ;
                 SendTG(`stopMessage`, stopMessage).catch(() => { });
                 console.log(`stopMessage: ${stopMessage}`) ;
+            }
+            if (stopHandleThisSigal) {
+                req.resume();
+                // 这里回复 ACK, 不管数据如何, 我直接回收到了,
+                if (!res.headersSent) {
+                    res.writeHead(200, { 'Content-Type': 'text/plain' });
+                    res.end("ACK");
+                }
+                return ;
+            }
+
+
             let bodyData = '';
             for await (const chunk of req) { bodyData += chunk }
             // 这里回复 ACK, 不管数据如何, 我直接回收到了,
