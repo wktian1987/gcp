@@ -99,6 +99,8 @@ export const TradeBot = {
         this.tbName_tgResetGSLOCK  =  tvData.botNumber + '_tgResetGSLOCK'  ; // 全局中的GS归零信号名
         this.tbName_tgReset        =  tvData.botNumber + '_tgReset'        ; // 全局中的归零信号名
         this.tbName_tgSTOP         =  tvData.botNumber + '_tgSTOP'         ; // 全局中的停止本机器人信号名
+        this.tbName_tgSTOP_resp    =  tvData.botNumber + '_tgSTOP_resp'    ; // 全局中的停止本机器人信号已收到名
+
 
         this.tbName_isLocked       =  tvData.botNumber + '_isLocked'       ; // 全局中判断是否locked的名
         this.tbName_lastLockTime   =  tvData.botNumber + '_lastLockTime'   ; // 全局中的锁名
@@ -106,9 +108,10 @@ export const TradeBot = {
         this.tbName_spreadsheetID  =  tvData.botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID, 避免每次重新读取
         this.tbName_sheetsID       =  tvData.botNumber + '_sheetsID'       ; // 全局中保存的sheetsID, 避免每次重新读取
 
-        if (!Object.hasOwn(TradeBot, this.tbName_tgResetGSLOCK )) { TradeBot[this.tbName_tgResetGSLOCK] = false       } // 在全局中设置归零信号
-        if (!Object.hasOwn(TradeBot, this.tbName_tgReset       )) { TradeBot[this.tbName_tgReset      ] = false       } // 在全局中设置归零信号
-        if (!Object.hasOwn(TradeBot, this.tbName_tgSTOP        )) { TradeBot[this.tbName_tgSTOP       ] = false       } // 在全局中设置归零信号
+        if (!Object.hasOwn(TradeBot, this.tbName_tgResetGSLOCK )) { TradeBot[this.tbName_tgResetGSLOCK] = false       } 
+        if (!Object.hasOwn(TradeBot, this.tbName_tgReset       )) { TradeBot[this.tbName_tgReset      ] = false       } 
+        if (!Object.hasOwn(TradeBot, this.tbName_tgSTOP        )) { TradeBot[this.tbName_tgSTOP       ] = false       } 
+        if (!Object.hasOwn(TradeBot, this.tbName_tgSTOP_resp   )) { TradeBot[this.tbName_tgSTOP_resp  ] = false       } 
 
         if (!Object.hasOwn(TradeBot, this.tbName_isLocked      )) { TradeBot[this.tbName_isLocked     ] = false       } // 在全局中设置是否已经被锁
         if (!Object.hasOwn(TradeBot, this.tbName_lastLockTime  )) { TradeBot[this.tbName_lastLockTime ] = 0           } // 在全局中设锁
@@ -118,19 +121,23 @@ export const TradeBot = {
 
         // 可以通过TG-RESET信号来重置全局锁 和 报错信息
         if (isStrictTrue(TradeBot[this.tbName_tgReset])) { 
-            TradeBot[this.tbName_tgSTOP       ] = false 
-            TradeBot[this.tbName_tgReset      ] = false       ;
-            TradeBot[this.tbName_isLocked     ] = false       ;
-            TradeBot[this.tbName_lastLockTime ] = 0           ;
-            TradeBot[this.tbName_runningWell  ] = new Set()   ;
-            TradeBot[this.tbName_spreadsheetID] = null        ;
-            TradeBot[this.tbName_sheetsID     ] = {}          ;
+            TradeBot[this.tbName_tgSTOP       ]     = false         ;
+            TradeBot[this.tbName_tgSTOP_resp  ]     = false         ;
+            TradeBot[this.tbName_tgReset      ]     = false         ;
+            TradeBot[this.tbName_isLocked     ]     = false         ;
+            TradeBot[this.tbName_lastLockTime ]     = 0             ;
+            TradeBot[this.tbName_runningWell  ]     = new Set()     ;
+            TradeBot[this.tbName_spreadsheetID]     = null          ;
+            TradeBot[this.tbName_sheetsID     ]     = {}            ;
 
             SendTG(`${tvData.botNumber} RESET命令已收到`, 'RESET已设置', TradeBot[this.tbName_TGID]).catch(() => { });
         }
 
-        if (isStrictTrue(TradeBot[this.tbName_tgSTOP])) { 
-            SendTG(`${tvData.botNumber} STOP命令已收到`, 'STOP已设置,  停止继续处理本信号', TradeBot[this.tbName_TGID]).catch(() => { });
+        if (isStrictTrue(TradeBot[this.tbName_tgSTOP])) {
+            if (isStrictFalse(TradeBot[this.tbName_tgSTOP_resp])) {
+                SendTG(`${tvData.botNumber} STOP命令已收到`, 'STOP已设置,  停止继续处理本信号', TradeBot[this.tbName_TGID]).catch(() => { });
+                TradeBot[this.tbName_tgSTOP_resp] = true;
+            }
             return CV.stopSep ;
         }
 
@@ -508,7 +515,7 @@ export const TradeBot = {
         }
     } ,
 
-    async CheckAllPosition_withBroker(tollerance = 0.01) {
+    async CheckAllPosition_withBroker() {
         const S                     = {}                                ;
         S.isReal                    = this.mainData.isReal              ;
         S.TradingSymbol             = this.mainData.TradingSymbol       ;
@@ -517,8 +524,11 @@ export const TradeBot = {
         S.allPositionWithWaiting    = S.allPosition + S.waitingPosition ;
         try {
             await CheckAllPosition(S)
-            // 在这里输入p判
-            return true;
+            // 当前无仓位的情况
+            if ((S.allPosition < this.mainData.minEnExPosition || S.allPositionWithWaiting < this.mainData.minEnExPosition) && S.brokerPosition < 2 * this.mainData.minEnExPosition) { return true }
+            // 有仓位的情况
+            if (Math.abs( (S.allPosition            - S.brokerPosition) / S.brokerPosition ) > (0.5 / this.mainData.MaxGrid) &&
+                Math.abs( (S.allPositionWithWaiting - S.brokerPosition) / S.brokerPosition ) > (0.5 / this.mainData.MaxGrid) ) { return 'GS中记录的仓位与交易所实际仓位不符' }
         } catch (e) {
             const errMessage = `CheckAllPosition_withBroker() error: ${e.message}` ;
             this.AddRunningWellMessage(errMessage);
