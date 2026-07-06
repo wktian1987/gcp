@@ -98,11 +98,13 @@ export async function HandleTgBot(msg) {
 
         let resetGSLOCKMessage = '';
 
-        // if (!Object.hasOwn(TradeBot, tbName_tgResetGSLOCK)) {
-        //     resetGSLOCKMessage = `机器人还未创建, 没必要RESET GSLOCK`;
-        //     SendTG(`${botNumber} 收到RESETGSLOCK信号`, resetGSLOCKMessage, chat_id).catch(() => { });
-        //     return;
-        // }
+        if (!Object.hasOwn(TradeBot, tbName_tgResetGSLOCK)) {
+            resetGSLOCKMessage = `机器人还未创建, 先行预设RESET GSLOCK, 等待TradeBot接收`;
+            TradeBot[tbName_TGID] = chat_id;
+            TradeBot[tbName_tgResetGSLOCK] = true;
+            SendTG(`${botNumber} 收到RESETGSLOCK信号`, resetGSLOCKMessage, chat_id).catch(() => { });
+            return;
+        }
 
         if (Object.hasOwn(TradeBot, tbName_tgResetGSLOCK) && isStrictTrue(TradeBot[tbName_tgResetGSLOCK])) {
             resetGSLOCKMessage = `RESETGSLOCK已设, 但TradeBot还未接收, 没必要重设`;
@@ -130,11 +132,13 @@ export async function HandleTgBot(msg) {
 
         let resetMessage = '';
 
-        // if (!Object.hasOwn(TradeBot, tbName_tgReset)) {
-        //     resetMessage = `机器人还未创建, 没必要RESET`;
-        //     SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(() => { });
-        //     return;
-        // }
+        if (!Object.hasOwn(TradeBot, tbName_tgReset)) {
+            resetMessage = `机器人还未创建, 先行预设RESET, 等待TradeBot接收`;
+            TradeBot[tbName_TGID]       = chat_id;
+            TradeBot[tbName_tgReset]    = true      ;
+            SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(() => { });
+            return;
+        }
 
         if (Object.hasOwn(TradeBot, tbName_tgReset) && isStrictTrue(TradeBot[tbName_tgReset])) {
             resetMessage = `RESET已设, 但TradeBot还未接收, 没必要重设`;
@@ -162,11 +166,13 @@ export async function HandleTgBot(msg) {
 
         let stopMessage = '';
 
-        // if (!Object.hasOwn(TradeBot, tbName_tgSTOP)) {
-        //     stopMessage = `机器人还未创建, 没必要RESET`;
-        //     SendTG(`${botNumber} 收到RESET信号`, stopMessage, chat_id).catch(() => { });
-        //     return;
-        // }
+        if (!Object.hasOwn(TradeBot, tbName_tgSTOP)) {
+            stopMessage = `机器人还未创建, 先行预设STOP, 等待TradeBot接收`;
+            TradeBot[tbName_TGID] = chat_id;
+            TradeBot[tbName_tgSTOP] = true;
+            SendTG(`${botNumber} 收到STOP信号`, stopMessage, chat_id).catch(() => { });
+            return;
+        }
 
         if (Object.hasOwn(TradeBot, tbName_tgSTOP) && isStrictTrue(TradeBot[tbName_tgSTOP])) {
             stopMessage = `STOP已设, 但TradeBot还未接收, 没必要重设`;
