@@ -516,14 +516,14 @@ export const TradeBot = {
     } ,
 
     async CheckAllPosition_withBroker() {
-        const S                     = {}                                ;
-        S.isReal                    = this.mainData.isReal              ;
-        S.TradingSymbol             = this.mainData.TradingSymbol       ;
-        S.allPosition               = this.mainData.allPosition         ;
-        S.waitingPosition           = this.ingOrderData?.ing_qty ?? 0   ;
-        S.allPositionWithWaiting    = S.allPosition + S.waitingPosition ;
+        const S                     = {}                                            ;
+        S.isReal                    = this.mainData.isReal                          ;
+        S.TradingSymbol             = this.mainData.TradingSymbol                   ;
+        S.allPosition               = ToStrictNumber(this.mainData.allPosition, 0)  ;
+        S.waitingPosition           = this.ingOrderData?.ing_qty ?? 0               ;
+        S.allPositionWithWaiting    = S.allPosition + S.waitingPosition             ;
         try {
-            await CheckAllPosition(S)
+            await CheckAllPosition(S) ;
             // 当前无仓位的情况
             if ((S.allPosition < this.mainData.minEnExPosition || S.allPositionWithWaiting < this.mainData.minEnExPosition) && S.brokerPosition < 2 * this.mainData.minEnExPosition) { return true }
             // 有仓位的情况

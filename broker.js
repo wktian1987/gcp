@@ -32,6 +32,7 @@ export async function CheckAllPosition(S) {
     if (!isStrictFalse(S.isReal) && S.TradingSymbol.startsWith("GATE:")) {await GATE_CheckAllPosition(S); return ;}
 
     S.brokerPosition = S.allPosition;
+    return ;
 }
 
 /**
