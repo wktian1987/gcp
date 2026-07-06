@@ -529,6 +529,7 @@ export const TradeBot = {
             // 有仓位的情况
             if (Math.abs( (S.allPosition            - S.brokerPosition) / S.brokerPosition ) > (0.5 / this.mainData.MaxGrid) &&
                 Math.abs( (S.allPositionWithWaiting - S.brokerPosition) / S.brokerPosition ) > (0.5 / this.mainData.MaxGrid) ) { return 'GS中记录的仓位与交易所实际仓位不符' }
+            return true ;
         } catch (e) {
             const errMessage = `CheckAllPosition_withBroker() error: ${e.message}` ;
             this.AddRunningWellMessage(errMessage);
