@@ -59,8 +59,15 @@ const server = http.createServer(async (req, res) => {
                 console.error(JSON.stringify(errObj));
             }
         } else {
-            if (stopHandleNewSignals) { throw new Error('... ... stopHandleNewSignals is set, 不再处理新的信号') }
-            if (method !== 'POST' || !urlList.includes(url)) { throw new Error('... ... 只接受POST信号, 且信号发往指定URL') }
+            if (stopHandleNewSignals) {
+                const stopMessage = '... ... stopHandleNewSignals is set, 不再处理新的信号' ;
+                SendTG(`stopMessage`, stopMessage).catch(() => { });
+                console.log(`stopMessage: ${stopMessage}`) ;
+            }
+            if (method !== 'POST' || !urlList.includes(url)) { 
+                const stopMessage = '... ... 只接受POST信号, 且信号发往指定URL' ;
+                SendTG(`stopMessage`, stopMessage).catch(() => { });
+                console.log(`stopMessage: ${stopMessage}`) ;
             let bodyData = '';
             for await (const chunk of req) { bodyData += chunk }
             // 这里回复 ACK, 不管数据如何, 我直接回收到了,
