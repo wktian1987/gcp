@@ -45,6 +45,7 @@ import { CheckAllPosition, SendOrderToBroker, CheckOrderConfirm, CheckFundFee } 
 
 
 export const CV = {
+    stopSep         : 'STOPSET'         ,
     noLOCK          : "noLOCK"          ,
     NA              : "NA"              ,
     toGCPRanges     : "toGCP!A:B"       ,
@@ -97,6 +98,7 @@ export const TradeBot = {
         this.tbName_TGID           =  tvData.botNumber + '_TGID'           ; // 全局中保存的发送命令的ID
         this.tbName_tgResetGSLOCK  =  tvData.botNumber + '_tgResetGSLOCK'  ; // 全局中的GS归零信号名
         this.tbName_tgReset        =  tvData.botNumber + '_tgReset'        ; // 全局中的归零信号名
+        this.tbName_tgSTOP         =  tvData.botNumber + '_tgSTOP'         ; // 全局中的停止本机器人信号名
 
         this.tbName_isLocked       =  tvData.botNumber + '_isLocked'       ; // 全局中判断是否locked的名
         this.tbName_lastLockTime   =  tvData.botNumber + '_lastLockTime'   ; // 全局中的锁名
@@ -106,6 +108,7 @@ export const TradeBot = {
 
         if (!Object.hasOwn(TradeBot, this.tbName_tgResetGSLOCK )) { TradeBot[this.tbName_tgResetGSLOCK] = false       } // 在全局中设置归零信号
         if (!Object.hasOwn(TradeBot, this.tbName_tgReset       )) { TradeBot[this.tbName_tgReset      ] = false       } // 在全局中设置归零信号
+        if (!Object.hasOwn(TradeBot, this.tbName_tgSTOP        )) { TradeBot[this.tbName_tgSTOP       ] = false       } // 在全局中设置归零信号
 
         if (!Object.hasOwn(TradeBot, this.tbName_isLocked      )) { TradeBot[this.tbName_isLocked     ] = false       } // 在全局中设置是否已经被锁
         if (!Object.hasOwn(TradeBot, this.tbName_lastLockTime  )) { TradeBot[this.tbName_lastLockTime ] = 0           } // 在全局中设锁
@@ -115,6 +118,7 @@ export const TradeBot = {
 
         // 可以通过TG-RESET信号来重置全局锁 和 报错信息
         if (isStrictTrue(TradeBot[this.tbName_tgReset])) { 
+            TradeBot[this.tbName_tgSTOP       ] = false 
             TradeBot[this.tbName_tgReset      ] = false       ;
             TradeBot[this.tbName_isLocked     ] = false       ;
             TradeBot[this.tbName_lastLockTime ] = 0           ;
@@ -124,6 +128,12 @@ export const TradeBot = {
 
             SendTG(`${tvData.botNumber} RESET命令已收到`, 'RESET已设置', TradeBot[this.tbName_TGID]).catch(() => { });
         }
+
+        if (isStrictTrue(TradeBot[this.tbName_tgSTOP])) { 
+            SendTG(`${tvData.botNumber} STOP命令已收到`, 'STOP已设置,  停止继续处理本信号', TradeBot[this.tbName_TGID]).catch(() => { });
+            return CV.stopSep ;
+        }
+
 
         // 在全局中有报错的话, 直接退出
         if (!this.isRunningWell()) {return '发现之前的运行中有错误, 本次信号没必要再处理, 提前退出, 以前的错误为: \n' + StrFromSetMessage(TradeBot[this.tbName_runningWell]) }

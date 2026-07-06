@@ -98,11 +98,11 @@ export async function HandleTgBot(msg) {
 
         let resetGSLOCKMessage = '';
 
-        if (!Object.hasOwn(TradeBot, tbName_tgResetGSLOCK)) {
-            resetGSLOCKMessage = `机器人还未创建, 没必要RESET GSLOCK`;
-            SendTG(`${botNumber} 收到RESETGSLOCK信号`, resetGSLOCKMessage, chat_id).catch(() => { });
-            return;
-        }
+        // if (!Object.hasOwn(TradeBot, tbName_tgResetGSLOCK)) {
+        //     resetGSLOCKMessage = `机器人还未创建, 没必要RESET GSLOCK`;
+        //     SendTG(`${botNumber} 收到RESETGSLOCK信号`, resetGSLOCKMessage, chat_id).catch(() => { });
+        //     return;
+        // }
 
         if (Object.hasOwn(TradeBot, tbName_tgResetGSLOCK) && isStrictTrue(TradeBot[tbName_tgResetGSLOCK])) {
             resetGSLOCKMessage = `RESETGSLOCK已设, 但TradeBot还未接收, 没必要重设`;
@@ -130,11 +130,11 @@ export async function HandleTgBot(msg) {
 
         let resetMessage = '';
 
-        if (!Object.hasOwn(TradeBot, tbName_tgReset)) {
-            resetMessage = `机器人还未创建, 没必要RESET`;
-            SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(() => { });
-            return;
-        }
+        // if (!Object.hasOwn(TradeBot, tbName_tgReset)) {
+        //     resetMessage = `机器人还未创建, 没必要RESET`;
+        //     SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(() => { });
+        //     return;
+        // }
 
         if (Object.hasOwn(TradeBot, tbName_tgReset) && isStrictTrue(TradeBot[tbName_tgReset])) {
             resetMessage = `RESET已设, 但TradeBot还未接收, 没必要重设`;
@@ -153,6 +153,38 @@ export async function HandleTgBot(msg) {
 
         resetMessage = '出现内部逻辑错误, 本次信号丢弃';
         SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(() => { });
+        return;
+    }
+
+    if (text.toUpperCase().includes('STOP')) {
+        const tbName_TGID   = botNumber + '_TGID'   ;
+        const tbName_tgSTOP = botNumber + '_tgSTOP' ;
+
+        let stopMessage = '';
+
+        // if (!Object.hasOwn(TradeBot, tbName_tgSTOP)) {
+        //     stopMessage = `机器人还未创建, 没必要RESET`;
+        //     SendTG(`${botNumber} 收到RESET信号`, stopMessage, chat_id).catch(() => { });
+        //     return;
+        // }
+
+        if (Object.hasOwn(TradeBot, tbName_tgSTOP) && isStrictTrue(TradeBot[tbName_tgSTOP])) {
+            stopMessage = `STOP已设, 但TradeBot还未接收, 没必要重设`;
+            SendTG(`${botNumber} 收到STOP信号`, stopMessage, chat_id).catch(() => { });
+            return;
+        }
+
+        if (Object.hasOwn(TradeBot, tbName_tgSTOP) && isStrictFalse(TradeBot[tbName_tgSTOP])) {
+            stopMessage = `STOP信号已创建, 等待TradeBot接收, 可通过RESET信号, 开启新信号处理`;
+            TradeBot[tbName_TGID] = chat_id;
+            TradeBot[tbName_tgSTOP] = true;
+
+            SendTG(`${botNumber} 收到STOP信号`, stopMessage, chat_id).catch(() => { });
+            return;
+        }
+
+        stopMessage = '出现内部逻辑错误, 本次信号丢弃';
+        SendTG(`${botNumber} 收到STOP信号`, stopMessage, chat_id).catch(() => { });
         return;
     }
 
