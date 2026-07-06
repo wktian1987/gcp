@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { Sleep } from './utility.js';
+import { SendTG, Sleep } from './utility.js';
 
 // 创建原生 HTTP 监听基座
 const targetURL = {
@@ -146,6 +146,7 @@ async function HandleSignal(url, body) {
                     message: `✘ ${body.botNumber}: HandleTradeBot()处理失败\n` + e.message
                 };
                 console.error(JSON.stringify(errObj));
+                SendTG(`✘ ${body.botNumber}: HandleTradeBot()处理失败`, e.message).catch(() => { });
             }
         }
 
@@ -160,6 +161,8 @@ async function HandleSignal(url, body) {
                     message: `✘ HandleAllPrice()处理失败: \n` + e.message
                 };
                 console.error(JSON.stringify(errObj));
+                SendTG(`✘ HandleAllPrice()处理失败`, e.message).catch(() => { });
+
             }
         }
 
