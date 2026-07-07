@@ -37,7 +37,7 @@ const server = http.createServer(async (req, res) => {
 
         // 对于来自TG的消息有单独的快速通道
         if (method === 'POST' && url === targetURL.tgbot) {
-            console.log("收到/tgBot连接");
+            console.log("!!! 收到/tgBot连接");
             try {
                 let bodyData = '';
                 for await (const chunk of req) { bodyData += chunk }
@@ -62,15 +62,15 @@ const server = http.createServer(async (req, res) => {
             let stopHandleThisSigal = false ;
             if (stopHandleNewSignals) {
                 stopHandleThisSigal = true ;
-                const stopMessage = '... ... stopHandleNewSignals is set, 不再处理新的信号' ;
+                const stopMessage = '||| ||| stopHandleNewSignals is set, 不再处理新的信号' ;
                 SendTG(`stopMessage`, stopMessage).catch(() => { });
-                console.log(`stopMessage: ${stopMessage}`) ;
+                console.log(stopMessage) ;
             }
             if (method !== 'POST' || !urlList.includes(url)) { 
                 stopHandleThisSigal = true ;
-                const stopMessage = '... ... 只接受POST信号, 且信号发往指定URL' ;
+                const stopMessage = '||| ||| 只接受POST信号, 且信号发往指定URL' ;
                 SendTG(`stopMessage`, stopMessage).catch(() => { });
-                console.log(`stopMessage: ${stopMessage}`) ;
+                console.log(stopMessage) ;
             }
             if (stopHandleThisSigal) {
                 req.resume();
