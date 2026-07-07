@@ -9,7 +9,8 @@ import {
     SendEmail,
     GetGS,
     UpdateGS,
-    AddMessage
+    AddMessage,
+    try3times
 } from './utility.js';
 
 // 1. 刚性配置锁死在全局// 1. 刚性配置锁死在全局
@@ -43,12 +44,12 @@ async function getImapClient() {
     try {
         // 安全熔断：在连之前先强制 logout 清理残留脏数据，防止句柄溢出
         await globalImapClient.logout().catch(() => {}); 
-        
         // 重新并网
         await globalImapClient.connect();
         return globalImapClient;
     } catch (err) {
-        throw err; // 向上抛出，交由你的 try3times 工具箱去触发退避重试！
+        globalImapClient = null;        
+        throw err; 
     }
 }
 
@@ -236,7 +237,7 @@ export async function HandleUnreadGmails(toChatID = process.env.TG_CHAT_ID, mail
     let client = null;
 
     try {
-        const client = await getImapClient() ;
+        const client = await try3times(getImapClient) ;
         if (!client.authenticated) { throw new Error("IMAP Client 连接失败") }
 
         // 必须先进入文件夹，search 才会生效

@@ -691,7 +691,6 @@ export async function BatchClearGS(spreadsheetID, toClearRangeList) {
         requestBody     : {ranges: toClearRangeList }   }   )   ;
 }
 
-
 /**
  * 金融级原子化：批量清空并更新区域内容（一枪流锁死）
  * @param {string} spreadsheetID 大表ID
@@ -1188,7 +1187,7 @@ export async function SendEmail(mail_subject, mail_content, mailReceiver = proce
             subject: mail_subject,
             html: mail_content 
         };
-        await transporter.sendMail(mailOptions) 
+        await try3times(transporter.sendMail, mailOptions) 
 
     } catch (e) {
         const transporter = createTransport({
