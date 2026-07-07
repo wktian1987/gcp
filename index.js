@@ -159,13 +159,17 @@ async function HandleSignal(url, body) {
             console.log("TradeBot botNumber: " + body.botNumber);
 
             try {
-                const { HandleTradeBot, CV } = await import("./handleTV.js"); // 这一行写在try中，一次加载整个运行声明周期都可用，还是每次运行到这里都要重新加载，或者反复加载导致内存中同样内容重复
+                // 这一行写在try中，一次加载整个运行声明周期都可用，还是每次运行到这里都要重新加载，或者反复加载导致内存中同样内容重复
+                // 答案:
+                // 不会, 可以放心使用, 不会重复加载, 仅加载一次, 然后保存在内存中, 下次复用, 也不会在内存中保存多个同样的副本
+                const { HandleTradeBot, CV } = await import("./handleTV.js");
+                
                 const r_HandleTradeBot = await HandleTradeBot(body);
-                if      (r_HandleTradeBot === CV.stopSet      ) {console.log(`${body.botNumber}: stopSet, 本信号丢弃`) }
-                else if (r_HandleTradeBot === CV.newerHandled ) {console.log(`${body.botNumber}: 已处理更新的信号, 本信号丢弃`)}
-                else if (r_HandleTradeBot === true            ) {console.log(`✔ ${body.botNumber}: HandleTradeBot()处理成功`)}
+                if      (r_HandleTradeBot === CV.stopSet         ) {console.log(`${body.botNumber}: stopSet, 本信号丢弃`) }
+                else if (r_HandleTradeBot === CV.newerHandled    ) {console.log(`${body.botNumber}: 已处理更新的信号, 本信号丢弃`)}
+                else if (r_HandleTradeBot === CV.stillHandleLast ) {console.log(`${body.botNumber}: 仍在处理上一个信号, 但是本信号已经超时, 本信号丢弃`)}
+                else if (r_HandleTradeBot === true               ) {console.log(`✔ ${body.botNumber}: HandleTradeBot()处理成功`)}
                 else {throw new Error(`${body.botNumber}: 内部逻辑错误`)}
-                // '已处理更新的信号, 本信号丢弃' 
             } catch (e) {
                 const errObj = {
                     severity: "ERROR", // 强制涂红

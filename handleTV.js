@@ -45,6 +45,7 @@ import { CheckAllPosition, SendOrderToBroker, CheckOrderConfirm, CheckFundFee } 
 
 
 export const CV = {
+    stillHandleLast : 'stillHandleLast' ,
     newerHandled    : 'newerHandled'    ,
     stopSet         : 'stopSet'         ,
     noLOCK          : "noLOCK"          ,
@@ -152,7 +153,7 @@ export const TradeBot = {
         // 如果现在有锁的话, 等待当前正在处理的信号完成, 当信号已经过去60s后, 不再处理
         while (isStrictTrue(TradeBot[this.tbName_isLocked]) && Date.now() - this.LockTime < 60 * 1000) { await Sleep(1000) }
         // 已经超过60s, 或者大锁被释放
-        if (isStrictTrue(TradeBot[this.tbName_isLocked])) {return '仍在处理上一个信号, 但是本信号已经超时, 直接退出' }
+        if (isStrictTrue(TradeBot[this.tbName_isLocked])) {return CV.stillHandleLast}
         // 大锁被清空后, 马上抢大锁
         if (isStrictFalse(TradeBot[this.tbName_isLocked])) {
             TradeBot[this.tbName_isLocked] = true;
@@ -1548,8 +1549,9 @@ export async function HandleTradeBot(tvData) {
     const bot = Object.create(TradeBot);
 
     const r_CreateBasicAttr = await bot.CreateBasicAttr(tvData);
-    if (r_CreateBasicAttr === CV.stopSet      ) {return r_CreateBasicAttr}
-    if (r_CreateBasicAttr === CV.newerHandled ) {return r_CreateBasicAttr}
+    if (r_CreateBasicAttr === CV.stopSet         ) {return r_CreateBasicAttr}
+    if (r_CreateBasicAttr === CV.newerHandled    ) {return r_CreateBasicAttr}
+    if (r_CreateBasicAttr === CV.stillHandleLast ) {return r_CreateBasicAttr}
     if (!r_CreateBasicAttr || isStrictString(r_CreateBasicAttr)) { throw new Error('CreateBasicAttr() 失败: \n' + r_CreateBasicAttr) }
     // if (isStrictTrue(r_CreateBasicAttr)) { console.log(bot.cLogHead + 'CreateBasicAttr() success') }
 
