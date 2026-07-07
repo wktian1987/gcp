@@ -15,7 +15,7 @@ export function ToStopSartNewSignals(toStopStart = 'toStop') { // 重启是'toSt
     // if (toStopStart === 'toStop' ) {console.log('收到信号 ToStopSartNewSignals(toStop)' )}
     // if (toStopStart === 'toStart') {console.log('收到信号 ToStopSartNewSignals(toStart)')}
     // if (toStopStart !== 'toStop' && toStopStart !== 'toStart') {console.log('收到错误信号 ToStopSartNewSignals(非法参数)'); return false ;}
-    stopHandleNewSignals = toStopStart === 'toStop' ? true : false; // 1. 下发熔断禁令
+    stopHandleNewSignals = toStopStart === 'toStart' ? false : true; // 1. 下发熔断禁令
     if (toStopStart === 'toStop') {SignalList.length = 0} // 2. 物理超渡内存中积压的所有过期信号！
     return true ;
 }
@@ -211,15 +211,26 @@ process.on('SIGTERM', async () => {
     process.exit(0); // 💥 主动交枪，通知谷歌：老容器已经安全交割，你可以物理回收了！
 });
 
-const PORT = process.env.PORT || 8080;
-server.listen(PORT, '0.0.0.0', () => { console.log(`✔ 服务开始监听端口 ${PORT}，运行...`); });
-
 // 检查未读邮件
-while (true) {
+async function toHandleUnreadGmails() {
     const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
+    while (true) {
+        try {
+           await HandleUnreadGmails();
+           console.log(`√ 检查处理Gmail未读邮件成功`);
+        } catch(e) {
+           console.log(`× 检查处理Gmail未读邮件出错: ${e.message}`);
+        }
 
-    console.log(`... 开始检查处理Gmail未读邮件`);
-    HandleUnreadGmails().catch(() => { }); // 查看未读邮件是一个小事情, 不必报错
-
-    await Sleep(30000) ; // 每30s检查一次邮件
+        await Sleep(30000); // 每30s检查一次邮件
+    }
 }
+
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`✔ 服务开始监听端口 ${PORT}，运行...`);
+
+    toHandleUnreadGmails() ;
+});
+
+
