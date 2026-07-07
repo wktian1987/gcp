@@ -12,9 +12,9 @@ const SignalList = [] ; // 里面的元素是 {url, body}
 let isWorkerRunning = false ; 
 export let stopHandleNewSignals = true; // 当从tg收到取消所有任务信号的时候, 取消所有信号
 export function ToStopSartNewSignals(toStopStart = 'toStop') { // 重启是'toStart')
-    if (toStopStart === 'toStop' ) {console.log('收到信号 ToStopSartNewSignals(toStop)' )}
-    if (toStopStart === 'toStart') {console.log('收到信号 ToStopSartNewSignals(toStart)')}
-    if (toStopStart !== 'toStop' && toStopStart !== 'toStart') {console.log('收到错误信号 ToStopSartNewSignals(非法参数)'); return false ;}
+    // if (toStopStart === 'toStop' ) {console.log('收到信号 ToStopSartNewSignals(toStop)' )}
+    // if (toStopStart === 'toStart') {console.log('收到信号 ToStopSartNewSignals(toStart)')}
+    // if (toStopStart !== 'toStop' && toStopStart !== 'toStart') {console.log('收到错误信号 ToStopSartNewSignals(非法参数)'); return false ;}
     stopHandleNewSignals = toStopStart === 'toStop' ? true : false; // 1. 下发熔断禁令
     if (toStopStart === 'toStop') {SignalList.length = 0} // 2. 物理超渡内存中积压的所有过期信号！
     return true ;
@@ -163,11 +163,11 @@ async function HandleSignal(url, body) {
                 // 答案:
                 // 不会, 可以放心使用, 不会重复加载, 仅加载一次, 然后保存在内存中, 下次复用, 也不会在内存中保存多个同样的副本
                 const { HandleTradeBot, CV } = await import("./handleTV.js");
-                
+
                 const r_HandleTradeBot = await HandleTradeBot(body);
-                if      (r_HandleTradeBot === CV.stopSet         ) {console.log(`${body.botNumber}: stopSet, 本信号丢弃`) }
-                else if (r_HandleTradeBot === CV.newerHandled    ) {console.log(`${body.botNumber}: 已处理更新的信号, 本信号丢弃`)}
-                else if (r_HandleTradeBot === CV.stillHandleLast ) {console.log(`${body.botNumber}: 仍在处理上一个信号, 但是本信号已经超时, 本信号丢弃`)}
+                if      (r_HandleTradeBot === CV.stopSet         ) {console.log(`||| ${body.botNumber}: stopSet, 本信号丢弃`) }
+                else if (r_HandleTradeBot === CV.newerHandled    ) {console.log(`||| ${body.botNumber}: 已处理更新的信号, 本信号丢弃`)}
+                else if (r_HandleTradeBot === CV.stillHandleLast ) {console.log(`||| ${body.botNumber}: 仍在处理上一个信号, 但是本信号已经超时, 本信号丢弃`)}
                 else if (r_HandleTradeBot === true               ) {console.log(`✔ ${body.botNumber}: HandleTradeBot()处理成功`)}
                 else {throw new Error(`${body.botNumber}: 内部逻辑错误`)}
             } catch (e) {
