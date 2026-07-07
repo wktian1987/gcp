@@ -528,10 +528,10 @@ export const TradeBot = {
             if ((S.allPosition < this.mainData.minEnExPosition || S.allPositionWithWaiting < this.mainData.minEnExPosition) && S.brokerPosition < 2 * this.mainData.minEnExPosition) { return true }
             // 有仓位的情况
             if (Math.abs( (S.allPosition            - S.brokerPosition) / S.brokerPosition ) > (0.5 / this.mainData.MaxGrid) &&
-                Math.abs( (S.allPositionWithWaiting - S.brokerPosition) / S.brokerPosition ) > (0.5 / this.mainData.MaxGrid) ) { return 'GS中记录的仓位与交易所实际仓位不符' }
+                Math.abs( (S.allPositionWithWaiting - S.brokerPosition) / S.brokerPosition ) > (0.5 / this.mainData.MaxGrid) ) { throw new Error('GS中记录的仓位与交易所实际仓位不符') }
             return true ;
         } catch (e) {
-            const errMessage = `CheckAllPosition_withBroker() error: ${e.message}` ;
+            const errMessage = `核心错误: CheckAllPosition_withBroker() error: ${e.message}` ;
             this.AddRunningWellMessage(errMessage);
             return errMessage ;
         }
