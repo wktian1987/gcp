@@ -45,7 +45,8 @@ import { CheckAllPosition, SendOrderToBroker, CheckOrderConfirm, CheckFundFee } 
 
 
 export const CV = {
-    stopSep         : 'STOPSET'         ,
+    newerHandled    : 'newerHandled'    ,
+    stopSet         : 'stopSet'         ,
     noLOCK          : "noLOCK"          ,
     NA              : "NA"              ,
     toGCPRanges     : "toGCP!A:B"       ,
@@ -138,14 +139,14 @@ export const TradeBot = {
                 SendTG(`${tvData.botNumber} STOP命令已收到`, 'STOP已设置,  停止继续处理本信号', TradeBot[this.tbName_TGID]).catch(() => { });
                 TradeBot[this.tbName_tgSTOP_resp] = true;
             }
-            return CV.stopSep ;
+            return CV.stopSet ;
         }
 
 
         // 在全局中有报错的话, 直接退出
         if (!this.isRunningWell()) {return '发现之前的运行中有错误, 本次信号没必要再处理, 提前退出, 以前的错误为: \n' + StrFromSetMessage(TradeBot[this.tbName_runningWell]) }
 
-        if (TradeBot[this.tbName_lastLockTime] > this.LockTime) {return '已处理更新的信号, 本信号丢弃' }
+        if (TradeBot[this.tbName_lastLockTime] > this.LockTime) {return CV.newerHandled}
         // 正常情况下一个信号运行绝对不会超过5分钟; 一旦发生这种情况, 肯定是发生了不可挽回的错误, 直接抛错退出当前信号处理就可以了
         if (isStrictTrue(TradeBot[this.tbName_isLocked]) && Date.now() - TradeBot[this.tbName_lastLockTime] > 5 * 60 * 1000) {return '上一个信号长时间未解锁, 肯定遇到了无法挽回的错误, 但错误未被记录, 本信号不再处理, 需手动检查' }
         // 如果现在有锁的话, 等待当前正在处理的信号完成, 当信号已经过去60s后, 不再处理
@@ -1533,6 +1534,8 @@ export async function HandleTradeBot(tvData) {
     const bot = Object.create(TradeBot);
 
     const r_CreateBasicAttr = await bot.CreateBasicAttr(tvData);
+    if (r_CreateBasicAttr === CV.stopSet      ) {return r_CreateBasicAttr}
+    if (r_CreateBasicAttr === CV.newerHandled ) {return r_CreateBasicAttr}
     if (!r_CreateBasicAttr || isStrictString(r_CreateBasicAttr)) { throw new Error('CreateBasicAttr() 失败: \n' + r_CreateBasicAttr) }
     // if (isStrictTrue(r_CreateBasicAttr)) { console.log(bot.cLogHead + 'CreateBasicAttr() success') }
 
@@ -1597,5 +1600,7 @@ export async function HandleTradeBot(tvData) {
         throw new Error('ReleaseTradeBotLOCK() 失败: \n' + r_ReleaseTradeBotLOCK)  ;
     }
     // if (isStrictTrue(r_ReleaseTradeBotLOCK)) { console.log(bot.cLogHead + 'ReleaseTradeBotLOCK() success') }
+
+    return true ;
 
 }

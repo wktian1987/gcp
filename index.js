@@ -159,9 +159,13 @@ async function HandleSignal(url, body) {
             console.log("TradeBot botNumber: " + body.botNumber);
 
             try {
-                const { HandleTradeBot } = await import("./handleTV.js");
-                await HandleTradeBot(body);
-                console.log(`✔ ${body.botNumber}: HandleTradeBot()处理成功`);
+                const { HandleTradeBot, CV } = await import("./handleTV.js");
+                const r_HandleTradeBot = await HandleTradeBot(body);
+                if      (r_HandleTradeBot === CV.stopSet      ) {console.log(`${body.botNumber}: stopSet, 本信号丢弃`) }
+                else if (r_HandleTradeBot === CV.newerHandled ) {console.log(`${body.botNumber}: 已处理更新的信号, 本信号丢弃`)}
+                else if (r_HandleTradeBot === true            ) {console.log(`✔ ${body.botNumber}: HandleTradeBot()处理成功`)}
+                else {throw new Error(`${body.botNumber}: 内部逻辑错误`)}
+                // '已处理更新的信号, 本信号丢弃' 
             } catch (e) {
                 const errObj = {
                     severity: "ERROR", // 强制涂红
