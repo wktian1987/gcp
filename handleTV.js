@@ -1492,9 +1492,13 @@ export const TradeBot = {
                 })) ;
             }
 
-            this.batchUpdateList.push(...makeRequestBodyArrayofBatchUpdate_clearUpdate({
+            this.batchUpdateList.push(makeRequestBodyArrayofBatchUpdate_clear({
                 sheetID: this.sheetsID[this.toGCPData.toWriteMainRange.split('!')[0]],
-                range: this.toGCPData.toWriteMainRange,
+                range: this.toGCPData.toWriteMainRange
+            }));
+
+            this.batchUpdateList.push(makeRequestBodyArrayofBatchUpdate_append({
+                sheetID: this.sheetsID[this.toGCPData.toWriteMainRange.split('!')[0]],
                 values: ObjToA2dNumBoolStr(this)
             }));
 
