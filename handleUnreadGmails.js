@@ -328,6 +328,6 @@ export async function HandleUnreadGmails(toChatID = process.env.TG_CHAT_ID, mail
     } finally {
         isImapMailboxOccupied = false ;
         if (lock) { await lock.release() }
-        // if (client) { await client.logout() }
+        if (client) { await client.logout() }
     }
 }

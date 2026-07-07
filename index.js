@@ -133,6 +133,9 @@ async function HandleSignalList() {
         await Promise.allSettled(promiseA);
         handledNumber = taskNumber ;
         console.log(`... ... 共有${taskNumber}个任务处理完毕`);
+
+        console.log(`... 开始检查处理Gmail未读邮件`);
+        HandleUnreadGmails().catch(() => { });
     }
 
     isWorkerRunning = false; 
@@ -211,26 +214,10 @@ process.on('SIGTERM', async () => {
     process.exit(0); // 💥 主动交枪，通知谷歌：老容器已经安全交割，你可以物理回收了！
 });
 
-// 检查未读邮件
-async function toHandleUnreadGmails() {
-    const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
-    while (true) {
-        try {
-           await HandleUnreadGmails();
-           console.log(`√ 检查处理Gmail未读邮件成功`);
-        } catch(e) {
-           console.log(`× 检查处理Gmail未读邮件出错: ${e.message}`);
-        }
-
-        await Sleep(30000); // 每30s检查一次邮件
-    }
-}
 
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`✔ 服务开始监听端口 ${PORT}，运行...`);
-
-    toHandleUnreadGmails() ;
 });
 
 
