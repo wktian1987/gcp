@@ -232,6 +232,7 @@ function convertToTextTable(rawContent) {
 }
 
 const gmailFolderName = "tradingview";
+let isImapMailboxOccupied = false ;
 export async function HandleUnreadGmails(toChatID = process.env.TG_CHAT_ID, mailReceiver = process.env.RECEIVER_EMAIL) {
     let lock = null;
     let client = null;
@@ -240,10 +241,15 @@ export async function HandleUnreadGmails(toChatID = process.env.TG_CHAT_ID, mail
         const client = await try3times(getImapClient) ;
         if (!client.authenticated) { throw new Error("IMAP Client 连接失败") }
 
+        if (isImapMailboxOccupied || client.mailbox?.lockCount > 0) {return}
+
         // 必须先进入文件夹，search 才会生效
         await client.mailboxOpen(gmailFolderName);
+
         lock = await client.getMailboxLock(gmailFolderName);
         if (!lock) { throw new Error("Mail Folder lock 失败")}
+        else {isImapMailboxOccupied = true}
+
         // 搜索未读邮件
         const messages = await client.search({ seen: false });
 
@@ -320,7 +326,8 @@ export async function HandleUnreadGmails(toChatID = process.env.TG_CHAT_ID, mail
         if (task_thereErr) { throw new Error(task_message) }
         
     } finally {
+        isImapMailboxOccupied = false ;
         if (lock) { await lock.release() }
-        if (client) { await client.logout() }
+        // if (client) { await client.logout() }
     }
 }

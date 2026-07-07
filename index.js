@@ -133,12 +133,6 @@ async function HandleSignalList() {
         await Promise.allSettled(promiseA);
         handledNumber = taskNumber ;
         console.log(`... ... 共有${taskNumber}个任务处理完毕`);
-
-
-        // 用信号来激活查看邮件的操作
-        console.log(`开始检查处理Gmail未读邮件`);
-        const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
-        HandleUnreadGmails().catch(() => { }); // 查看未读邮件是一个小事情, 不必报错
     }
 
     isWorkerRunning = false; 
@@ -219,3 +213,13 @@ process.on('SIGTERM', async () => {
 
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, '0.0.0.0', () => { console.log(`✔ 服务开始监听端口 ${PORT}，运行...`); });
+
+// 检查未读邮件
+while (true) {
+    const { HandleUnreadGmails } = await import("./handleUnreadGmails.js");
+
+    console.log(`... 开始检查处理Gmail未读邮件`);
+    HandleUnreadGmails().catch(() => { }); // 查看未读邮件是一个小事情, 不必报错
+
+    await Sleep(30000) ; // 每30s检查一次邮件
+}
