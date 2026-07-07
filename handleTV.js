@@ -75,7 +75,19 @@ export async function HandleAllPrice(tvData) {
 
     const spreadsheetID = process.env.SHEET_ID              ;
     const toWriteArray  = ObjToA2dNumBoolStr(tvData)        ;
-    await UpdateGS(spreadsheetID, RangeAllPrices, toWriteArray) ;
+    // await UpdateGS(spreadsheetID, RangeAllPrices, toWriteArray) ;
+    await try3times(UpdateGS, spreadsheetID, RangeAllPrices, toWriteArray) ;
+}
+
+
+async function try3times(f, ...payloads) {
+    try { return await f(...payloads) } catch {
+        await Sleep(1000);
+        try { return await f(...payloads) } catch {
+            await Sleep(2000);
+            return await f(...payloads);
+        }
+    }
 }
 
 
@@ -164,7 +176,8 @@ export const TradeBot = {
 
         if (TradeBot[this.tbName_spreadsheetID] === null) {
             try {
-                TradeBot[this.tbName_spreadsheetID] = await GetSpreadsheetID(tvData.botNumber);
+                // TradeBot[this.tbName_spreadsheetID] = await GetSpreadsheetID(tvData.botNumber);
+                TradeBot[this.tbName_spreadsheetID] = await try3times(GetSpreadsheetID, tvData.botNumber);
             } catch (e) {
                 let errMessage = e.message + '\n' ;
                 const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
@@ -176,7 +189,8 @@ export const TradeBot = {
 
         if (isEmptyObject(TradeBot[this.tbName_sheetsID]) ) {
             try {
-                TradeBot[this.tbName_sheetsID] = await GetSheetsIDfromSheet(this.spreadsheetID) ;
+                // TradeBot[this.tbName_sheetsID] = await GetSheetsIDfromSheet(this.spreadsheetID) ;
+                TradeBot[this.tbName_sheetsID] = await try3times(GetSheetsIDfromSheet, this.spreadsheetID) ;
             } catch (e) {
                 let errMessage = e.message + '\n' ;
                 const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
@@ -198,7 +212,8 @@ export const TradeBot = {
             if (currentLock !== CV.noLOCK && isStrictTrue(TradeBot[this.tbName_tgResetGSLOCK])) {
                 TradeBot[this.tbName_tgResetGSLOCK] = false ;
                 let resetGSLOCKMessage = '收到resetGSLOCK信号, GSLOCK已释放' ;
-                await UpdateGS(this.spreadsheetID, toGCPData.lockRange, [[CV.noLOCK]]);
+                // await UpdateGS(this.spreadsheetID, toGCPData.lockRange, [[CV.noLOCK]]);
+                await try3times(UpdateGS, this.spreadsheetID, toGCPData.lockRange, [[CV.noLOCK]]);
                 await Sleep(100); // 等0.1后再确认是否成功,防止GS频繁写入读取限制
                 toGCPData = await this.Get_toGCPData();
                 currentLock = toGCPData.LOCK;
@@ -212,15 +227,14 @@ export const TradeBot = {
                 SendTG(`${tvData.botNumber} resetGSLOCK命令已收到`, resetGSLOCKMessage, TradeBot[this.tbName_TGID]).catch(() => { });
             }
 
-
-
             if (currentLock !== CV.noLOCK) {
                 const errMessage = '上一次运行大TradeBot锁被释放的情况下, GS锁未被释放';
                 this.AddRunningWellMessage(errMessage) ;
                 throw new Error(errMessage);
             }
             if (currentLock === CV.noLOCK) {
-                await UpdateGS(this.spreadsheetID, toGCPData.lockRange, [[this.lockName]]);
+                // await UpdateGS(this.spreadsheetID, toGCPData.lockRange, [[this.lockName]]);
+                await try3times(UpdateGS, this.spreadsheetID, toGCPData.lockRange, [[this.lockName]]);
                 await Sleep(100); // 等0.1后再确认是否成功,防止GS频繁写入读取限制
                 toGCPData   = await this.Get_toGCPData() ;
                 currentLock = toGCPData.LOCK ;
@@ -283,13 +297,13 @@ export const TradeBot = {
      * 获取当前toGCPData
      * @returns {Promise<Object>}
      */
-    async Get_toGCPData() { return A2dToCleanObj(await GetGS(this.spreadsheetID, CV.toGCPRanges)) },
+    async Get_toGCPData() { return A2dToCleanObj(await try3times(GetGS, this.spreadsheetID, CV.toGCPRanges)) },
 
     /**
      * 检测当前GS中分布式锁的真实归属,
      * @returns {Promise<String>} String: 当前的lockName
      */
-    async CheckLockFromGS(NotGotLockValueTo = 'NotGotLockValue') {return (await this.Get_toGCPData() )?.LOCK ?? NotGotLockValueTo } ,
+    async CheckLockFromGS(NotGotLockValueTo = 'NotGotLockValue') {return ( await this.Get_toGCPData() ) ?.LOCK ?? NotGotLockValueTo } ,
 
     /**
      * 释放分布式排他锁
@@ -317,7 +331,7 @@ export const TradeBot = {
             while (attempt <= MAX_Attempts) {
                 // 之所以用try是为了最大可能尝试解锁, 而不是仅仅报错
                 try {
-                    await UpdateGS(this.spreadsheetID, toGCPData.lockRange, [[CV.noLOCK]]);
+                    await try3times(UpdateGS, this.spreadsheetID, toGCPData.lockRange, [[CV.noLOCK]]);
                     await Sleep(100);
                     const lockNameAfterAttempt = await this.CheckLockFromGS();
                     if (lockNameAfterAttempt === CV.noLOCK) {return true}
@@ -355,7 +369,7 @@ export const TradeBot = {
                                     toGCPData.CommandRange             ] ;  // 6
                         
             await Sleep(100) ; // 因为刚刚与GS通讯，等小会儿
-            const valuesArray   = await BatchGetGS(this.spreadsheetID, rangesList);
+            const valuesArray   = await try3times(BatchGetGS, this.spreadsheetID, rangesList);
 
             const raw_mainData  = valuesArray[0];
             if (!Array.isArray(raw_mainData) || !Array.isArray(raw_mainData[0]) ) {throw new Error('didnt get available data, 1') }
@@ -395,15 +409,15 @@ export const TradeBot = {
                 isStrictFalse(commandData.thisCommandBeRead)    &&
                 isStrictTrue(commandData.noCommandError)        )  {
                 commandData.thisCommandBeRead = true ;
-                await UpdateGS(this.spreadsheetID, toGCPData.commandReadRange, [[commandData.thisCommandBeRead]]) ;
+                await try3times(UpdateGS, this.spreadsheetID, toGCPData.commandReadRange, [[commandData.thisCommandBeRead]]) ;
                 await Sleep(100) ;
-                let checkCommandRead = ToStrictNumBoolStr( (await GetGS(this.spreadsheetID, toGCPData.commandReadRange))[0][0] ) ;
+                let checkCommandRead = ToStrictNumBoolStr( (await try3times(GetGS, this.spreadsheetID, toGCPData.commandReadRange))[0][0] ) ;
                 if (checkCommandRead !== commandData.thisCommandBeRead) {
                     // 再重试一次, 重新写, 等2s再重新读
                     await Sleep(100) ;
-                    await UpdateGS(this.spreadsheetID, toGCPData.commandReadRange, [[commandData.thisCommandBeRead]]) ;
+                    await try3times(UpdateGS, this.spreadsheetID, toGCPData.commandReadRange, [[commandData.thisCommandBeRead]]) ;
                     await Sleep(2000) ; 
-                    checkCommandRead = ToStrictNumBoolStr( (await GetGS(this.spreadsheetID, toGCPData.commandReadRange))[0][0] ) ;
+                    checkCommandRead = ToStrictNumBoolStr( (await try3times(GetGS, this.spreadsheetID, toGCPData.commandReadRange))[0][0] ) ;
                     if (checkCommandRead !== commandData.thisCommandBeRead) {
                         throw new Error('读取并设置commandFromGS 失败') ;
                     }
@@ -495,7 +509,7 @@ export const TradeBot = {
                     values: newHghLowV
                 }));
 
-            await BatchUpdateGS(this.spreadsheetID, i_toBatchUpdateList) ;
+            await try3times(BatchUpdateGS, this.spreadsheetID, i_toBatchUpdateList) ;
 
             const r_Get_gsData = await this.Get_gsData() ;
             if (isStrictString(r_Get_gsData)) {throw new Error('Get_gsData() 失败: \n' + r_Get_gsData)}
@@ -932,6 +946,7 @@ export const TradeBot = {
         if (this.allCoin > this.rcd_coin * (1 + this.barChgB)) { this.rcd_coin = this.allCoin; AddSetMessage(this.alertMessageSet, '↑ new rcd_coin'); }
         if (this.allCoin < this.rcd_coin * (1 - this.barChgB)) { this.rcd_coin = this.allCoin; AddSetMessage(this.alertMessageSet, '↓ new rcd_coin'); }
 
+        this.toWriteHghLow = false ;
         if (this.allFund > this.hghestFund) { this.toWriteHghLow = true; this.hghestFund = this.allFund; AddSetMessage(this.alertMessageSet, "↑ new hghestFund"); }
         if (this.allFund < this.lowestFund) { this.toWriteHghLow = true; this.lowestFund = this.allFund; AddSetMessage(this.alertMessageSet, "↓ new lowestFund"); }
         if (this.allCoin > this.hghestCoin) { this.toWriteHghLow = true; this.hghestCoin = this.allCoin; AddSetMessage(this.alertMessageSet, "↑ new hghestCoin"); }
@@ -1000,7 +1015,6 @@ export const TradeBot = {
 
         AddSetMessage(this.alertMessageSet, this.cantBuyReason);
         AddSetMessage(this.alertMessageSet, this.cantSellReason);
-
     },
 
     /**
@@ -1502,7 +1516,7 @@ export const TradeBot = {
                 values: ObjToA2dNumBoolStr(this)
             }));
 
-            await BatchUpdateGS(this.spreadsheetID, this.batchUpdateList) ;
+            await try3times(BatchUpdateGS, this.spreadsheetID, this.batchUpdateList) ;
 
             return true;
         } catch (e) {
@@ -1520,7 +1534,7 @@ export const TradeBot = {
      */
     async SendToTG() {
         const toReadRange = this.toGCPData.toReadRange;
-        const rawMessagesA2d = (await GetGS(this.spreadsheetID, toReadRange, 'read')).map(v => CleanArrayToNumStrBool(v));
+        const rawMessagesA2d = (await try3times(GetGS, this.spreadsheetID, toReadRange, 'read')).map(v => CleanArrayToNumStrBool(v));
         const messageString = FormatMatrixToString(rawMessagesA2d);
 
         const subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime);
@@ -1534,7 +1548,7 @@ export const TradeBot = {
      */
     async SendToEmail() {
         const toEmailRange = this.toGCPData.toEmailRange;
-        const rawMessagesA2d = (await GetGS(this.spreadsheetID, toEmailRange, 'read')).map(v => CleanArrayToNumStrBool(v));
+        const rawMessagesA2d = (await try3times(GetGS, this.spreadsheetID, toEmailRange, 'read')).map(v => CleanArrayToNumStrBool(v));
         const messageHTML = ConvertRowsToHtmlTable(rawMessagesA2d);
         const mail_subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime);
         await SendEmail(mail_subject, messageHTML);
@@ -1579,7 +1593,7 @@ export async function HandleTradeBot(tvData) {
     bot.gcpGetTime  = gcpGetTime  ;
     // console.log(bot.cLogHead + 'UpdateDataToBot() success')     ;
 
-    bot.ReNew()                                     ;
+    bot.ReNew();
     // console.log(bot.cLogHead + 'ReNew() success')   ;
 
     const r_ToCheckFundFee = await bot.ToCheckFundFee();
