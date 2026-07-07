@@ -135,12 +135,12 @@ async function HandleSignalList() {
         console.log(`... ... 共有${taskNumber}个任务处理完毕`);
 
         console.log(`... 开始检查处理Gmail未读邮件`);
+        const {HandleUnreadGmails} = await import('./handleUnreadGmails.js') ;
         HandleUnreadGmails().catch(() => { });
     }
 
     isWorkerRunning = false; 
     console.log(`... ... 队列中的全部任务已处理完毕, 此工人共处理${handledNumber}个任务后体面退出`);
-
 }
 
 async function HandleSignal(url, body) {
