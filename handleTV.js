@@ -38,7 +38,8 @@ import {
     makeRequestBodyArrayofBatchUpdate_clear,
     makeRequestBodyArrayofBatchUpdate_clearUpdate,
     makeRequestBodyArrayofBatchUpdate_append,
-    BatchUpdateGS
+    BatchUpdateGS,
+    try3times
 } from "./utility.js";
 
 import { CheckAllPosition, SendOrderToBroker, CheckOrderConfirm, CheckFundFee } from "./broker.js";
@@ -78,18 +79,6 @@ export async function HandleAllPrice(tvData) {
     // await UpdateGS(spreadsheetID, RangeAllPrices, toWriteArray) ;
     await try3times(UpdateGS, spreadsheetID, RangeAllPrices, toWriteArray) ;
 }
-
-
-async function try3times(f, ...payloads) {
-    try { return await f(...payloads) } catch {
-        await Sleep(1000);
-        try { return await f(...payloads) } catch {
-            await Sleep(2000);
-            return await f(...payloads);
-        }
-    }
-}
-
 
 export const TradeBot = {
     /**

@@ -379,6 +379,38 @@ export function ConvertRowsToHtmlTable(rows) {
 }
 
 /**
+ * 工业级通用三发断路重试器（带指数退避策略）。
+ * * @description
+ * 该函数是中台防空洞机制的核心组件。当传入的异步函数 `f` 遭遇网络抖动或配额风控（如 Google Sheets API 限制）而砸盘时，
+ * 本重试器会自动执行以下因果律流向：
+ * 1. 首发火网：直接执行，成功则秒回出港。
+ * 2. 二发补枪：首发受挫后，就地静默 1000ms 开火。
+ * 3. 三发决战：补枪再灭后，延长安全期至 2000ms 避开风控波峰进行最终交割。
+ * 若三枪全灭，则刚性抛出最终的物理创口痕迹。
+ *
+ * @template T
+ * @param {function(...any[]): Promise<T>} f - 准备交由重试器全量托管的异步目标函数（需返回 Promise）。
+ * @param {...any} payloads - 动态解包并平摊传递给目标函数 `f` 的变长参数载荷队列。
+ * @returns {Promise<T>} 完美投递最终命中那一枪的物理回执（若 `f` 无返回值则投递 `undefined`）。
+ * @throws {Error} 如果连续三枪物理爆破均宣告全灭，则向外侧策略层甩出最终的致命异常。
+ * * @example
+ * // 消费场景一：包裹 Google Sheets 批量交割（传 2 个参数，承接返回值）
+ * const result = await try3times(BatchUpdateGS, this.spreadsheetID, this.batchUpdateList);
+ * * @example
+ * // 消费场景二：包裹纯动作型函数（无返回值）
+ * await try3times(clearOldSheets, targetSheetId);
+ */
+export async function try3times(f, ...payloads) {
+    try { return await f(...payloads) } catch {
+        await Sleep(1000);
+        try { return await f(...payloads) } catch {
+            await Sleep(2000);
+            return await f(...payloads);
+        }
+    }
+}
+
+/**
  * 从 "0" 号核心配置表中精准提取指定键的原生高精度类型值
  * @async
  * @param {string} keyName - 期望读取的配置项键名（例如："IS_BOT_OPEN", "MAX_SLIPPAGE"）
@@ -459,7 +491,6 @@ export function GetStartRowFromRange(rangeStr) {
     
     return null;
 }
-
 
 /**
  * 精准扫描指定工作表，计算并返回含有任何有效数据（数字、字符串、布尔值等）的最小闭环 A1 范围边界

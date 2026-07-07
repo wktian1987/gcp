@@ -14,7 +14,8 @@ import {
     isStrictNumber,
     BatchGetGS,
     isStrictTrue,
-    isStrictFalse
+    isStrictFalse,
+    try3times
 } from "./utility.js";
 
 import {TradeBot} from './handleTV.js';
@@ -195,21 +196,21 @@ export async function HandleTgBot(msg) {
     }
 
     const tbName_spreadsheetID  =  botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID
-    const spreadsheetID = Object.hasOwn(TradeBot, tbName_spreadsheetID) && isStrictString(TradeBot[tbName_spreadsheetID]) ? TradeBot[tbName_spreadsheetID] : await GetSpreadsheetID(botNumber);
+    const spreadsheetID = Object.hasOwn(TradeBot, tbName_spreadsheetID) && isStrictString(TradeBot[tbName_spreadsheetID]) ? TradeBot[tbName_spreadsheetID] : await try3times(GetSpreadsheetID, botNumber);
 
     const toReadRangeName  = botNumber + '_toReadRange'     ;
     const toEmailRangeName = botNumber + '_toEmailRange'    ;
     if (!isStrictString(tempStore[toReadRangeName]) || !isStrictString(tempStore[toEmailRangeName])) {
-        const toGCPData = A2dToCleanObj(await GetGS(spreadsheetID, Range_toGCP) ) ;
+        const toGCPData = A2dToCleanObj(await try3times(GetGS, spreadsheetID, Range_toGCP) ) ;
         tempStore[toReadRangeName]  = toGCPData.toReadRange     ;
         tempStore[toEmailRangeName] = toGCPData.toEmailRange    ;
     }
-    let DataFromGS = await BatchGetGS(spreadsheetID, [tempStore[toReadRangeName], tempStore[toEmailRangeName], Range_toGCP]) ;
+    let DataFromGS = await try3times(BatchGetGS, spreadsheetID, [tempStore[toReadRangeName], tempStore[toEmailRangeName], Range_toGCP]) ;
     const toGCPData = A2dToCleanObj(DataFromGS[2]) ;
     if (tempStore[toReadRangeName] !== toGCPData.toReadRange || tempStore[toEmailRangeName] !== toGCPData.toEmailRange) {
         tempStore[toReadRangeName]  = toGCPData.toReadRange     ;
         tempStore[toEmailRangeName] = toGCPData.toEmailRange    ;
-        DataFromGS = await BatchGetGS(spreadsheetID, [tempStore[toReadRangeName], tempStore[toEmailRangeName]]) ;
+        DataFromGS = await try3times(BatchGetGS, spreadsheetID, [tempStore[toReadRangeName], tempStore[toEmailRangeName]]) ;
     }
 
     const toTGData    = DataFromGS[0];

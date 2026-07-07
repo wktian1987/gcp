@@ -12,6 +12,46 @@ import {
     AddMessage
 } from './utility.js';
 
+// 1. 刚性配置锁死在全局// 1. 刚性配置锁死在全局
+const IMAP_CONFIG = {
+    host    : 'imap.gmail.com',
+    port    : 993,
+    secure  : true,
+    auth    : { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASS },
+    logger  : { level: 'error'} // 关键设置：只输出错误级别的日志 // 可选值: 'debug', 'info', 'warn', 'error', 'silent'
+};
+
+
+// 2. 全局唯一的 client 座位（单例物理壳）
+let globalImapClient = null;
+
+/**
+ * 核心大闸：获取满血可用的 IMAP 连接单例
+ * 确保整个系统生命周期只有一条管道，断线自动重连
+ */
+async function getImapClient() {
+    // 场景 A：如果从来没创建过，原位初始化
+    if (!globalImapClient) {
+        globalImapClient = new ImapFlow(IMAP_CONFIG);
+    }
+
+    // 场景 B：如果连接健在，直接秒回出港复用
+    if (globalImapClient.usable) {
+        return globalImapClient;
+    }
+
+    try {
+        // 安全熔断：在连之前先强制 logout 清理残留脏数据，防止句柄溢出
+        await globalImapClient.logout().catch(() => {}); 
+        
+        // 重新并网
+        await globalImapClient.connect();
+        return globalImapClient;
+    } catch (err) {
+        throw err; // 向上抛出，交由你的 try3times 工具箱去触发退避重试！
+    }
+}
+
 
 // 同步 Pine Script 的 SwapChars
 function swapChars(src, idx1, idx2) {
@@ -196,15 +236,7 @@ export async function HandleUnreadGmails(toChatID = process.env.TG_CHAT_ID, mail
     let client = null;
 
     try {
-        const IMAP_CONFIG = {
-            host    : 'imap.gmail.com',
-            port    : 993,
-            secure  : true,
-            auth    : { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASS },
-            logger  : { level: 'error'} // 关键设置：只输出错误级别的日志 // 可选值: 'debug', 'info', 'warn', 'error', 'silent'
-        };
-        client = new ImapFlow(IMAP_CONFIG);
-        await client.connect();
+        const client = await getImapClient() ;
         if (!client.authenticated) { throw new Error("IMAP Client 连接失败") }
 
         // 必须先进入文件夹，search 才会生效
