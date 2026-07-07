@@ -159,7 +159,7 @@ async function HandleSignal(url, body) {
             console.log("TradeBot botNumber: " + body.botNumber);
 
             try {
-                const { HandleTradeBot, CV } = await import("./handleTV.js");
+                const { HandleTradeBot, CV } = await import("./handleTV.js"); // 这一行写在try中，一次加载整个运行声明周期都可用，还是每次运行到这里都要重新加载，或者反复加载导致内存中同样内容重复
                 const r_HandleTradeBot = await HandleTradeBot(body);
                 if      (r_HandleTradeBot === CV.stopSet      ) {console.log(`${body.botNumber}: stopSet, 本信号丢弃`) }
                 else if (r_HandleTradeBot === CV.newerHandled ) {console.log(`${body.botNumber}: 已处理更新的信号, 本信号丢弃`)}

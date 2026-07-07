@@ -1344,6 +1344,7 @@ export const TradeBot = {
             const w_toUpdateRangeList       = []            ;
             const w_toClearRangeSet         = new Set()     ;
             const w_toAppendTradeHistory    = {}            ;
+            const w_toAppendUncloseOrders   = {}            ;
 
             // 对于部分成交的情况,
             // 按照成交逻辑, 如果返回order_cancel的话, 表示订单没有任何成交
@@ -1382,11 +1383,16 @@ export const TradeBot = {
                 w_toClearRangeSet.add(toGCPData.uncloseOrdersRange);
 
                 const newTradeHistoryA = tradeHistoryTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || CV.NA));
-                w_toAppendTradeHistory.toAppend     = true;
-                w_toAppendTradeHistory.range        = toGCPData.tradeHistoryRange;
-                w_toAppendTradeHistory.values       = [newTradeHistoryA];
+                w_toAppendTradeHistory.toAppend     = true                          ;
+                w_toAppendTradeHistory.range        = toGCPData.tradeHistoryRange   ;
+                w_toAppendTradeHistory.values       = [newTradeHistoryA]            ;
 
-                if (uncloseOrdersA2d.length > 0) { w_toUpdateRangeList.push({ range: toGCPData.uncloseOrdersRange, values: uncloseOrdersA2d }) }
+                // if (uncloseOrdersA2d.length > 0) { w_toUpdateRangeList.push({ range: toGCPData.uncloseOrdersRange, values: uncloseOrdersA2d }) }
+                if (uncloseOrdersA2d.length > 0) {
+                    w_toAppendUncloseOrders.toAppend     = true                         ;
+                    w_toAppendUncloseOrders.range        = toGCPData.uncloseOrdersRange ;
+                    w_toAppendUncloseOrders.values       = uncloseOrdersA2d             ;
+                }
 
                 const thisMessage = isStrictNumber(ingOrderData.ing_isPartial) ?
                     (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + `Order partially ${Math.round(1000*ingOrderData.ing_isPartial)/10}% confirmed, but order canceled` :
@@ -1430,6 +1436,14 @@ export const TradeBot = {
                     values: w_toAppendTradeHistory.values
                 });
                 this.batchUpdateList.push(w_toAppendTradeLine);
+            }
+
+            if (isStrictTrue(w_toAppendUncloseOrders.toAppend)) {
+                const w_toAppendUncloseOrdersLines = makeRequestBodyArrayofBatchUpdate_append({
+                    sheetID: this.sheetsID[w_toAppendUncloseOrders.range.split('!')[0]],
+                    values: w_toAppendUncloseOrders.values
+                });
+                this.batchUpdateList.push(w_toAppendUncloseOrdersLines);
             }
             
             return true;
