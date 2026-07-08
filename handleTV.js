@@ -1505,11 +1505,12 @@ export const TradeBot = {
                 values: ObjToA2dNumBoolStr(this)
             }));
 
-            this.batchUpdateList.push(...makeRequestBodyArrayofBatchUpdate_clearUpdate({
-                sheetID: this.sheetsID[this.toGCPData.lockRange.split('!')[0]],
-                range: this.toGCPData.lockRange, 
-                values: [[CV.noLOCK]]
-            }));
+            this.batchUpdateList.push(makeRequestBodyArrayofBatchUpdate_update(
+                {
+                sheetID : this.sheetsID[this.toGCPData.lockRange.split('!')[0]]     ,
+                range   : this.toGCPData.lockRange                                  ,
+                values  : [[CV.noLOCK]]                                             }
+            ));
 
             await try3times(BatchUpdateGS, this.spreadsheetID, this.batchUpdateList) ;
 

@@ -901,7 +901,7 @@ export function makeRequestBodyArrayofBatchUpdate_clear(clearObj) {
  * @returns {Array<Object>} 包含一发大清洗和一发覆盖写入的顺序串行请求数组（外部需配合 .flat() 或展开运算符）
  * @throws {Error} 当传入字段缺失、类型错误或 A1 坐标正则解析失败时抛出错误
  */
-export function makeRequestBodyArrayofBatchUpdate_Update(clearUpdateObj) {
+export function makeRequestBodyArrayofBatchUpdate_update(clearUpdateObj) {
     const { sheetID, range, values } = clearUpdateObj;
 
     // 入站刚性风控
@@ -946,7 +946,7 @@ export function makeRequestBodyArrayofBatchUpdate_Update(clearUpdateObj) {
     // 复水工人无缝并网，将二维数组转换出谷歌需要的细胞基因骨架
     const googleRowData = ToGoogleRowData(values);
 
-    const requests = [];
+    // const requests = [];
 
     // 1. 组装第一发子弹：物理大清洗 GridRange
     const clearGridRange = {
@@ -967,12 +967,12 @@ export function makeRequestBodyArrayofBatchUpdate_Update(clearUpdateObj) {
         clearGridRange.endColumnIndex = googleStartCol + 1;
     }
 
-    requests.push({
-        updateCells: {
-            range: clearGridRange,
-            fields: "userEnteredValue"
-        }
-    });
+    // requests.push({
+    //     updateCells: {
+    //         range: clearGridRange,
+    //         fields: "userEnteredValue"
+    //     }
+    // });
 
     // 2. 组装第二发子弹：精准定点平铺写入新细胞矩阵
     const updateGridRange = {
@@ -983,15 +983,22 @@ export function makeRequestBodyArrayofBatchUpdate_Update(clearUpdateObj) {
         endColumnIndex: googleStartCol + values[0].length
     };
 
-    requests.push({
-        updateCells: {
-            range: updateGridRange,
-            rows: googleRowData,
-            fields: "userEnteredValue"  // 这样写入的数字前面会有个符号'吗
-        }
-    });
+    // requests.push({
+    //     updateCells: {
+    //         range: updateGridRange,
+    //         rows: googleRowData,
+    //         fields: "userEnteredValue"  // 这样写入的数字前面会有个符号'吗
+    //     }
+    // });
 
-    return requests;
+    // return requests;
+
+    return {
+        updateCells: {
+            range   : updateGridRange       ,
+            rows    : googleRowData         ,
+            fields  : "userEnteredValue"    }
+    };
 }
 
 /**
