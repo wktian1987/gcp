@@ -25,6 +25,9 @@ export const sheetsClient = google.sheets({
     }
 });
 
+// 上述的长连接方式是不是会导致费用很高
+// 帮我重写，每次使用的时候新建连接
+
 
 // 原始方案如下
 // import { google } from 'googleapis';
