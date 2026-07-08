@@ -77,7 +77,6 @@ export async function HandleAllPrice(tvData) {
 
     const spreadsheetID = process.env.SHEET_ID              ;
     const toWriteArray  = ObjToA2dNumBoolStr(tvData)        ;
-    // await UpdateGS(spreadsheetID, RangeAllPrices, toWriteArray) ;
     await try3times(UpdateGS, spreadsheetID, RangeAllPrices, toWriteArray) ;
 }
 
@@ -287,7 +286,10 @@ export const TradeBot = {
      * 获取当前toGCPData
      * @returns {Promise<Object>}
      */
-    async Get_toGCPData() { return A2dToCleanObj(await try3times(GetGS, this.spreadsheetID, CV.toGCPRanges)) },
+    async Get_toGCPData() { 
+        this.toGCPData = A2dToCleanObj(await try3times(GetGS, this.spreadsheetID, CV.toGCPRanges)) ;
+        return this.toGCPData ;
+    },
 
     /**
      * 检测当前GS中分布式锁的真实归属,
@@ -347,7 +349,7 @@ export const TradeBot = {
      */
     async Get_gsData() {
         try {
-            const toGCPData = await this.Get_toGCPData() ;
+            const toGCPData = this.toGCPData ;
             if(!Object.hasOwn(toGCPData, "LOCK") ) {throw new Error("get toGCPData error") }
 
             const rangesList = [    toGCPData.mainRange                ,    // 0 
@@ -358,7 +360,6 @@ export const TradeBot = {
                                     toGCPData.ingOrderTitleLine        ,    // 5
                                     toGCPData.CommandRange             ] ;  // 6
                         
-            await Sleep(100) ; // 因为刚刚与GS通讯，等小会儿
             const valuesArray   = await try3times(BatchGetGS, this.spreadsheetID, rangesList);
 
             const raw_mainData  = valuesArray[0];
@@ -385,7 +386,6 @@ export const TradeBot = {
 
             const commandData           = A2dToCleanObj(valuesArray[6]) ;
 
-            this.toGCPData              =  toGCPData            ;
             this.mainData               =  mainData             ;
             this.ingOrderData           =  ingOrderData         ;
             this.ingOrderTitleA         =  ingOrderTitleA       ;
@@ -400,13 +400,10 @@ export const TradeBot = {
                 isStrictTrue(commandData.noCommandError)        )  {
                 commandData.thisCommandBeRead = true ;
                 await try3times(UpdateGS, this.spreadsheetID, toGCPData.commandReadRange, [[commandData.thisCommandBeRead]]) ;
-                await Sleep(100) ;
                 let checkCommandRead = ToStrictNumBoolStr( (await try3times(GetGS, this.spreadsheetID, toGCPData.commandReadRange))[0][0] ) ;
                 if (checkCommandRead !== commandData.thisCommandBeRead) {
                     // 再重试一次, 重新写, 等2s再重新读
-                    await Sleep(100) ;
                     await try3times(UpdateGS, this.spreadsheetID, toGCPData.commandReadRange, [[commandData.thisCommandBeRead]]) ;
-                    await Sleep(2000) ; 
                     checkCommandRead = ToStrictNumBoolStr( (await try3times(GetGS, this.spreadsheetID, toGCPData.commandReadRange))[0][0] ) ;
                     if (checkCommandRead !== commandData.thisCommandBeRead) {
                         throw new Error('读取并设置commandFromGS 失败') ;
