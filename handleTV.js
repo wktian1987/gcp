@@ -1514,15 +1514,16 @@ export const TradeBot = {
 
             const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
             if (!r_ReleaseTradeBotLOCK || isStrictString(r_ReleaseTradeBotLOCK)) {
+                const errMessage = 'ReleaseTradeBotLOCK() 失败: ' + r_ReleaseTradeBotLOCK ;
                 // 无法为GS解锁, 是严重错误, 需要手动解锁
-                bot.AddRunningWellMessage('程序运行到最后, 无法为TradeBot解锁, 是严重错误, 需要手动解锁: \n' + r_ReleaseTradeBotLOCK);
-                throw new Error('ReleaseTradeBotLOCK() 失败: \n' + r_ReleaseTradeBotLOCK);
+                this.AddRunningWellMessage(errMessage);
+                throw new Error(errMessage);
             }
 
             return true;
         } catch (e) {
             // 这是核心错误, 不能解锁, 需要手动查看
-            const errMessage = `核心错误: WriteToGS_releaseLocks(): ${e.message}`.trim();
+            const errMessage = `核心错误: ${e.message}`.trim();
             this.AddRunningWellMessage(errMessage);
             return errMessage;
         }
