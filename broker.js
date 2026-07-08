@@ -119,6 +119,11 @@ export async function CheckFundFee(fund) {
 
 //#endregion
 
+const agentPool = {
+    GATE:       new https.Agent({ keepAlive: true, keepAliveMsecs: 2000, maxSockets: 64 }),
+    BINANCE:    new https.Agent({ keepAlive: true, keepAliveMsecs: 2000, maxSockets: 64 })
+};
+
 
 //#region - Gate
 // 实盘交易: https://api.gateio.ws
@@ -247,6 +252,9 @@ async function GATE_Fetch(fetchBody) {
 
         // 如果是 POST/PUT 动词，无缝注入 body 装弹
         if (method === 'POST' && bodyString) { options.body = bodyString }
+
+        options.agent = agentPool.GATE;
+
         const res = await fetch(url, options);
 
         // 交易所传来的原始ID是特别大的数字格式， 直接用json, 会丢失精度。
