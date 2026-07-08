@@ -253,7 +253,7 @@ async function GATE_Fetch(fetchBody) {
         // 如果是 POST/PUT 动词，无缝注入 body 装弹
         if (method === 'POST' && bodyString) { options.body = bodyString }
 
-        options.agent = agentPool.GATE;
+        options.agent = agentPool.GATE; // 使用长连接
 
         const res = await fetch(url, options);
 
