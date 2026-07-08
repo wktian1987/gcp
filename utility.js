@@ -4,10 +4,10 @@ import https from 'node:https';
 //  1. 注入长效物理套接字蓄水池（全局只初始化一次，焊死长链接）
 const sheetsAgent = new https.Agent({
     keepAlive: true,             // 保持长连接，请求完了留在原地等下一个信号
-    keepAliveMsecs: 3000,        // 3秒发一次空包维持通道通畅
+    keepAliveMsecs: 3000,        // 3秒发一次空包维持通道通畅， 能否改为60000？？？不能改为60000, 消耗资源极低, 不用担心计费问题
     maxSockets: 64,              // 允许的最大并发套接字数
     maxFreeSockets: 10,          // 闲置时最多保留的热连接数
-    timeout: 30000,              // 30秒无响应刚性断开 , 刚性断开后, 下次有信号进来调用sheetsClient会自动重连吗？？？
+    timeout: 30000,              // 30秒无响应刚性断开 , 刚性断开后, 下次有信号进来调用sheetsClient会自动重连
 });
 
 const auth = new google.auth.GoogleAuth({ 
