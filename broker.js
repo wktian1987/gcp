@@ -1,3 +1,5 @@
+import https from 'node:https';
+
 import {
     isStrictNumber,
     isStrictString,
