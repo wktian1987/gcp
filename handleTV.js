@@ -36,6 +36,7 @@ import {
     SendEmail,
     Sleep,
     makeRequestBodyArrayofBatchUpdate_clear,
+    makeRequestBodyArrayofBatchUpdate_update,
     makeRequestBodyArrayofBatchUpdate_clearUpdate,
     makeRequestBodyArrayofBatchUpdate_append,
     BatchUpdateGS,
@@ -302,7 +303,7 @@ export const TradeBot = {
      * @returns {Promise<boolean>} true:   解锁成功返回
      * @returns {Promise<string>}  string: 解锁失败原因
      */
-    async ReleaseLockOfGS(MAX_Attempts = 99, NotGotLockValueTo = 'NotGotLockValue') {
+    async ReleaseLockOfGS(MAX_Attempts = 3, NotGotLockValueTo = 'NotGotLockValue') {
         try {
             // 再次确权, 验证要加的锁, 是否与TradeBot中的锁相同
             if (TradeBot[this.tbName_lastLockTime] !== this.LockTime) { throw new Error('TradeBot存放的LockTime与当前写入的不符') }
@@ -1470,7 +1471,7 @@ export const TradeBot = {
      * @returns true表示写入成功
      * @returns string: 具体的出错信息
      */
-    async WriteToGS_releaseLocks() {
+    async WriteToGS_ReleaseLocks() {
         try {
             if (this.alertMessageSet.size > 0) { this.alertMessage = StrFromSetMessage(this.alertMessageSet) }
 
@@ -1615,9 +1616,9 @@ export async function HandleTradeBot(tvData) {
     if (!r_ToCheckWaitingOrder || isStrictString(r_ToCheckWaitingOrder)) { throw new Error('ToCheckWaitingOrder() 失败: \n' + r_ToCheckWaitingOrder) }
     // if (isStrictTrue(r_ToCheckWaitingOrder)) { console.log(bot.cLogHead + 'ToCheckWaitingOrder() success') }
 
-    const r_WriteToGS_releaseLocks = await bot.WriteToGS_releaseLocks();
-    if (!r_WriteToGS_releaseLocks || isStrictString(r_WriteToGS_releaseLocks)) { throw new Error('WriteToGS_releaseLocks() 失败: \n' + r_WriteToGS_releaseLocks) }
-    // if (isStrictTrue(WriteToGS_releaseLocks)) { console.log(bot.cLogHead + 'WriteToGS_releaseLocks() success') }
+    const r_WriteToGS_ReleaseLocks = await bot.WriteToGS_ReleaseLocks();
+    if (!r_WriteToGS_ReleaseLocks || isStrictString(r_WriteToGS_ReleaseLocks)) { throw new Error('WriteToGS_ReleaseLocks() 失败: \n' + r_WriteToGS_ReleaseLocks) }
+    // if (isStrictTrue(r_WriteToGS_ReleaseLocks)) { console.log(bot.cLogHead + 'WriteToGS_ReleaseLocks() success') }
 
     bot.SendToTG().catch(() => { });
     bot.SendToEmail().catch(() => { });

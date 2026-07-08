@@ -1300,9 +1300,10 @@ export async function SendEmail(mail_subject, mail_content, mailReceiver = proce
             subject: mail_subject,
             html: mail_content 
         };
-        await try3times(transporter.sendMail, mailOptions) 
 
-    } catch (e) {
+        await transporter.sendMail(mailOptions) ;
+
+    } catch {
         const transporter = createTransport({
             host: 'smtp.resend.com',
             port: 465,
@@ -1318,7 +1319,8 @@ export async function SendEmail(mail_subject, mail_content, mailReceiver = proce
             subject: mail_subject,
             html: mail_content 
         };
-        await transporter.sendMail(mailOptions)
+
+        await transporter.sendMail(mailOptions) ;
     }
 }
 
