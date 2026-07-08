@@ -1470,7 +1470,7 @@ export const TradeBot = {
      * @returns true表示写入成功
      * @returns string: 具体的出错信息
      */
-    async WriteToGS() {
+    async WriteToGS_releaseLocks() {
         try {
             if (this.alertMessageSet.size > 0) { this.alertMessage = StrFromSetMessage(this.alertMessageSet) }
 
@@ -1505,12 +1505,25 @@ export const TradeBot = {
                 values: ObjToA2dNumBoolStr(this)
             }));
 
+            this.batchUpdateList.push(...makeRequestBodyArrayofBatchUpdate_clearUpdate({
+                sheetID: this.sheetsID[this.toGCPData.lockRange.split('!')[0]],
+                range: this.toGCPData.lockRange, 
+                values: [[cv.noLOCK]]
+            }));
+
             await try3times(BatchUpdateGS, this.spreadsheetID, this.batchUpdateList) ;
+
+    const r_ReleaseTradeBotLOCK = bot.ReleaseTradeBotLOCK();
+    if (!r_ReleaseTradeBotLOCK || isStrictString(r_ReleaseTradeBotLOCK)) { 
+        // 无法为GS解锁, 是严重错误, 需要手动解锁
+        bot.AddRunningWellMessage('程序运行到最后, 无法为TradeBot解锁, 是严重错误, 需要手动解锁: \n' + r_ReleaseTradeBotLOCK) ;
+        throw new Error('ReleaseTradeBotLOCK() 失败: \n' + r_ReleaseTradeBotLOCK)  ;
+    }
 
             return true;
         } catch (e) {
             // 这是核心错误, 不能解锁, 需要手动查看
-            const errMessage = `核心错误: ${e.message}`.trim();
+            const errMessage = `核心错误: WriteToGS_releaseLocks(): ${e.message}`.trim();
             this.AddRunningWellMessage(errMessage);
             return errMessage;
         }
@@ -1601,28 +1614,12 @@ export async function HandleTradeBot(tvData) {
     if (!r_ToCheckWaitingOrder || isStrictString(r_ToCheckWaitingOrder)) { throw new Error('ToCheckWaitingOrder() 失败: \n' + r_ToCheckWaitingOrder) }
     // if (isStrictTrue(r_ToCheckWaitingOrder)) { console.log(bot.cLogHead + 'ToCheckWaitingOrder() success') }
 
-    const r_WriteToGS = await bot.WriteToGS();
-    if (!r_WriteToGS || isStrictString(r_WriteToGS)) { throw new Error('WriteToGS() 失败: \n' + r_WriteToGS) }
-    // if (isStrictTrue(r_WriteToGS)) { console.log(bot.cLogHead + 'WriteToGS() success') }
+    const r_WriteToGS_releaseLocks = await bot.WriteToGS_releaseLocks();
+    if (!r_WriteToGS_releaseLocks || isStrictString(r_WriteToGS_releaseLocks)) { throw new Error('WriteToGS_releaseLocks() 失败: \n' + r_WriteToGS_releaseLocks) }
+    // if (isStrictTrue(WriteToGS_releaseLocks)) { console.log(bot.cLogHead + 'WriteToGS_releaseLocks() success') }
 
     bot.SendToTG().catch(() => { });
     bot.SendToEmail().catch(() => { });
-
-    const r_ReleaseLockOfGS = await bot.ReleaseLockOfGS() ;
-    if (!r_ReleaseLockOfGS || isStrictString(r_ReleaseLockOfGS)) { 
-        // 无法为GS解锁, 是严重错误, 需要手动解锁
-        bot.AddRunningWellMessage('程序运行到最后, 无法为GS解锁, 是严重错误, 需要手动解锁: \n' + r_ReleaseLockOfGS) ;
-        throw new Error('ReleaseLockOfGS() 失败: \n' + r_ReleaseLockOfGS)  ;
-    }
-    // if (isStrictTrue(r_ReleaseLockOfGS)) { console.log(bot.cLogHead + 'ReleaseLockOfGS() success') }
-
-    const r_ReleaseTradeBotLOCK = bot.ReleaseTradeBotLOCK();
-    if (!r_ReleaseTradeBotLOCK || isStrictString(r_ReleaseTradeBotLOCK)) { 
-        // 无法为GS解锁, 是严重错误, 需要手动解锁
-        bot.AddRunningWellMessage('程序运行到最后, 无法为TradeBot解锁, 是严重错误, 需要手动解锁: \n' + r_ReleaseTradeBotLOCK) ;
-        throw new Error('ReleaseTradeBotLOCK() 失败: \n' + r_ReleaseTradeBotLOCK)  ;
-    }
-    // if (isStrictTrue(r_ReleaseTradeBotLOCK)) { console.log(bot.cLogHead + 'ReleaseTradeBotLOCK() success') }
 
     return true ;
 

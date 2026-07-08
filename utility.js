@@ -901,6 +901,109 @@ export function makeRequestBodyArrayofBatchUpdate_clear(clearObj) {
  * @returns {Array<Object>} 包含一发大清洗和一发覆盖写入的顺序串行请求数组（外部需配合 .flat() 或展开运算符）
  * @throws {Error} 当传入字段缺失、类型错误或 A1 坐标正则解析失败时抛出错误
  */
+export function makeRequestBodyArrayofBatchUpdate_Update(clearUpdateObj) {
+    const { sheetID, range, values } = clearUpdateObj;
+
+    // 入站刚性风控
+    if (typeof sheetID !== 'number' || !range || !values) {
+        throw new Error('clearUpdate 构造器配置内容残缺或类型错误');
+    }
+
+    // 📡 终极全地形坐标雷达（先隔离、后清洗）
+    let a1Notation = range.includes('!') ? range.split('!')[1] : range;
+    a1Notation = a1Notation.replace(/\$/g, '');
+
+    const match = a1Notation.match(/^([A-Z]+)([0-9]+)(?::([A-Z]*)([0-9]*))?$/i);
+
+    if (!match) {
+        throw new Error(`A1坐标格式畸形，无法解析。收到: [${range}]`);
+    }
+
+    // 26进制字母转数字进制翻译官
+    const colToNumber = (colStr) => {
+        if (!colStr) return null;
+        let num = 0;
+        const str = colStr.toUpperCase();
+        for (let i = 0; i < str.length; i++) {
+            num = num * 26 + (str.charCodeAt(i) - 64);
+        }
+        return num;
+    };
+
+    // 基础变量提取分配
+    const startColStr = match[1];
+    const startRowStr = match[2];
+    // 刚性安全网：先用 match.length 卡死物理边界，防止数组缩水时强行读取溢出
+    const endColStr = (match.length > 3 && match[3] !== undefined) ? match[3] : null;
+    const endRowStr = (match.length > 4 && match[4] !== undefined) ? match[4] : null;
+
+    const startCol = colToNumber(startColStr);
+    const startRow = parseInt(startRowStr, 10);
+
+    const googleStartRow = startRow - 1; 
+    const googleStartCol = startCol - 1; 
+
+    // 复水工人无缝并网，将二维数组转换出谷歌需要的细胞基因骨架
+    const googleRowData = ToGoogleRowData(values);
+
+    const requests = [];
+
+    // 1. 组装第一发子弹：物理大清洗 GridRange
+    const clearGridRange = {
+        sheetId: sheetID,
+        startRowIndex: googleStartRow,
+        startColumnIndex: googleStartCol
+    };
+
+    if (range.includes(':')) {
+        if (endColStr) {
+            clearGridRange.endColumnIndex = colToNumber(endColStr);
+        }
+        if (endRowStr) {
+            clearGridRange.endRowIndex = parseInt(endRowStr, 10);
+        }
+    } else {
+        clearGridRange.endRowIndex = googleStartRow + 1;
+        clearGridRange.endColumnIndex = googleStartCol + 1;
+    }
+
+    requests.push({
+        updateCells: {
+            range: clearGridRange,
+            fields: "userEnteredValue"
+        }
+    });
+
+    // 2. 组装第二发子弹：精准定点平铺写入新细胞矩阵
+    const updateGridRange = {
+        sheetId: sheetID,
+        startRowIndex: googleStartRow,
+        endRowIndex: googleStartRow + values.length,
+        startColumnIndex: googleStartCol,
+        endColumnIndex: googleStartCol + values[0].length
+    };
+
+    requests.push({
+        updateCells: {
+            range: updateGridRange,
+            rows: googleRowData,
+            fields: "userEnteredValue"  // 这样写入的数字前面会有个符号'吗
+        }
+    });
+
+    return requests;
+}
+
+/**
+ * 拼装器：生成 batchUpdate 结构轨道所需的指定区域大清洗并定点平铺覆盖写入原子请求数组
+ * * 业务特性：支持全地形坐标。自动处理 0-based 索引与开区间对账，先后两发子弹顺序串行，微秒级原子交割。
+ * * @param {Object} clearUpdateObj - 触发清洗并定点覆盖写入的任务配置对象
+ * @param {number} clearUpdateObj.sheetID - 目标标签页的纯数字物理 ID
+ * @param {string} clearUpdateObj.range - 目标 A1 区域坐标字符串
+ * @param {Array<Array<string|number|boolean>>} clearUpdateObj.values - 准备平铺覆盖写入的纯净二维数组
+ * @returns {Array<Object>} 包含一发大清洗和一发覆盖写入的顺序串行请求数组（外部需配合 .flat() 或展开运算符）
+ * @throws {Error} 当传入字段缺失、类型错误或 A1 坐标正则解析失败时抛出错误
+ */
 export function makeRequestBodyArrayofBatchUpdate_clearUpdate(clearUpdateObj) {
     const { sheetID, range, values } = clearUpdateObj;
 
