@@ -1512,7 +1512,7 @@ export const TradeBot = {
 
             await try3times(BatchUpdateGS, this.spreadsheetID, this.batchUpdateList) ;
 
-            const r_ReleaseTradeBotLOCK = bot.ReleaseTradeBotLOCK();
+            const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
             if (!r_ReleaseTradeBotLOCK || isStrictString(r_ReleaseTradeBotLOCK)) {
                 // 无法为GS解锁, 是严重错误, 需要手动解锁
                 bot.AddRunningWellMessage('程序运行到最后, 无法为TradeBot解锁, 是严重错误, 需要手动解锁: \n' + r_ReleaseTradeBotLOCK);
