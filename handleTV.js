@@ -544,7 +544,7 @@ export const TradeBot = {
                 Math.abs( (S.allPositionWithWaiting - S.brokerPosition) / S.brokerPosition ) > (0.5 / this.mainData.MaxGrid) ) { throw new Error('GS中记录的仓位与交易所实际仓位不符') }
             return true ;
         } catch (e) {
-            const errMessage = `核心错误: CheckAllPosition_withBroker() error: ${e.message}` ;
+            const errMessage = `核心错误: ${e.message}` ;
             this.AddRunningWellMessage(errMessage);
             return errMessage ;
         }
@@ -1474,153 +1474,77 @@ export const TradeBot = {
         }
     },
 
+
     /**
-     * 对当前账户状态进行更新 ; 
-     * 直接从bot对象中获取数据, 不需要额外输入 ; 
-     * bot对象中的数据, 来源于GS, TV ;
-     * 除了修改的数据之外, 认为这些数据是绝对正确的
+     * 将this大对象中的数据写入GS
+     * @returns 因为有try/catch, 不会抛出错误
+     * @returns true表示写入成功
+     * @returns string: 具体的出错信息
      */
-    ReNewBeforeWriteToGS() {
-        this.openProfit     = isStrictTrue(this.therePosition) ? this.allPosition * (this.TradingSymbolPrice - this.avgBuyPrice) : CV.NA       ;
-        this.allProfit      = ToStrictNumber(this.netProfit, 0) + ToStrictNumber(this.openProfit, 0)                                        ;
-        this.usedMargin     = isStrictTrue(this.therePosition) ? this.allPosition * this.TradingSymbolPrice / this.leverage : CV.NA            ;
-        this.crtFund        = this.inFund + ToStrictNumber(this.netProfit, 0) + ToStrictNumber(this.openProfit, 0)                          ;
-        this.crtCoin        = this.inCoin                                                                                                   ;
-        this.freeMargin     = this.crtFund + this.crtCoin * this.BaseCoinPrice * this.BaseCoinHairCut - ToStrictNumber(this.usedMargin, 0)  ;
-        this.allFund        = this.crtFund + this.crtCoin * this.BaseCoinPrice                                                              ;
-        this.allCoin        = this.crtFund / this.BaseCoinPrice + this.crtCoin                                                              ;
+    async WriteToGS_ReleaseLocks() {
+        const r_gslock = await this.GSLOCK_waitOK() ;
+        if (!isStrictTrue(r_gslock)) {return ToStrictString(r_gslock)}
 
-        this.rcd_fund = ToStrictNumber(this.rcd_fund, this.allFund);
-        this.rcd_coin = ToStrictNumber(this.rcd_coin, this.allCoin);
 
-        if (isStrictString(this.lstRcdTouchHghTime)) {
-            this.markTouchTargetHgh     = false                     ;
-            this.lstRcdTouchHghTime     = this.lstTouchHghTime      ;
-            this.lstRcdTargetHgh        = this.lstTargetHgh         ;
-        }
-        if (isStrictNumber(this.lstRcdTouchHghTime) && this.lstRcdTouchHghTime < this.lstTouchHghTime) {
-            this.markTouchTargetHgh     = true                          ;
-            this.lstRcdTouchHghTime     = this.lstTouchHghTime          ;
-            this.lstRcdTargetHgh        = this.lstTargetHgh             ;
-            AddSetMessage(this.alertMessageSet, "↑ markTouchTargetHgh") ;
-        }
-        if (isStrictString(this.lstRcdTouchLowTime)) {
-            this.markTouchTargetLow     = false                     ;
-            this.lstRcdTouchLowTime     = this.lstTouchLowTime      ;
-            this.lstRcdTargetLow        = this.lstTargetLow         ;
-        }
-        if (isStrictNumber(this.lstRcdTouchLowTime) && this.lstRcdTouchLowTime < this.lstTouchLowTime) {
-            this.markTouchTargetLow     = true                          ;
-            this.lstRcdTouchLowTime     = this.lstTouchLowTime          ;
-            this.lstRcdTargetLow        = this.lstTargetLow             ;
-            AddSetMessage(this.alertMessageSet, "↓ markTouchTargetLow") ;
-        }
+        try {
+            if (this.alertMessageSet.size > 0) { this.alertMessage = StrFromSetMessage(this.alertMessageSet) }
 
-        // [this.liquidatePrice, this.stopPriceC, this.stopPriceF] = this.GetLiquidateStopPrice();
-        this.liquidatePrice = isStrictTrue(this.therePosition) ? this.GetLiquidPrice() : CV.NA ;
-        this.stopPriceC     = isStrictTrue(this.therePosition) ? this.GetStopPriceC()  : CV.NA ;
-        this.stopPriceF     = isStrictTrue(this.therePosition) ? this.GetStopPriceF()  : CV.NA ;
+            this.gcpWriteTime = Date.now();
 
-        this.ifOrderWaiting = this.ing_orderStatus === CV.order_waiting;
+            if (isStrictTrue(this.toWriteHghLow)) {
+                const newHghLowV = [    [this.initiated             ]   ,
+                                        [this.initiateTime          ]   ,
+                                        [this.inTradingSymbolPrice  ]   ,
+                                        [this.inBaseCoinPrice       ]   ,
+                                        [this.initialFund           ]   ,
+                                        [this.hghestFund            ]   ,
+                                        [this.lowestFund            ]   ,
+                                        [this.initialCoin           ]   ,
+                                        [this.hghestCoin            ]   ,
+                                        [this.lowestCoin            ]   ]   ;
 
-        // 账户状态判断
-        this.accStatus = 'Normal';
+                this.batchUpdateList.push(...makeRequestBodyArrayofBatchUpdate_clearUpdate({
+                    sheetID: this.sheetsID[this.toGCPData.HghLowRange.split('!')[0]] ,
+                    range: this.toGCPData.HghLowRange,
+                    values: newHghLowV
+                })) ;
+            }
 
-        if (this.TradingSymbolPrice < this.liquidatePrice) {
-            const accStatus_liquidated = "liquidated";
-            this.accStatus = accStatus_liquidated;
-            AddSetMessage(this.alertMessageSet, accStatus_liquidated);
-        }
-        if (this.TradingSymbolPrice < this.stopPriceC) {
-            const accStatus_stopC = "stopC";
-            this.accStatus = accStatus_stopC;
-            AddSetMessage(this.alertMessageSet, accStatus_stopC);
-        }
-        if (this.TradingSymbolPrice < this.stopPriceF) {
-            const accStatus_stopF = "stopF";
-            this.accStatus = accStatus_stopF;
-            AddSetMessage(this.alertMessageSet, accStatus_stopF);
-        }
-        if (this.TradingSymbolPrice < this.stopPriceC && this.TradingSymbolPrice < this.stopPriceF) {
-            const accStatus_stopCF = "stopCF";
-            this.accStatus = accStatus_stopCF;
-            AddSetMessage(this.alertMessageSet, accStatus_stopCF);
+            this.batchUpdateList.push(makeRequestBodyArrayofBatchUpdate_clear({
+                sheetID: this.sheetsID[this.toGCPData.toWriteMainRange.split('!')[0]],
+                range: this.toGCPData.toWriteMainRange
+            }));
+
+            this.batchUpdateList.push(makeRequestBodyArrayofBatchUpdate_append({
+                sheetID: this.sheetsID[this.toGCPData.toWriteMainRange.split('!')[0]],
+                values: ObjToA2dNumBoolStr(this)
+            }));
+
+            this.batchUpdateList.push(makeRequestBodyArrayofBatchUpdate_update(
+                {
+                sheetID : this.sheetsID[this.toGCPData.lockRange.split('!')[0]]     ,
+                range   : this.toGCPData.lockRange                                  ,
+                values  : [[CV.noLOCK]]                                             }
+            ));
+
+            await try3times(BatchUpdateGS, this.spreadsheetID, this.batchUpdateList) ;
+
+            const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
+            if (!r_ReleaseTradeBotLOCK || isStrictString(r_ReleaseTradeBotLOCK)) {
+                const errMessage = 'ReleaseTradeBotLOCK() 失败: ' + r_ReleaseTradeBotLOCK ;
+                // 无法为GS解锁, 是严重错误, 需要手动解锁
+                this.AddRunningWellMessage(errMessage);
+                throw new Error(errMessage);
+            }
+
+            return true;
+        } catch (e) {
+            // 这是核心错误, 不能解锁, 需要手动查看
+            const errMessage = `核心错误: ${e.message}`.trim();
+            this.AddRunningWellMessage(errMessage);
+            return errMessage;
         }
 
-        if (this.allFund > this.rcd_fund * (1 + this.barChgA)) { this.rcd_fund = this.allFund; AddSetMessage(this.alertMessageSet, '↑ new rcd_fund'); }
-        if (this.allFund < this.rcd_fund * (1 - this.barChgA)) { this.rcd_fund = this.allFund; AddSetMessage(this.alertMessageSet, '↓ new rcd_fund'); }
-        if (this.allCoin > this.rcd_coin * (1 + this.barChgB)) { this.rcd_coin = this.allCoin; AddSetMessage(this.alertMessageSet, '↑ new rcd_coin'); }
-        if (this.allCoin < this.rcd_coin * (1 - this.barChgB)) { this.rcd_coin = this.allCoin; AddSetMessage(this.alertMessageSet, '↓ new rcd_coin'); }
-
-        this.toWriteHghLow = false ;
-        if (this.allFund > this.hghestFund) { this.toWriteHghLow = true; this.hghestFund = this.allFund; AddSetMessage(this.alertMessageSet, "↑ new hghestFund"); }
-        if (this.allFund < this.lowestFund) { this.toWriteHghLow = true; this.lowestFund = this.allFund; AddSetMessage(this.alertMessageSet, "↓ new lowestFund"); }
-        if (this.allCoin > this.hghestCoin) { this.toWriteHghLow = true; this.hghestCoin = this.allCoin; AddSetMessage(this.alertMessageSet, "↑ new hghestCoin"); }
-        if (this.allCoin < this.lowestCoin) { this.toWriteHghLow = true; this.lowestCoin = this.allCoin; AddSetMessage(this.alertMessageSet, "↓ new lowestCoin"); }
-
-        // 计算边界, 以后用
-        this.closeToRndHgh = this.roundHgh / Math.pow((1 + this.waveUpChg), this.notBuyCloseToRndHghStep);
-        this.closeToRndLow = this.roundLow / Math.pow((1 + this.waveDnChg), this.notBuyCloseToRndLowStep);
-
-        this.enDifficultyBuyPrice  = this.therePosition ? this.lowBuyPriceUnclose * (1+this.enDifficulty*this.waveDnChg) : null ;
-        this.exDifficultySellPrice = this.therePosition ? this.lowBuyPriceUnclose * (1+this.enDifficulty*this.waveUpChg) : null ;
-
-        this.lowToBuy = Math.max(this.basicLowToBuy, this.closeToRndLow);
-
-        this.hghToBuy = Math.min(
-            this.basicHghToBuy                                                  ,
-            this.closeToRndHgh                                                  ) ;
-        if (this.therePosition) { this.hghToBuy = Math.min(this.hghToBuy, this.enDifficultyBuyPrice) }
-        
-        this.lowToSell = this.basicLowToSell;
-        if (this.therePosition) { this.lowToSell = Math.max(this.basicLowToSell, this.exDifficultySellPrice) }
-
-
-        this.inTradingTime = this.timestamp > this.realTradeTime && this.timestamp < this.realTradeTimeTo;
-
-        // 判断严格地不能买卖条件
-        this.canBuy         = true  ;
-        this.cantBuyReason  = ""    ;
-        this.canSell        = true  ;
-        this.cantSellReason = ""    ;
-
-        if (!this.inTradingTime) {
-            this.canBuy = false;
-            this.canSell = false;
-            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'not in trading time');
-            this.cantSellReason = AddMessage(this.cantSellReason, 'cant sell: ' + 'not in trading time');
-        }
-
-        if (this.timestamp - this.lstTradeTime < this.ordersInterval * 60000) {
-            this.canBuy = false;
-            this.canSell = false;
-            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'there order just done, wait some time');
-            this.cantSellReason = AddMessage(this.cantSellReason, 'cant sell: ' + 'there order just done, wait some time');
-        }
-
-        if (this.ifOrderWaiting) {
-            this.canBuy = false;
-            this.canSell = false;
-            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'there order waiting');
-            this.cantSellReason = AddMessage(this.cantSellReason, 'cant sell: ' + 'there order waiting');
-        }
-
-        if (Number(this.gridNum) >= Number(this.MaxGrid)) {
-            this.canBuy = false;
-            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + "gridNum >= MaxGrid");
-        }
-        if (this.freeMargin / (this.MaxGrid - this.gridNum) < 1.1 * this.minEnExPosition * this.TradingSymbolPrice / this.leverage) {
-            this.canBuy = false;
-            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'Not enough freeMargin');
-        }
-
-        if (!isStrictTrue(this.therePosition)) {
-            this.canSell = false;
-            this.cantSellReason = AddMessage(this.cantSellReason, 'cant sell: ' + 'No position to sell');
-        }
-
-        AddSetMessage(this.alertMessageSet, this.cantBuyReason);
-        AddSetMessage(this.alertMessageSet, this.cantSellReason);
     },
 
     /**
