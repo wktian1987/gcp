@@ -18,7 +18,8 @@ import {
     isPlainObject,
     isObjectOfKeyValue,
     UpdateGS,
-    AppendGS
+    AppendGS,
+    try3times
 } from "./utility.js";
 
 import { CV } from "./handleTV.js";
@@ -122,8 +123,8 @@ export async function CheckFundFee(fund) {
 //#endregion
 
 const agentPool = {
-    GATE:       new https.Agent({ keepAlive: true, keepAliveMsecs: 2000, maxSockets: 64 }),
-    BINANCE:    new https.Agent({ keepAlive: true, keepAliveMsecs: 2000, maxSockets: 64 })
+    GATE        :  new https.Agent({ keepAlive: true, keepAliveMsecs: 2000, maxSockets: 64 }), // 对于不同的命令，我的URL可能是不一样的，例如查看账户状态，发送订单. 用同一个agent可以? 答案：可以
+    GATE_Demo   :  new https.Agent({ keepAlive: true, keepAliveMsecs: 2000, maxSockets: 64 })
 };
 
 
@@ -160,7 +161,7 @@ function tvSymbol_TO_GATE_Symbol(tvSymbol) {
 }
 
 class GateFetchBody {
-    constructor(isReal = false, method = 'GET', path = '', body = null, resOK = 200, dataCheck = {contract : 'BTC_USDT'} ) {
+    constructor(isReal = false, method = 'GET', path = '', body = null, resOK = 200, dataCheck = {contract : 'BTC_USDT'}, tryManyTimes = false ) {
         if (!isObjectOfKeyValue(dataCheck)) {throw new Error('GateFetchBody输入的dataCheck不是标准的可验证对象')}
         // 每一个实例在诞生之初，就在自己的地盘上锁死了独立的变量空间
         this.isReal         = isReal        ;
@@ -169,6 +170,7 @@ class GateFetchBody {
         this.body           = body          ;
         this.resOK          = resOK         ;
         this.dataCheck      = dataCheck     ;
+        this.tryManyTimes   = tryManyTimes  ;
         this.status         = 0             ;
         this.isOK           = false         ;
         this.resData        = undefined     ;
@@ -191,6 +193,7 @@ async function GATE_Fetch(fetchBody) {
     const body          =  fetchBody.body           ;
     const resOK         =  fetchBody.resOK          ;
     const dataCheck     =  fetchBody.dataCheck      ;
+    const tryManyTimes  =  fetchBody.tryManyTimes   ;
 
 
 
@@ -210,6 +213,8 @@ async function GATE_Fetch(fetchBody) {
 
     const fullPath  = GATE_PATH_version + path ;
     const url       = GATE_URL + fullPath ;
+
+    const agent = isStrictTrue(isReal) ? agentPool.GATE : agentPool.GATE_Demo ;
 
 
     try {
@@ -255,9 +260,9 @@ async function GATE_Fetch(fetchBody) {
         // 如果是 POST/PUT 动词，无缝注入 body 装弹
         if (method === 'POST' && bodyString) { options.body = bodyString }
 
-        options.agent = agentPool.GATE; // 使用长连接
+        options.agent = agent ; // 使用长连接
 
-        const res = await fetch(url, options);
+        const res = (isStrictTrue(tryManyTimes)) ? await try3times(async () => await fetch(url, options)) : await fetch(url, options) ;
 
         // 交易所传来的原始ID是特别大的数字格式， 直接用json, 会丢失精度。
         // const resData = CleanObjToNumBoolStr(await res.json()); 
@@ -316,22 +321,41 @@ async function GATE_Fetch(fetchBody) {
 // 你在外面的发单、对账、查统一账户资产的函数，瞬间变得像喝水一样简单利落：
 
 
+const contract_quantoMultiplier_orderPriceRound = {} ;
+async function GATE_check_quantoMultiplier_orderPriceRound(isReal, contract) {
+    const checkContract = isStrictTrue(isReal) ? contract : `demo_${contract}` ;
+
+    if (Date.now() - contract_quantoMultiplier_orderPriceRound?.[checkContract]?.lastGetTime < 24 * 60 * 60 * 1000) {
+        return contract_quantoMultiplier_orderPriceRound?.[checkContract];
+    } else {
+        // Get quanto_multiplier,  order_price_round
+        const path_contract = '/futures/' + 'usdt' + '/contracts/' + contract;
+        const fetchBody_contract = new GateFetchBody(isReal, 'GET', path_contract, null, 200, { name: contract }, true);
+        await GATE_Fetch(fetchBody_contract);
+        if (!fetchBody_contract.isOK) { throw new Error(fetchBody_contract.errMessage) }
+        const data_contract = fetchBody_contract.resData;
+        const quanto_multiplier = ToStrictNumber(data_contract.quanto_multiplier);
+        const order_price_round = ToStrictNumber(data_contract.order_price_round);
+        if (!isStrictNumber(quanto_multiplier) || quanto_multiplier <= 0) { throw new Error('did not get right quanto_multiplier') }
+        if (!isStrictNumber(order_price_round) || order_price_round <= 0) { throw new Error('did not get right order_price_round') }
+        const lastGetTime = Date.now() ;
+        contract_quantoMultiplier_orderPriceRound[checkContract] = {quanto_multiplier, order_price_round, lastGetTime} ;
+        return contract_quantoMultiplier_orderPriceRound[checkContract] ;
+    }
+
+}
+
 async function GATE_CheckAllPosition(S) {
     const brokerSymbol = tvSymbol_TO_GATE_Symbol(S.TradingSymbol);
 
     // Get quanto_multiplier
-    const path_contract     = '/futures/' + brokerSymbol.settle + '/contracts/' + brokerSymbol.contract ;
-    const fetchBody_contract = new GateFetchBody(S.isReal, 'GET', path_contract, null, 200, {name: brokerSymbol.contract} ) ;
-    await GATE_Fetch(fetchBody_contract) ;
-    if (!fetchBody_contract.isOK) {throw new Error(fetchBody_contract.errMessage)}
-    const data_contract = fetchBody_contract.resData ;
-    const quanto_multiplier   = ToStrictNumber(data_contract.quanto_multiplier) ;
+    const quanto_multiplier = await GATE_check_quantoMultiplier_orderPriceRound(S.isReal, brokerSymbol.contract).quanto_multiplier ;
 
     // 去查看当前的仓位信息
     // 获取单个仓位信息:    GET  /futures/{settle}/positions/{contract}
     // » size	        string	头寸大小
     const path_position  =  '/futures/' + brokerSymbol.settle + '/positions/' + brokerSymbol.contract ;
-    const fetchBody_position = new GateFetchBody(S.isReal, 'GET', path_position, null, 200, {contract: brokerSymbol.contract} ) ;
+    const fetchBody_position = new GateFetchBody(S.isReal, 'GET', path_position, null, 200, { contract: brokerSymbol.contract }, true);
     await GATE_Fetch(fetchBody_position) ;
     if (!fetchBody_position.isOK) {throw new Error(fetchBody_position.errMessage)}
     const data_position = fetchBody_position.resData ;
@@ -339,8 +363,6 @@ async function GATE_CheckAllPosition(S) {
 
     S.brokerPosition = quanto_multiplier * size ;
 }
-
-
 
 /**
  * 往交易所发送订单; 
@@ -354,15 +376,9 @@ async function GATE_SendOrderToBroker(S) {
     const brokerSymbol  =  tvSymbol_TO_GATE_Symbol(S.TradingSymbol) ;
 
     // Get quanto_multiplier,  order_price_round
-    const path_contract     = '/futures/' + brokerSymbol.settle + '/contracts/' + brokerSymbol.contract ;
-    const fetchBody_contract = new GateFetchBody(S.isReal, 'GET', path_contract, null, 200, {name: brokerSymbol.contract} ) ;
-    await GATE_Fetch(fetchBody_contract) ;
-    if (!fetchBody_contract.isOK) {throw new Error(fetchBody_contract.errMessage)}
-    const data_contract = fetchBody_contract.resData ;
-    const quanto_multiplier   = ToStrictNumber(data_contract.quanto_multiplier) ;
-    const order_price_round   = ToStrictNumber(data_contract.order_price_round) ;
-    if (!isStrictNumber(quanto_multiplier) || quanto_multiplier <= 0) { throw new Error('did not get right quanto_multiplier')}
-    if (!isStrictNumber(order_price_round) || order_price_round <= 0) { throw new Error('did not get right order_price_round')}
+    const contract_QmOr     = await GATE_check_quantoMultiplier_orderPriceRound(S.isReal, brokerSymbol.contract) ;
+    const quanto_multiplier = contract_QmOr.quanto_multiplier ;
+    const order_price_round = contract_QmOr.order_price_round ;
 
     const order_price_round_str = ToStrictString(order_price_round);
     const dotIndex = order_price_round_str.indexOf('.');
@@ -392,7 +408,7 @@ async function GATE_SendOrderToBroker(S) {
     // 合约交易下单:
     // POST /futures/{settle}/orders
     const path_order  =  '/futures/' + brokerSymbol.settle + '/orders'  ;
-    const fetchBody_order = new GateFetchBody(S.isReal, 'POST', path_order, orderBody, 201, {text} ) ;
+    const fetchBody_order = new GateFetchBody(S.isReal, 'POST', path_order, orderBody, 201, { text }, false);
     await GATE_Fetch(fetchBody_order) ;
     if (!fetchBody_order.isOK) {throw new Error('下单失败: ' + fetchBody_order.errMessage)}
     const data_order = fetchBody_order.resData ;
@@ -416,12 +432,15 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
 
     const brokerID = ingOrderData.ing_orderID.substring(2); // 先把前面自己加的id前面的字符去掉
 
+    const promiseList = [] ;
+
     // 如果需要撤单的话, 也不能先去撤单, 因为对于一个已经成交的订单执行撤单命令会报错
+    // 其实报错也没有关系, Promise.all() 可以处理
 
     // 先去查看是否有新的成交记录
     // GET  '/futures/{settle}/orders/{order_id}'
     const path_confirm = '/futures/' + brokerSymbol.settle + '/orders/' + brokerID;
-    const fetchBody_confirm = new GateFetchBody(ingOrderData.isReal, 'GET', path_confirm, null, 200, { id: 'T'+ brokerID });
+    const fetchBody_confirm = new GateFetchBody(ingOrderData.isReal, 'GET', path_confirm, null, 200, { id: 'T' + brokerID }, true);
     await GATE_Fetch(fetchBody_confirm);
     if (!fetchBody_confirm.isOK) { throw new Error(fetchBody_confirm.errMessage) }
     const data_confirm = fetchBody_confirm.resData;
@@ -448,7 +467,7 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
 
     if ( data_confirm.status !== 'finished' && isStrictTrue(ingOrderData.ifWaitingThenCancel) ) {
         const path_cancel   =  '/futures/' + brokerSymbol.settle + '/orders/' + brokerID ;
-        const fetchBody_cancel = new GateFetchBody(ingOrderData.isReal, 'DELETE', path_cancel, null, 200, {id: 'T' + brokerID, finish_as:'cancelled', status: 'finished'} ) ;
+        const fetchBody_cancel = new GateFetchBody(ingOrderData.isReal, 'DELETE', path_cancel, null, 200, {id: 'T' + brokerID, finish_as:'cancelled', status: 'finished'}, true ) ;
         // 对于撤单, 交易所传回的数据中,  "finish_as": "cancelled", "status": "finished",
         // 所以不能用status: finished来判断是否有成交
 
@@ -489,11 +508,11 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
     // » pnl_pnl	    string	已实现盈亏中的平仓结算盈亏
     // » pnl_fund	    string	已实现盈亏中的资金费结算盈亏
     // » pnl_fee	    string	已实现盈亏中的总手续费支出
-    const path_position  =  '/futures/' + brokerSymbol.settle + '/positions/' + brokerSymbol.contract ;
-    const fetchBody_position = new GateFetchBody(ingOrderData.isReal, 'GET', path_position, null, 200, {contract: brokerSymbol.contract} ) ;
-    await GATE_Fetch(fetchBody_position) ;
-    if (!fetchBody_position.isOK) {throw new Error(fetchBody_position.errMessage)}
-    const data_position = fetchBody_position.resData ;
+    const path_position = '/futures/' + brokerSymbol.settle + '/positions/' + brokerSymbol.contract;
+    const fetchBody_position = new GateFetchBody(ingOrderData.isReal, 'GET', path_position, null, 200, { contract: brokerSymbol.contract }, true);
+    await GATE_Fetch(fetchBody_position);
+    if (!fetchBody_position.isOK) { throw new Error(fetchBody_position.errMessage) }
+    const data_position = fetchBody_position.resData;
 
     ingOrderData.ing_getProfit      =  data_position.pnl_pnl - ingOrderData.lst_allGotProfit                                                                    ;
     ingOrderData.ing_tradeFee       =  data_position.pnl_fee - ingOrderData.lst_allTradeFee                                                                     ;
@@ -511,7 +530,7 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
 async function GATE_CheckFundFee(fund) {
     const brokerSymbol  =  tvSymbol_TO_GATE_Symbol(fund.TradingSymbol) ;
 
-    // 再去查看当前的仓位信息
+    // 去查看当前的仓位信息
     // 获取单个仓位信息:    GET  /futures/{settle}/positions/{contract}
     // » size	        string	头寸大小
     // » entry_price	string	开仓价格  // 猜测就是均价
@@ -519,12 +538,11 @@ async function GATE_CheckFundFee(fund) {
     // » pnl_pnl	    string	已实现盈亏中的平仓结算盈亏
     // » pnl_fund	    string	已实现盈亏中的资金费结算盈亏
     // » pnl_fee	    string	已实现盈亏中的总手续费支出
-    const path_position  =  '/futures/' + brokerSymbol.settle + '/positions/' + brokerSymbol.contract ;
-
-    const fetchBody = new GateFetchBody(fund.isReal, 'GET', path_position, null, 200, {contract: brokerSymbol.contract} ) ;
-    await GATE_Fetch(fetchBody) ;
-    if (!fetchBody.isOK) {throw new Error(fetchBody.errMessage)}
-    const data_position = fetchBody.resData ;
+    const path_position = '/futures/' + brokerSymbol.settle + '/positions/' + brokerSymbol.contract;
+    const fetchBody_position = new GateFetchBody(fund.isReal, 'GET', path_position, null, 200, { contract: brokerSymbol.contract }, true);
+    await GATE_Fetch(fetchBody_position);
+    if (!fetchBody_position.isOK) { throw new Error(fetchBody_position.errMessage) }
+    const data_position = fetchBody_position.resData;
 
     fund.fundFee            =  ToStrictNumber(data_position.pnl_fund, 0) -  fund.lst_allFundFee                                                                                 ;
     fund.confirmTimestamp   =  Date.now()                                                                                                                                       ;
