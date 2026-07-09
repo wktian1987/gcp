@@ -1623,7 +1623,8 @@ export async function HandleTradeBot(tvData) {
         if (index === 2) { taskG1_name = 'task_ToBuy'}
         if (result.status !== "fulfilled") {
             taskG1_thereErr = true;
-            taskG1_errMessage += AddMessage(taskG1_errMessage, taskG1_name + '失败' + );
+            const rawErrMessage = result.reason?.message || String(result.reason || '未知空难');
+            taskG1_errMessage += AddMessage(taskG1_errMessage, taskG1_name + '失败' + rawErrMessage);
         }
     });
     if (taskG1_thereErr) {throw new Error(taskG1_errMessage)}
