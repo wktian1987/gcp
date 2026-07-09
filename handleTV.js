@@ -530,18 +530,21 @@ export const TradeBot = {
         S.allPosition               = ToStrictNumber(this.mainData.allPosition, 0)  ;
         S.waitingPosition           = this.ingOrderData?.ing_qty ?? 0               ;
         S.allPositionWithWaiting    = S.allPosition + S.waitingPosition             ;
+
         try {
             await CheckAllPosition(S) ;
             // 当前无仓位的情况
             if ((S.allPosition < this.mainData.minEnExPosition || S.allPositionWithWaiting < this.mainData.minEnExPosition) && S.brokerPosition < 2 * this.mainData.minEnExPosition) { return true }
+
+            const posibleEachGridPosition = this.allPosition / Math.max(this.gridNum, 1) ;
             // 有仓位 有pending_orders 的情况
-            if (Math.abs(S.waitingPosition) > 0                                                                              &&
-                Math.abs( (S.allPosition            - S.brokerPosition) / S.brokerPosition ) > (1.5 / this.mainData.MaxGrid) &&
-                Math.abs( (S.allPositionWithWaiting - S.brokerPosition) / S.brokerPosition ) > (1.5 / this.mainData.MaxGrid) ) { throw new Error('GS中记录的仓位与交易所实际仓位不符') }
+            if (Math.abs(S.waitingPosition) > 0                                                         &&
+                Math.abs(S.allPosition            - S.brokerPosition) > 1.5 * posibleEachGridPosition   &&
+                Math.abs(S.allPositionWithWaiting - S.brokerPosition) > 1.5 * posibleEachGridPosition   ) { throw new Error('GS中记录的仓位与交易所实际仓位不符') }
             // 有仓位 无pending_orders 的情况
-            if (Math.abs(S.waitingPosition) === 0                                                                            &&
-                Math.abs( (S.allPosition            - S.brokerPosition) / S.brokerPosition ) > (0.5 / this.mainData.MaxGrid) &&
-                Math.abs( (S.allPositionWithWaiting - S.brokerPosition) / S.brokerPosition ) > (0.5 / this.mainData.MaxGrid) ) { throw new Error('GS中记录的仓位与交易所实际仓位不符') }
+            if (Math.abs(S.waitingPosition) === 0                                                       &&
+                Math.abs(S.allPosition            - S.brokerPosition) > 0.5 * posibleEachGridPosition   &&
+                Math.abs(S.allPositionWithWaiting - S.brokerPosition) > 0.5 * posibleEachGridPosition   ) { throw new Error('GS中记录的仓位与交易所实际仓位不符') }
             return true ;
         } catch (e) {
             const errMessage = `核心错误: ${e.message}` ;
