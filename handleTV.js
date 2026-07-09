@@ -898,11 +898,14 @@ export const TradeBot = {
             AddSetMessage(this.alertMessageSet, "↓ markTouchTargetLow") ;
         }
 
-
+        const calcu_startTime = Date.now() ;
         // [this.liquidatePrice, this.stopPriceC, this.stopPriceF] = this.GetLiquidateStopPrice();
         this.liquidatePrice = isStrictTrue(this.therePosition) ? this.GetLiquidPrice() : CV.NA ;
         this.stopPriceC     = isStrictTrue(this.therePosition) ? this.GetStopPriceC()  : CV.NA ;
         this.stopPriceF     = isStrictTrue(this.therePosition) ? this.GetStopPriceF()  : CV.NA ;
+        const calcu_endTime = Date.now() ;
+
+        this.calcuTime = calcu_endTime - calcu_startTime ;
 
 
 
