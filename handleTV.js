@@ -538,11 +538,11 @@ export const TradeBot = {
 
             const posibleEachGridPosition = this.allPosition / Math.max(this.gridNum, 1) ;
             // 有仓位 有pending_orders 的情况
-            if (Math.abs(S.waitingPosition) > 0                                                         &&
+            if ( isStrictTrue(this.mainData.ifOrderWaiting)                                             &&
                 Math.abs(S.allPosition            - S.brokerPosition) > 1.5 * posibleEachGridPosition   &&
                 Math.abs(S.allPositionWithWaiting - S.brokerPosition) > 1.5 * posibleEachGridPosition   ) { throw new Error('GS中记录的仓位与交易所实际仓位不符') }
             // 有仓位 无pending_orders 的情况
-            if (Math.abs(S.waitingPosition) === 0                                                       &&
+            if (!isStrictTrue(this.mainData.ifOrderWaiting)                                             &&
                 Math.abs(S.allPosition            - S.brokerPosition) > 0.5 * posibleEachGridPosition   &&
                 Math.abs(S.allPositionWithWaiting - S.brokerPosition) > 0.5 * posibleEachGridPosition   ) { throw new Error('GS中记录的仓位与交易所实际仓位不符') }
             return true ;
