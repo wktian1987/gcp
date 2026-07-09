@@ -238,7 +238,7 @@ export async function HandleTgBot(msg) {
     //     }
     //     if (result.status !== "fulfilled") {
     //         task_thereErr = true;
-    //         task_message += AddMessage(task_message, task_name + '失败');
+    //         task_message = AddMessage(task_message, task_name + '失败');
     //     }
     // });
 
