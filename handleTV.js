@@ -1613,17 +1613,25 @@ export async function HandleTradeBot(tvData) {
     bot.ReNew();
     // console.log(bot.cLogHead + 'ReNew() success')   ;
 
-    const r_ToCheckFundFee = await bot.ToCheckFundFee();
-    if (!r_ToCheckFundFee || isStrictString(r_ToCheckFundFee)) { throw new Error('ToCheckFundFee() 失败: \n' + r_ToCheckFundFee) }
-    // if (isStrictTrue(r_ToCheckFundFee)) { console.log(bot.cLogHead + 'ToCheckFundFee() success') }
+    const task_ToCheckFundFee   = bot.ToCheckFundFee()  ;
+    const task_ToSell           = bot.ToSell()          ;
+    const task_ToBuy            = bot.ToBuy()           ;
 
-    const r_ToSell = await bot.ToSell();
-    if (!r_ToSell || isStrictString(r_ToSell)) { throw new Error('ToSell() 失败: \n' + r_ToSell) }
-    // if (isStrictTrue(r_ToSell)) { console.log(bot.cLogHead + 'ToSell() success') }
+    const taskG1_R = await Promise.allSettled([task_ToCheckFundFee, task_ToSell, task_ToBuy]) ;
+    let taskG1_thereErr     = false   ;
+    let taskG1_errMessage   = ''      ;
+    let taskG1_name         = ''      ;
+    taskG1_R.forEach((result, index) => {
+        if (index === 0) { taskG1_name = 'task_ToCheckFundFee' }
+        if (index === 1) { taskG1_name = 'task_ToSell' }
+        if (index === 2) { taskG1_name = 'task_ToBuy'}
+        if (result.status !== "fulfilled") {
+            taskG1_thereErr = true;
+            taskG1_errMessage += AddMessage(taskG1_errMessage, taskG1_name + '失败');
+        }
+    });
+    if (taskG1_thereErr) {throw new Error(taskG1_errMessage)}
 
-    const r_ToBuy = await bot.ToBuy();
-    if (!r_ToBuy || isStrictString(r_ToBuy)) { throw new Error('ToBuy() 失败: \n' + r_ToBuy) }
-    // if (isStrictTrue(r_ToBuy)) { console.log(bot.cLogHead + 'ToBuy() success') }
 
     const r_ToCheckWaitingOrder = await bot.ToCheckWaitingOrder();
     if (!r_ToCheckWaitingOrder || isStrictString(r_ToCheckWaitingOrder)) { throw new Error('ToCheckWaitingOrder() 失败: \n' + r_ToCheckWaitingOrder) }
