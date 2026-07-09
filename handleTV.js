@@ -395,10 +395,11 @@ export const TradeBot = {
             this.tradeHistoryTitleA     =  tradeHistoryTitleA   ;
 
             this.thereCommandFromGS = false ; // 最高等级的交易命令, 直接来自GS的交易信号, 需要亲自手动设置
-            if (Object.hasOwn(commandData, 'thisCommandBeRead')   &&
-                Object.hasOwn(commandData, 'noCommandError')      &&
-                isStrictFalse(commandData.thisCommandBeRead)    &&
-                isStrictTrue(commandData.noCommandError)        )  {
+            if (isStrictTrue(mainData.initiated)                    &&    
+                Object.hasOwn(commandData, 'thisCommandBeRead')     &&
+                Object.hasOwn(commandData, 'noCommandError')        &&
+                isStrictFalse(commandData.thisCommandBeRead)        &&
+                isStrictTrue(commandData.noCommandError)            )  {
                 commandData.thisCommandBeRead = true ;
                 await try3times(UpdateGS, this.spreadsheetID, toGCPData.commandReadRange, [[commandData.thisCommandBeRead]]) ;
                 let checkCommandRead = ToStrictNumBoolStr( (await try3times(GetGS, this.spreadsheetID, toGCPData.commandReadRange))[0][0] ) ;
@@ -1622,7 +1623,7 @@ export async function HandleTradeBot(tvData) {
         if (index === 2) { taskG1_name = 'task_ToBuy'}
         if (result.status !== "fulfilled") {
             taskG1_thereErr = true;
-            taskG1_errMessage += AddMessage(taskG1_errMessage, taskG1_name + '失败');
+            taskG1_errMessage += AddMessage(taskG1_errMessage, taskG1_name + '失败' + );
         }
     });
     if (taskG1_thereErr) {throw new Error(taskG1_errMessage)}

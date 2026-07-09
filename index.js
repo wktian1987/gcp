@@ -126,7 +126,7 @@ async function HandleSignalList() {
             console.log(`... ... 开始处理第${taskNumber}个任务`)
             const toHandleSignal = SignalList.pop()
             promiseA.push(HandleSignal(toHandleSignal.url, toHandleSignal.body).catch(() => { }));
-            await Sleep(1000);
+            await Sleep(100);
         }
 
         console.log(`... ... 正在并发处理${taskNumber - handledNumber}个任务,等待处理完毕`);
