@@ -209,7 +209,7 @@ export const TradeBot = {
 
         const r_Get_gsData = await this.Get_gsData();
         if (!isStrictTrue(r_Get_gsData) || isStrictString(r_Get_gsData)) { throw new Error('Get_gsData() 失败: \n' + r_Get_gsData) }
-        
+
         let currentLock = this.toGCPData.LOCK ;
         if (this.toGCPData.lstLockSignalTime > this.LockTime) { throw new Error('检查GS发现已处理过更新的信号') }
         if (TradeBot[this.tbName_lastLockTime] !== this.LockTime) { throw new Error('临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去') }
@@ -363,9 +363,9 @@ export const TradeBot = {
             const raw_mainData  = valuesArray[0];
             if (!Array.isArray(raw_mainData) || !Array.isArray(raw_mainData[0]) ) {throw new Error('didnt get available data, 1') }
             const mainData  = A2dToCleanObj(raw_mainData) ;
-            if (    !Object.hasOwn(mainData, 'LOCK')    ||
-                    !isStrictString(mainData.LOCK)      ||
-                    mainData.LOCK !== this.lockName     )   {throw new Error('didnt get available data, 2') }
+            // if (    !Object.hasOwn(mainData, 'LOCK')    ||
+            //         !isStrictString(mainData.LOCK)      ||
+            //         mainData.LOCK !== this.lockName     )   {throw new Error('didnt get available data, 2') }
             if (mainData.TradingSymbol !== this.tvData.TradingSymbol) {
                 const errMessage = 'The TradingSymbol in GS is different from TV' ;
                 this.AddRunningWellMessage(errMessage) ; // 这是很严重的错误, 需要记录
@@ -384,7 +384,7 @@ export const TradeBot = {
 
             const commandData           = A2dToCleanObj(valuesArray[6]) ;
 
-            toGCPData             = A2dToCleanObj(valuesArray[7]) ;
+            toGCPData = A2dToCleanObj(valuesArray[7]);
 
             this.toGCPData              =  toGCPData            ;
             this.mainData               =  mainData             ;
