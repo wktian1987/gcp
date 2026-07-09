@@ -208,7 +208,7 @@ export const TradeBot = {
         if (!isEmptyObject(TradeBot[this.tbName_toGCPData]) && isObjectOfKeyValue(TradeBot[this.tbName_toGCPData])) {this.toGCPData = TradeBot[this.tbName_toGCPData] }
 
         await this.Get_gsData() ;
-        const currentLock = this.toGCPData.LOCK ;
+        let currentLock = this.toGCPData.LOCK ;
         if (this.toGCPData.lstLockSignalTime > this.LockTime) { throw new Error('检查GS发现已处理过更新的信号') }
         if (TradeBot[this.tbName_lastLockTime] !== this.LockTime) { throw new Error('临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去') }
         if (currentLock !== CV.noLOCK && isStrictTrue(TradeBot[this.tbName_tgResetGSLOCK])) {
@@ -237,13 +237,6 @@ export const TradeBot = {
             // await UpdateGS(this.spreadsheetID, toGCPData.lockRange, [[this.lockName]]);
             this.task_setGSLOCK = try3times(UpdateGS, this.spreadsheetID, this.toGCPData.lockRange, [[this.lockName]]);
         }
-
-
-
-
-
-
-
 
         return true ; 
 
