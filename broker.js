@@ -34,7 +34,11 @@ import { CV } from "./handleTV.js";
 export async function CheckAllPosition(S) {
     if (!isStrictFalse(S.isReal) && S.TradingSymbol.startsWith("GATE:")) {await GATE_CheckAllPosition(S); return ;}
 
-    S.brokerPosition = S.allPosition;
+    const simRange_00 = 'simBroker!A30:B'   ;
+    const res = A2dToCleanObj(await GetGS(ingOrderData.spreadsheetID, simRange_00)); //交易状态返回
+
+    S.brokerPosition = S.allPosition ;
+    S.pending_orders = Object.hasOwn(res, 'ing_orderID') ? 1 : 0;
     return ;
 }
 
@@ -360,8 +364,10 @@ async function GATE_CheckAllPosition(S) {
     if (!fetchBody_position.isOK) {throw new Error(fetchBody_position.errMessage)}
     const data_position = fetchBody_position.resData ;
     const size = data_position.size ;
+    const pending_orders = data_position.pending_orders ;
 
     S.brokerPosition = quanto_multiplier * size ;
+    S.pending_orders = pending_orders ;
 }
 
 /**
