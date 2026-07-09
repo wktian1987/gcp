@@ -207,7 +207,9 @@ export const TradeBot = {
         }
         if (!isEmptyObject(TradeBot[this.tbName_toGCPData]) && isObjectOfKeyValue(TradeBot[this.tbName_toGCPData])) {this.toGCPData = TradeBot[this.tbName_toGCPData] }
 
-        await this.Get_gsData() ;
+        const r_Get_gsData = await this.Get_gsData();
+        if (!isStrictTrue(r_Get_gsData) || isStrictString(r_Get_gsData)) { throw new Error('Get_gsData() 失败: \n' + r_Get_gsData) }
+        
         let currentLock = this.toGCPData.LOCK ;
         if (this.toGCPData.lstLockSignalTime > this.LockTime) { throw new Error('检查GS发现已处理过更新的信号') }
         if (TradeBot[this.tbName_lastLockTime] !== this.LockTime) { throw new Error('临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去') }
@@ -501,7 +503,7 @@ export const TradeBot = {
             await try3times(BatchUpdateGS, this.spreadsheetID, i_toBatchUpdateList) ;
 
             const r_Get_gsData = await this.Get_gsData() ;
-            if (isStrictString(r_Get_gsData)) {throw new Error('Get_gsData() 失败: \n' + r_Get_gsData)}
+            if (!isStrictTrue(r_Get_gsData) || isStrictString(r_Get_gsData)) {throw new Error('Get_gsData() 失败: \n' + r_Get_gsData)}
             if (!isStrictTrue(this.mainData.initiated)) {
                 await Sleep(2000) ; // 第一次校验不成功的话, 等2s再校验一次
                 const r_Get_gsData = await this.Get_gsData() ;
