@@ -432,8 +432,6 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
 
     const brokerID = ingOrderData.ing_orderID.substring(2); // 先把前面自己加的id前面的字符去掉
 
-    const promiseList = [] ;
-
     // 如果需要撤单的话, 也不能先去撤单, 因为对于一个已经成交的订单执行撤单命令会报错
     // 其实报错也没有关系, Promise.all() 可以处理
 
@@ -442,6 +440,7 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
     const path_confirm = '/futures/' + brokerSymbol.settle + '/orders/' + brokerID;
     const fetchBody_confirm = new GateFetchBody(ingOrderData.isReal, 'GET', path_confirm, null, 200, { id: 'T' + brokerID }, true);
     await GATE_Fetch(fetchBody_confirm);
+
     if (!fetchBody_confirm.isOK) { throw new Error(fetchBody_confirm.errMessage) }
     const data_confirm = fetchBody_confirm.resData;
 
@@ -464,7 +463,7 @@ async function GATE_CheckOrderConfirm(ingOrderData) {
     // DELETE /futures/{settle}/orders/{order_id}
     // 如果有成交的话, 标记confirm, 并修改下单量
     // 只有完全没有成交的情况才会返回order_cancel
-
+    let task_cancel;
     if ( data_confirm.status !== 'finished' && isStrictTrue(ingOrderData.ifWaitingThenCancel) ) {
         const path_cancel   =  '/futures/' + brokerSymbol.settle + '/orders/' + brokerID ;
         const fetchBody_cancel = new GateFetchBody(ingOrderData.isReal, 'DELETE', path_cancel, null, 200, {id: 'T' + brokerID, finish_as:'cancelled', status: 'finished'}, true ) ;
