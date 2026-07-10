@@ -109,27 +109,30 @@ const server = http.createServer(async (req, res) => {
     }
 });
 
-const MaxRunningTasks = 20 ;
-
 // 我的目的是让信号一个一个地处理, 从最新的信号开始处理
 // 并发处理, 每隔1s开启一个新的并发
 // 每次清空队列后,等待对列内任务执行完后再执行新的队列
-async f1unction HandleSignalList() {
+async function HandleSignalList() {
     if (isWorkerRunning) { return }
     console.log('... ... 新工人开始处理队列任务');
     isWorkerRunning = true;
 
-    let runningTasks = 0 ;
     let taskNumber = 0;
-    while (runningTasks > 0 || SignalList.length > 0) {
-        if (SignalList.length > 0 && runningTasks < MaxRunningTasks) {
+    let handledNumber = 0 ;
+    while (SignalList.length > 0) {
+        const promiseA = [];
+        while (SignalList.length > 0) {
             taskNumber += 1;
-            runningTasks += 1 ;
-            console.log(`... ... 开始处理第${taskNumber}个任务，共有${runningTasks}个任务同时运行，尚有${SignalList.length}个信号等待处理`)
+            console.log(`... ... 开始处理第${taskNumber}个任务`)
             const toHandleSignal = SignalList.pop()
-            HandleSignal(toHandleSignal.url, toHandleSignal.body).catch(() => { }).finally(()=>{runningTasks -= 1});
+            promiseA.push(HandleSignal(toHandleSignal.url, toHandleSignal.body).catch(() => { }));
             await Sleep(100);
         }
+
+        console.log(`... ... 正在并发处理${taskNumber - handledNumber}个任务,等待处理完毕`);
+        await Promise.allSettled(promiseA);
+        handledNumber = taskNumber ;
+        console.log(`... ... 共有${taskNumber}个任务处理完毕`);
 
         console.log(`... 开始检查处理Gmail未读邮件`);
         const {HandleUnreadGmails} = await import('./handleUnreadGmails.js') ;
@@ -137,7 +140,7 @@ async f1unction HandleSignalList() {
     }
 
     isWorkerRunning = false; 
-    console.log(`... ... 队列中的全部任务已处理完毕, 此工人共处理${taskNumber}个任务后体面退出`);
+    console.log(`... ... 队列中的全部任务已处理完毕, 此工人共处理${handledNumber}个任务后体面退出`);
 }
 
 async function HandleSignal(url, body) {
