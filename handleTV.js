@@ -1414,9 +1414,10 @@ export const TradeBot = {
                     } else {uncloseOrdersA2d.splice(indexOfBoughtOrder, 1)}
 
                     this.allPosition = this.allPosition + ingOrderData.ing_qty ;
+                    if (this.allPosition < this.minEnExPosition) {this.allPosition = 0}
                     this.therePosition = this.allPosition > this.minEnExPosition ? true : false ;
                     // this.avgBuyPrice 无变化
-                    this.netProfit = this.netProfit + ingOrderData.ing_qty * (ingOrderData.ing_confirmPrice - this.avgBuyPrice) + ingOrderData.ing_tradeFee ;
+                    this.netProfit = ToStrictNumber(this.netProfit, 0) + ingOrderData.ing_qty * (ingOrderData.ing_confirmPrice - this.avgBuyPrice) + ingOrderData.ing_tradeFee;
                 }
 
                 w_toClearRangeSet.add(toGCPData.ingOrderLine);
