@@ -537,7 +537,7 @@ export const TradeBot = {
             await CheckAllPosition(S) ;
 
             // 当前无仓位的情况
-            if ((S.allPosition < this.mainData.minEnExPosition || S.allPositionWithWaiting < this.mainData.minEnExPosition) && S.brokerPosition < 2 * this.mainData.minEnExPosition) { return true }
+            if ((S.allPosition < this.mainData.minEnExPosition && S.allPositionWithWaiting < this.mainData.minEnExPosition) && S.brokerPosition < 2 * this.mainData.minEnExPosition) { return true }
 
             const probableEachGridPosition = S.allPosition / Math.max(S.gridNum, 1) ;
             // 有仓位 有pending_orders 的情况
