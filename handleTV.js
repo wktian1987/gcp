@@ -872,6 +872,24 @@ export const TradeBot = {
         return this.TradingSymbolPrice * (1 + pct_liquid) ;
     } ,
 
+    renewData() {
+    // 有新交易后，发生变化的变量是:
+    // therePosition, allPosition, avgBuyPrice, netProfit, 
+    this.openProfit     = isStrictTrue(this.therePosition) ? this.allPosition * (this.TradingSymbolPrice - this.avgBuyPrice) : CV.NA    ;
+    this.allProfit      = ToStrictNumber(this.netProfit, 0) + ToStrictNumber(this.openProfit, 0)                                        ;
+    this.usedMargin     = isStrictTrue(this.therePosition) ? this.allPosition * this.TradingSymbolPrice / this.leverage : CV.NA         ;
+    this.crtFund        = this.inFund + ToStrictNumber(this.netProfit, 0) + ToStrictNumber(this.openProfit, 0)                          ;
+    this.crtCoin        = this.inCoin                                                                                                   ;
+    this.freeMargin     = this.crtFund + this.crtCoin * this.BaseCoinPrice * this.BaseCoinHairCut - ToStrictNumber(this.usedMargin, 0)  ;
+    this.allFund        = this.crtFund + this.crtCoin * this.BaseCoinPrice                                                              ;
+    this.allCoin        = this.crtFund / this.BaseCoinPrice + this.crtCoin                                                              ;
+
+    // [this.liquidatePrice, this.stopPriceC, this.stopPriceF] = this.GetLiquidateStopPrice();
+    this.liquidatePrice = isStrictTrue(this.therePosition) ? this.GetLiquidPrice() : CV.NA ;
+    this.stopPriceC     = isStrictTrue(this.therePosition) ? this.GetStopPriceC()  : CV.NA ;
+    this.stopPriceF     = isStrictTrue(this.therePosition) ? this.GetStopPriceF()  : CV.NA ;
+    } ,
+
     /**
      * 对当前账户状态进行更新 ; 
      * 直接从bot对象中获取数据, 不需要额外输入 ; 
@@ -879,14 +897,32 @@ export const TradeBot = {
      * 除了修改的数据之外, 认为这些数据是绝对正确的
      */
     ReNew() {
-        this.openProfit     = isStrictTrue(this.therePosition) ? this.allPosition * (this.TradingSymbolPrice - this.avgBuyPrice) : CV.NA       ;
-        this.allProfit      = ToStrictNumber(this.netProfit, 0) + ToStrictNumber(this.openProfit, 0)                                        ;
-        this.usedMargin     = isStrictTrue(this.therePosition) ? this.allPosition * this.TradingSymbolPrice / this.leverage : CV.NA            ;
-        this.crtFund        = this.inFund + ToStrictNumber(this.netProfit, 0) + ToStrictNumber(this.openProfit, 0)                          ;
-        this.crtCoin        = this.inCoin                                                                                                   ;
-        this.freeMargin     = this.crtFund + this.crtCoin * this.BaseCoinPrice * this.BaseCoinHairCut - ToStrictNumber(this.usedMargin, 0)  ;
-        this.allFund        = this.crtFund + this.crtCoin * this.BaseCoinPrice                                                              ;
-        this.allCoin        = this.crtFund / this.BaseCoinPrice + this.crtCoin                                                              ;
+        this.renewData() ;
+
+        // 账户状态判断
+        this.accStatus = 'Normal';
+
+        if (this.TradingSymbolPrice < this.liquidatePrice) {
+            const accStatus_liquidated = "liquidated";
+            this.accStatus = accStatus_liquidated;
+            AddSetMessage(this.alertMessageSet, accStatus_liquidated);
+        }
+        if (this.TradingSymbolPrice < this.stopPriceC) {
+            const accStatus_stopC = "stopC";
+            this.accStatus = accStatus_stopC;
+            AddSetMessage(this.alertMessageSet, accStatus_stopC);
+        }
+        if (this.TradingSymbolPrice < this.stopPriceF) {
+            const accStatus_stopF = "stopF";
+            this.accStatus = accStatus_stopF;
+            AddSetMessage(this.alertMessageSet, accStatus_stopF);
+        }
+        if (this.TradingSymbolPrice < this.stopPriceC && this.TradingSymbolPrice < this.stopPriceF) {
+            const accStatus_stopCF = "stopCF";
+            this.accStatus = accStatus_stopCF;
+            AddSetMessage(this.alertMessageSet, accStatus_stopCF);
+        }
+
 
         this.rcd_fund = ToStrictNumber(this.rcd_fund, this.allFund);
         this.rcd_coin = ToStrictNumber(this.rcd_coin, this.allCoin);
@@ -914,36 +950,6 @@ export const TradeBot = {
             AddSetMessage(this.alertMessageSet, "↓ markTouchTargetLow") ;
         }
 
-        // [this.liquidatePrice, this.stopPriceC, this.stopPriceF] = this.GetLiquidateStopPrice();
-        this.liquidatePrice = isStrictTrue(this.therePosition) ? this.GetLiquidPrice() : CV.NA ;
-        this.stopPriceC     = isStrictTrue(this.therePosition) ? this.GetStopPriceC()  : CV.NA ;
-        this.stopPriceF     = isStrictTrue(this.therePosition) ? this.GetStopPriceF()  : CV.NA ;
-
-        this.ifOrderWaiting =this.ifOrderWaiting || this.ing_orderStatus === CV.order_waiting ;
-
-        // 账户状态判断
-        this.accStatus = 'Normal';
-
-        if (this.TradingSymbolPrice < this.liquidatePrice) {
-            const accStatus_liquidated = "liquidated";
-            this.accStatus = accStatus_liquidated;
-            AddSetMessage(this.alertMessageSet, accStatus_liquidated);
-        }
-        if (this.TradingSymbolPrice < this.stopPriceC) {
-            const accStatus_stopC = "stopC";
-            this.accStatus = accStatus_stopC;
-            AddSetMessage(this.alertMessageSet, accStatus_stopC);
-        }
-        if (this.TradingSymbolPrice < this.stopPriceF) {
-            const accStatus_stopF = "stopF";
-            this.accStatus = accStatus_stopF;
-            AddSetMessage(this.alertMessageSet, accStatus_stopF);
-        }
-        if (this.TradingSymbolPrice < this.stopPriceC && this.TradingSymbolPrice < this.stopPriceF) {
-            const accStatus_stopCF = "stopCF";
-            this.accStatus = accStatus_stopCF;
-            AddSetMessage(this.alertMessageSet, accStatus_stopCF);
-        }
 
         if (this.allFund > this.rcd_fund * (1 + this.barChgA)) { this.rcd_fund = this.allFund; AddSetMessage(this.alertMessageSet, '↑ new rcd_fund'); }
         if (this.allFund < this.rcd_fund * (1 - this.barChgA)) { this.rcd_fund = this.allFund; AddSetMessage(this.alertMessageSet, '↓ new rcd_fund'); }
@@ -972,7 +978,6 @@ export const TradeBot = {
         
         this.lowToSell = this.basicLowToSell;
         if (this.therePosition) { this.lowToSell = Math.max(this.basicLowToSell, this.exDifficultySellPrice) }
-
 
         this.inTradingTime = this.timestamp > this.realTradeTime && this.timestamp < this.realTradeTimeTo;
 
@@ -1383,6 +1388,10 @@ export const TradeBot = {
                 if (ingOrderData.ing_buysell === CV.order_BUY) {
                     const newUncloseOrderLine = uncloseOrdersTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || CV.NA));
                     uncloseOrdersA2d.push(newUncloseOrderLine);
+                    if (!isStrictTrue(this.therePosition)) { this.therePosition = true }
+                    this.allPosition = ToStrictNumber(this.allPosition, 0) + ingOrderData.ing_qty ;
+                    this.avgBuyPrice = ingOrderData.ing_avgBuyPrice ;
+                    // this.netProfit 无变化
                 }
                 if (ingOrderData.ing_buysell === CV.order_SELL) {
                     const index_orderID         =  uncloseOrdersTitleA.indexOf('orderID')       ;
@@ -1402,6 +1411,11 @@ export const TradeBot = {
                         theBoughtOrder[index_pXq]       =  theBoughtOrder[index_confirmPrice] * theBoughtOrder[index_qty]   ;
                         // uncloseOrdersA2d[indexOfBoughtOrder] = theBoughtOrder ; // 这一行可以去掉, 因为引用的直接是地址
                     } else {uncloseOrdersA2d.splice(indexOfBoughtOrder, 1)}
+
+                    this.allPosition = this.allPosition + ingOrderData.ing_qty ;
+                    this.therePosition = this.allPosition > this.minEnExPosition ? true : false ;
+                    // this.avgBuyPrice 无变化
+                    this.netProfit = this.netProfit + ingOrderData.ing_qty * (ingOrderData.ing_confirmPrice - this.avgBuyPrice) + ingOrderData.ing_tradeFee ;
                 }
 
                 w_toClearRangeSet.add(toGCPData.ingOrderLine);
@@ -1484,7 +1498,6 @@ export const TradeBot = {
 
         }
     },
-
 
     /**
      * 将this大对象中的数据写入GS
@@ -1638,6 +1651,7 @@ export async function HandleTradeBot(tvData) {
     if (!r_ToCheckWaitingOrder || isStrictString(r_ToCheckWaitingOrder)) { throw new Error('ToCheckWaitingOrder() 失败: \n' + r_ToCheckWaitingOrder) }
     // if (isStrictTrue(r_ToCheckWaitingOrder)) { console.log(bot.cLogHead + 'ToCheckWaitingOrder() success') }
 
+    bot.renewData() ; // 在写入前再次renew
     const r_WriteToGS_ReleaseLocks = await bot.WriteToGS_ReleaseLocks();
     if (!r_WriteToGS_ReleaseLocks || isStrictString(r_WriteToGS_ReleaseLocks)) { throw new Error('WriteToGS_ReleaseLocks() 失败: \n' + r_WriteToGS_ReleaseLocks) }
     // if (isStrictTrue(r_WriteToGS_ReleaseLocks)) { console.log(bot.cLogHead + 'WriteToGS_ReleaseLocks() success') }
