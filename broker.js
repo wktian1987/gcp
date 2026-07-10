@@ -321,26 +321,22 @@ async function GATE_Fetch(fetchBody) {
 // 你在外面的发单、对账、查统一账户资产的函数，瞬间变得像喝水一样简单利落：
 
 
-const contract_quantoMultiplier_orderPriceRound = {} ;
-async function GATE_check_quantoMultiplier_orderPriceRound(isReal, contract) {
+const contractBasicData = {} ;
+async function GATE_check_contractBasicData(isReal, contract) {
     const checkContract = isStrictTrue(isReal) ? contract : `demo_${contract}` ;
 
-    if (Date.now() - contract_quantoMultiplier_orderPriceRound?.[checkContract]?.lastGetTime < 24 * 60 * 60 * 1000) {
-        return contract_quantoMultiplier_orderPriceRound?.[checkContract];
+    if (contractBasicData?.[checkContract]?.name === contract && Date.now() - contractBasicData?.[checkContract]?.lastGetTime < 24 * 60 * 60 * 1000) {
+        return contractBasicData[checkContract];
     } else {
-        // Get quanto_multiplier,  order_price_round
         const path_contract = '/futures/' + 'usdt' + '/contracts/' + contract;
         const fetchBody_contract = new GateFetchBody(isReal, 'GET', path_contract, null, 200, { name: contract }, true);
         await GATE_Fetch(fetchBody_contract);
         if (!fetchBody_contract.isOK) { throw new Error(fetchBody_contract.errMessage) }
         const data_contract = fetchBody_contract.resData;
-        const quanto_multiplier = ToStrictNumber(data_contract.quanto_multiplier);
-        const order_price_round = ToStrictNumber(data_contract.order_price_round);
-        if (!isStrictNumber(quanto_multiplier) || quanto_multiplier <= 0) { throw new Error('did not get right quanto_multiplier') }
-        if (!isStrictNumber(order_price_round) || order_price_round <= 0) { throw new Error('did not get right order_price_round') }
-        const lastGetTime = Date.now() ;
-        contract_quantoMultiplier_orderPriceRound[checkContract] = {quanto_multiplier, order_price_round, lastGetTime} ;
-        return contract_quantoMultiplier_orderPriceRound[checkContract] ;
+        if (data_contract?.name !== contract) {throw new Error('didnt get right contractBasicData')}
+        data_contract.lastGetTime = Date.now() ;
+        contractBasicData[checkContract] = data_contract;
+        return contractBasicData[checkContract] ;
     }
 
 }
@@ -349,7 +345,10 @@ async function GATE_CheckAllPosition(S) {
     const brokerSymbol = tvSymbol_TO_GATE_Symbol(S.TradingSymbol);
 
     // Get quanto_multiplier
-    const quanto_multiplier = await GATE_check_quantoMultiplier_orderPriceRound(S.isReal, brokerSymbol.contract).quanto_multiplier ;
+    const thisContractBasicData = await GATE_check_contractBasicData(S.isReal, brokerSymbol.contract) ;
+    const quanto_multiplier = thisContractBasicData.quanto_multiplier ;
+
+
 
     // 去查看当前的仓位信息
     // 获取单个仓位信息:    GET  /futures/{settle}/positions/{contract}
@@ -383,9 +382,11 @@ async function GATE_SendOrderToBroker(S) {
     const brokerSymbol  =  tvSymbol_TO_GATE_Symbol(S.TradingSymbol) ;
 
     // Get quanto_multiplier,  order_price_round
-    const contract_QmOr     = await GATE_check_quantoMultiplier_orderPriceRound(S.isReal, brokerSymbol.contract) ;
-    const quanto_multiplier = contract_QmOr.quanto_multiplier ;
-    const order_price_round = contract_QmOr.order_price_round ;
+    const thisContractBasicData = await GATE_check_contractBasicData(S.isReal, brokerSymbol.contract);
+    const quanto_multiplier = thisContractBasicData.quanto_multiplier   ;
+    const order_price_round = thisContractBasicData.order_price_round   ;
+    const order_size_min    = thisContractBasicData.order_size_min      ;
+    const order_size_max    = thisContractBasicData.order_size_max      ;
 
     const order_price_round_str = ToStrictString(order_price_round);
     const dotIndex = order_price_round_str.indexOf('.');
@@ -396,6 +397,8 @@ async function GATE_SendOrderToBroker(S) {
     text = text.startsWith('t-') ? text : 't-' + text;
     const size  =  S.ing_buysell === CV.order_BUY ? Math.floor( S.ing_qty / quanto_multiplier) : -1 * Math.round( Math.abs(S.ing_qty) / quanto_multiplier) ;
     if ( Math.abs(size) < 1 ) {throw new Error('ing_qty is too small, cant trade')}
+    if (size < order_size_min) { throw new Error('order size too small') }
+    if (size > order_size_max) { size = order_size_max } // 如果size 太大的话, 自动修改为交易所支持的最大交易量
     S.ing_qty   =  S.ing_buysell === CV.order_BUY ? size * quanto_multiplier : S.ing_qty ;
     const price_mul =  ToStrictNumber(S.ing_orderPrice, 0) / order_price_round ;
     S.ing_orderPrice = S.ing_buysell === CV.order_BUY ? order_price_round * Math.floor(price_mul) : order_price_round * Math.ceil(price_mul) ;
