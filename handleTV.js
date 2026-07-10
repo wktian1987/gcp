@@ -529,21 +529,35 @@ export const TradeBot = {
         S.TradingSymbol             = this.mainData.TradingSymbol                   ;
         S.allPosition               = ToStrictNumber(this.mainData.allPosition, 0)  ;
         S.gridNum                   = ToStrictNumber(this.mainData.gridNum, 0)      ;
+        S.ifOrderWaiting            = this.mainData.ifOrderWaiting                  ;
         S.waitingPosition           = this.ingOrderData?.ing_qty ?? 0               ;
         S.allPositionWithWaiting    = S.allPosition + S.waitingPosition             ;
 
         try {
             await CheckAllPosition(S) ;
+
             // 当前无仓位的情况
             if ((S.allPosition < this.mainData.minEnExPosition || S.allPositionWithWaiting < this.mainData.minEnExPosition) && S.brokerPosition < 2 * this.mainData.minEnExPosition) { return true }
 
             const probableEachGridPosition = S.allPosition / Math.max(S.gridNum, 1) ;
+
+
+            let testMessage = '' ;
+            testMessage += 'allPosition:' + ToStrictString(S.allPosition) + '\n' ;
+            testMessage += 'gridNum:' + ToStrictString(S.gridNum) + '\n' ;
+            testMessage += 'waitingPosition:' + ToStrictString(S.waitingPosition) + '\n' ;
+            testMessage += 'allPositionWithWaiting:' + ToStrictString(S.allPositionWithWaiting) + '\n' ;
+            testMessage += 'ifOrderWaiting:' + ToStrictString(S.ifOrderWaiting) + '\n' ;
+            console.log('checkPosition data: \n' + testMessage) ;
+
+
+
             // 有仓位 有pending_orders 的情况
-            if ( isStrictTrue(this.mainData.ifOrderWaiting)                                             &&
+            if ( isStrictTrue(S.ifOrderWaiting)                                                          &&
                 Math.abs(S.allPosition            - S.brokerPosition) > 1.5 * probableEachGridPosition   &&
                 Math.abs(S.allPositionWithWaiting - S.brokerPosition) > 1.5 * probableEachGridPosition   ) { throw new Error('GS中记录的仓位与交易所实际仓位不符') }
             // 有仓位 无pending_orders 的情况
-            if (!isStrictTrue(this.mainData.ifOrderWaiting)                                             &&
+            if (!isStrictTrue(S.ifOrderWaiting)                                                          &&
                 Math.abs(S.allPosition            - S.brokerPosition) > 0.5 * probableEachGridPosition   &&
                 Math.abs(S.allPositionWithWaiting - S.brokerPosition) > 0.5 * probableEachGridPosition   ) { throw new Error('GS中记录的仓位与交易所实际仓位不符') }
             return true ;
@@ -912,7 +926,7 @@ export const TradeBot = {
         this.stopPriceC     = isStrictTrue(this.therePosition) ? this.GetStopPriceC()  : CV.NA ;
         this.stopPriceF     = isStrictTrue(this.therePosition) ? this.GetStopPriceF()  : CV.NA ;
 
-        this.ifOrderWaiting = this.ing_orderStatus === CV.order_waiting;
+        this.ifOrderWaiting =this.ifOrderWaiting || this.ing_orderStatus === CV.order_waiting ;
 
         // 账户状态判断
         this.accStatus = 'Normal';
