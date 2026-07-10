@@ -548,6 +548,7 @@ export const TradeBot = {
             testMessage += 'waitingPosition:' + ToStrictString(S.waitingPosition) + '\n' ;
             testMessage += 'allPositionWithWaiting:' + ToStrictString(S.allPositionWithWaiting) + '\n' ;
             testMessage += 'ifOrderWaiting:' + ToStrictString(S.ifOrderWaiting) + '\n' ;
+            testMessage += 'brokerPosition:' + ToStrictString(S.brokerPosition) + '\n' ;
             console.log('checkPosition data: \n' + testMessage) ;
 
 
