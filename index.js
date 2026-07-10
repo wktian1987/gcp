@@ -113,7 +113,6 @@ const MaxRunningTasks = 20 ;
 
 // 我的目的是让信号一个一个地处理, 从最新的信号开始处理
 // 并发处理, 每隔1s开启一个新的并发
-// 每次清空队列后,等待对列内任务执行完后再执行新的队列
 async function HandleSignalList() {
     if (isWorkerRunning) { return }
     console.log('... ... 新工人开始处理队列任务');
@@ -130,6 +129,7 @@ async function HandleSignalList() {
             HandleSignal(toHandleSignal.url, toHandleSignal.body).catch(() => { }).finally(()=>{runningTasks -= 1});
             await Sleep(100);
         }
+        await Sleep(1000) ;
 
         // console.log(`... 开始检查处理Gmail未读邮件`);
         // const {HandleUnreadGmails} = await import('./handleUnreadGmails.js') ;
