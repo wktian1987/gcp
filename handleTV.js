@@ -1384,6 +1384,7 @@ export const TradeBot = {
             // 需要注意的是卖单, 如果部分成交的话, 不能简单地将uncloseOrders中的那个订单删掉, 需要修改那一行, 而不是删掉那一行
 
             if (ingOrderData.ing_orderStatus === CV.order_confirm ) {
+                this.toReNewBeforeWrite = true ;
 
                 if (ingOrderData.ing_buysell === CV.order_BUY) {
                     const newUncloseOrderLine = uncloseOrdersTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || CV.NA));
@@ -1651,7 +1652,7 @@ export async function HandleTradeBot(tvData) {
     if (!r_ToCheckWaitingOrder || isStrictString(r_ToCheckWaitingOrder)) { throw new Error('ToCheckWaitingOrder() 失败: \n' + r_ToCheckWaitingOrder) }
     // if (isStrictTrue(r_ToCheckWaitingOrder)) { console.log(bot.cLogHead + 'ToCheckWaitingOrder() success') }
 
-    bot.renewData() ; // 在写入前再次renew
+    if (isStrictTrue(bot.toReNewBeforeWrite)) {bot.renewData()}
     const r_WriteToGS_ReleaseLocks = await bot.WriteToGS_ReleaseLocks();
     if (!r_WriteToGS_ReleaseLocks || isStrictString(r_WriteToGS_ReleaseLocks)) { throw new Error('WriteToGS_ReleaseLocks() 失败: \n' + r_WriteToGS_ReleaseLocks) }
     // if (isStrictTrue(r_WriteToGS_ReleaseLocks)) { console.log(bot.cLogHead + 'WriteToGS_ReleaseLocks() success') }
