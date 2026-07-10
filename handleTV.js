@@ -536,15 +536,20 @@ export const TradeBot = {
         try {
             await CheckAllPosition(S) ;
 
-            // 当前无仓位的情况
-            if ((S.allPosition < this.mainData.minEnExPosition && S.allPositionWithWaiting < this.mainData.minEnExPosition) && S.brokerPosition < 2 * this.mainData.minEnExPosition) { return true }
+            // 无仓位 无pending_orders 的情况
+            if (S.allPosition               < this.mainData.minEnExPosition             &&
+                S.allPositionWithWaiting    < this.mainData.minEnExPosition             &&
+                S.brokerPosition            < 2 * this.mainData.minEnExPosition         ) { return true }
 
-            const probableEachGridPosition = S.allPosition / Math.max(S.gridNum, 1) ;
-            // 有仓位 有pending_orders 的情况
+            const probableEachGridPosition = S.gridNum > 0                                  ?
+                S.allPosition / S.gridNum                                                   :
+                this.mainData.freeMargin * this.leverage / this.tvData.TradingSymbolPrice   ;
+
+            // 有pending_orders 的情况
             if ( isStrictTrue(S.ifOrderWaiting)                                                          &&
                 Math.abs(S.allPosition            - S.brokerPosition) > 1.5 * probableEachGridPosition   &&
                 Math.abs(S.allPositionWithWaiting - S.brokerPosition) > 1.5 * probableEachGridPosition   ) { throw new Error('GS中记录的仓位与交易所实际仓位不符') }
-            // 有仓位 无pending_orders 的情况
+            // 无pending_orders 的情况
             if (!isStrictTrue(S.ifOrderWaiting)                                                          &&
                 Math.abs(S.allPosition            - S.brokerPosition) > 0.5 * probableEachGridPosition   &&
                 Math.abs(S.allPositionWithWaiting - S.brokerPosition) > 0.5 * probableEachGridPosition   ) { throw new Error('GS中记录的仓位与交易所实际仓位不符') }
