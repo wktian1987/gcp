@@ -361,13 +361,6 @@ async function GATE_CheckAllPosition(S) {
     const size = data_position.size ;
 
     S.brokerPosition = quanto_multiplier * size ;
-
-    let testData = 'broker data: \n'
-    testData += 'quanto_multiplier: ' + quanto_multiplier + '\n' ;
-    testData += 'size: ' + size + '\n' ;
-    testData += 'brokerPosition: ' + S.brokerPosition + '\n' ;
-
-    console.log(testData) ;
 }
 
 /**
@@ -397,7 +390,7 @@ async function GATE_SendOrderToBroker(S) {
     text = text.startsWith('t-') ? text : 't-' + text;
     const size  =  S.ing_buysell === CV.order_BUY ? Math.floor( S.ing_qty / quanto_multiplier) : -1 * Math.round( Math.abs(S.ing_qty) / quanto_multiplier) ;
     if ( Math.abs(size) < 1 ) {throw new Error('ing_qty is too small, cant trade')}
-    if (size < order_size_min) { throw new Error('order size too small') }
+    if (Math.abs(size) < order_size_min) { throw new Error('order size too small') }
     if (size > order_size_max) { size = order_size_max } // 如果size 太大的话, 自动修改为交易所支持的最大交易量
     S.ing_qty   =  S.ing_buysell === CV.order_BUY ? size * quanto_multiplier : S.ing_qty ;
     const price_mul =  ToStrictNumber(S.ing_orderPrice, 0) / order_price_round ;

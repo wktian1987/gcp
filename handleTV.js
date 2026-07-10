@@ -540,19 +540,6 @@ export const TradeBot = {
             if ((S.allPosition < this.mainData.minEnExPosition || S.allPositionWithWaiting < this.mainData.minEnExPosition) && S.brokerPosition < 2 * this.mainData.minEnExPosition) { return true }
 
             const probableEachGridPosition = S.allPosition / Math.max(S.gridNum, 1) ;
-
-
-            let testMessage = '';
-            testMessage += 'allPosition:'               + ToStrictString(S.allPosition)             + '\n';
-            testMessage += 'gridNum:'                   + ToStrictString(S.gridNum)                 + '\n';
-            testMessage += 'waitingPosition:'           + ToStrictString(S.waitingPosition)         + '\n';
-            testMessage += 'allPositionWithWaiting:'    + ToStrictString(S.allPositionWithWaiting)  + '\n';
-            testMessage += 'ifOrderWaiting:'            + ToStrictString(S.ifOrderWaiting)          + '\n';
-            testMessage += 'brokerPosition:'            + ToStrictString(S.brokerPosition)          + '\n';
-            console.log('checkPosition data: \n' + testMessage);
-
-
-
             // 有仓位 有pending_orders 的情况
             if ( isStrictTrue(S.ifOrderWaiting)                                                          &&
                 Math.abs(S.allPosition            - S.brokerPosition) > 1.5 * probableEachGridPosition   &&
