@@ -362,6 +362,13 @@ async function GATE_CheckAllPosition(S) {
     const size = data_position.size ;
 
     S.brokerPosition = quanto_multiplier * size ;
+
+    let testData = 'broker data: \n'
+    testData += 'quanto_multiplier: ' + quanto_multiplier + '\n' ;
+    testData += 'size: ' + size + '\n' ;
+    testData += 'brokerPosition: ' + S.brokerPosition + '\n' ;
+
+    console.log(testData) ;
 }
 
 /**

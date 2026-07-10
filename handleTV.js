@@ -542,14 +542,14 @@ export const TradeBot = {
             const probableEachGridPosition = S.allPosition / Math.max(S.gridNum, 1) ;
 
 
-            let testMessage = '' ;
-            testMessage += 'allPosition:' + ToStrictString(S.allPosition) + '\n' ;
-            testMessage += 'gridNum:' + ToStrictString(S.gridNum) + '\n' ;
-            testMessage += 'waitingPosition:' + ToStrictString(S.waitingPosition) + '\n' ;
-            testMessage += 'allPositionWithWaiting:' + ToStrictString(S.allPositionWithWaiting) + '\n' ;
-            testMessage += 'ifOrderWaiting:' + ToStrictString(S.ifOrderWaiting) + '\n' ;
-            testMessage += 'brokerPosition:' + ToStrictString(S.brokerPosition) + '\n' ;
-            console.log('checkPosition data: \n' + testMessage) ;
+            let testMessage = '';
+            testMessage += 'allPosition:'               + ToStrictString(S.allPosition)             + '\n';
+            testMessage += 'gridNum:'                   + ToStrictString(S.gridNum)                 + '\n';
+            testMessage += 'waitingPosition:'           + ToStrictString(S.waitingPosition)         + '\n';
+            testMessage += 'allPositionWithWaiting:'    + ToStrictString(S.allPositionWithWaiting)  + '\n';
+            testMessage += 'ifOrderWaiting:'            + ToStrictString(S.ifOrderWaiting)          + '\n';
+            testMessage += 'brokerPosition:'            + ToStrictString(S.brokerPosition)          + '\n';
+            console.log('checkPosition data: \n' + testMessage);
 
 
 
