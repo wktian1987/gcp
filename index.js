@@ -125,7 +125,7 @@ async function HandleSignalList() {
             taskNumber += 1;
             runningTasks += 1 ;
             const toHandleSignal = SignalList.pop() ;
-            console.log(`... ... 开始处理第${taskNumber}个任务，共有${runningTasks}个任务同时运行，任务队列中尚有${SignalList.length}个信号等待处理`)
+            console.log(`... ... 开始处理第${taskNumber}个任务，共有${runningTasks}个任务同时运行，任务队列中尚有${SignalList.length}个信号等待处理`) ;
             HandleSignal(toHandleSignal.url, toHandleSignal.body).catch(() => { }).finally(()=>{runningTasks -= 1});
         
             await Sleep(1000) ;
