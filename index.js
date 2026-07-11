@@ -189,9 +189,9 @@ async function HandleSignal(url, body) {
 
             }
 
-            console.log(`... 开始检查处理Gmail未读邮件`);
-            const {HandleUnreadGmails} = await import('./handleUnreadGmails.js') ;
-            HandleUnreadGmails().catch(() => { });
+            // console.log(`... 开始检查处理Gmail未读邮件`);
+            // const {HandleUnreadGmails} = await import('./handleUnreadGmails.js') ;
+            // HandleUnreadGmails().catch(() => { });
         }
 
     }
