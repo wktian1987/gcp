@@ -92,8 +92,8 @@ const server = http.createServer(async (req, res) => {
             const body = JSON.parse(bodyData);
             AddNewSignal({url, body}) ;
             let newMessage = `... ... 收到新任务, ${url}, 已放入待处理队列 \n` ;
-            if (isWorkerRunning) { newMessage += '... ... 已经有人在处理队列任务了, 不必分配新的工人') }
-            if (!isWorkerRunning) {
+            if (isWorkerRunning) { newMessage += '... ... 已经有人在处理队列任务了, 不必分配新的工人' }
+            else {
                 newMessage += '... ... 分配新的工人去处理队列任务' ;
                 HandleSignalList().catch(() => { }); // 这里不必写await
             } // 只有isworkerrunning 是false 的时候才会有新的工人进来, 这样设计就不会与你说的情况
