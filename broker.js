@@ -233,7 +233,6 @@ async function GATE_Fetch(fetchBody) {
         //      设置在请求头部 Timestamp 里的值
         // 下面是过程:
 
-        // const { crypto } = await import('node:crypto');
         const crypto = (await import('node:crypto')).default || await import('node:crypto');
 
         // 刚性处理 Body 序列化

@@ -1,5 +1,9 @@
 import http from 'node:http';
 import { SendTG, Sleep } from './utility.js';
+import { HandleUnreadGmails } from './handleUnreadGmails.js';
+import { HandleTradeBot, HandleAllPrice, CV } from './handleTV.js';
+import { HandleTgBot } from './handleTgBot.js';
+
 
 // 创建原生 HTTP 监听基座
 const targetURL = {
@@ -47,7 +51,6 @@ const server = http.createServer(async (req, res) => {
                 res.end("ACK");
                 const body = JSON.parse(bodyData);
                 const msg = body.message;
-                const { HandleTgBot } = await import("./handleTgBot.js");
                 await HandleTgBot(msg);
                 console.log(`✔ HandleTgBot()处理成功`);
             } catch (e) {
@@ -127,14 +130,16 @@ async function HandleSignalList() {
             runningTasks += 1 ;
             const toHandleSignal = SignalList.pop() ;
             console.log(`... ... 开始处理第${taskNumber}个任务，共有${runningTasks}个任务同时运行，任务队列中尚有${SignalList.length}个信号等待处理`) ;
-            HandleSignal(toHandleSignal.url, toHandleSignal.body).catch(() => { }).finally(()=>{runningTasks -= 1});
+            HandleSignal(toHandleSignal.url, toHandleSignal.body).catch(() => { }).finally(()=>{
+                runningTasks -= 1;
+                console.log(`... 开始检查处理Gmail未读邮件`);
+                HandleUnreadGmails().catch(() => { });
+            });
         
             await Sleep(1000) ;
         }
 
-        console.log(`... 开始检查处理Gmail未读邮件`);
-        const { HandleUnreadGmails } = await import('./handleUnreadGmails.js');
-        HandleUnreadGmails().catch(() => { });
+
     }
 
     isWorkerRunning = false; 
@@ -154,11 +159,6 @@ async function HandleSignal(url, body) {
             console.log("TradeBot botNumber: " + body.botNumber);
 
             try {
-                // 这一行写在try中，一次加载整个运行声明周期都可用，还是每次运行到这里都要重新加载，或者反复加载导致内存中同样内容重复
-                // 答案:
-                // 不会, 可以放心使用, 不会重复加载, 仅加载一次, 然后保存在内存中, 下次复用, 也不会在内存中保存多个同样的副本
-                const { HandleTradeBot, CV } = await import("./handleTV.js");
-
                 const r_HandleTradeBot = await HandleTradeBot(body);
                 if      (r_HandleTradeBot === CV.stopSet         ) {console.log(`||| ${body.botNumber}: stopSet, 本信号丢弃`) }
                 else if (r_HandleTradeBot === CV.newerHandled    ) {console.log(`||| ${body.botNumber}: 已处理更新的信号, 本信号丢弃`)}
@@ -177,7 +177,6 @@ async function HandleSignal(url, body) {
 
         if (body.botGate === "AllPrice") {
             try {
-                const { HandleAllPrice } = await import("./handleTV.js");
                 await HandleAllPrice(body);
                 console.log(`✔ HandleAllPrice()处理成功`);
             } catch (e) {

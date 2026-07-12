@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import https from 'node:https';
+import { createTransport } from 'nodemailer';
 
 //  1. 注入长效物理套接字蓄水池（全局只初始化一次，焊死长链接）
 const sheetsAgent = new https.Agent({
@@ -1286,7 +1287,6 @@ export async function SendTG(subject, text, toChatID = process.env.TG_CHAT_ID) {
  * @returns 出错会抛出异常
  */
 export async function SendEmail(mail_subject, mail_content, mailReceiver = process.env.RECEIVER_EMAIL) {
-    const { createTransport } = await import('nodemailer');
 
     try { 
         const mailUser = process.env.GMAIL_USER;
