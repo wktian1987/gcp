@@ -120,7 +120,6 @@ const checkEmailInterval = 10 * 60 * 1000; let lastCheckEmailTime = Date.now() -
 // 我的目的是让信号一个一个地处理, 从最新的信号开始处理
 // 并发处理, 两个信号处理，至少间隔1s
 async function HandleSignalList() {
-    const thisTimeNow = Date.now() ;
     if (isWorkerRunning) { return }
     console.log('... ... 新工人开始处理队列任务');
     isWorkerRunning = true;
@@ -128,6 +127,7 @@ async function HandleSignalList() {
     let runningTasks = 0 ;
     let taskNumber = 0;
     while (runningTasks > 0 || SignalList.length > 0) {
+        thisTimeNow = Date.now() ;
         if (thisTimeNow - lastHandleSignalTime > handleSignalInterval && SignalList.length > 0 && runningTasks < MaxRunningTasks) {
             lastHandleSignalTime = thisTimeNow ;
             taskNumber += 1;
