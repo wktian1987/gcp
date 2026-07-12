@@ -278,12 +278,12 @@ async function GATE_Fetch(fetchBody) {
 
         /////////////////////////////////////////////////////////////
         // 在测试阶段将交易所信号返回打印出来,
-        let ReqResDataFromGATE = '交易所交互记录: \n' ;
-        ReqResDataFromGATE += `sent request method is: ${method}` + '\n';
-        ReqResDataFromGATE += `sent request path is: ${path}` + '\n';
-        ReqResDataFromGATE += `sent request body is: ${JSON.stringify(body)}` + '\n';
-        ReqResDataFromGATE +=  `Broker res text is: ${rawText}` + '\n';
-        console.log(ReqResDataFromGATE.trim()) ;
+        // let ReqResDataFromGATE = '交易所交互记录: \n' ;
+        // ReqResDataFromGATE += `sent request method is: ${method}` + '\n';
+        // ReqResDataFromGATE += `sent request path is: ${path}` + '\n';
+        // ReqResDataFromGATE += `sent request body is: ${JSON.stringify(body)}` + '\n';
+        // ReqResDataFromGATE +=  `Broker res text is: ${rawText}` + '\n';
+        // console.log(ReqResDataFromGATE.trim()) ;
         // 以后可以删除这个交互记录
         /////////////////////////////////////////////////////////////
 

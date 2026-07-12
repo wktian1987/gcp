@@ -98,6 +98,7 @@ export const TradeBot = {
         this.task_gslock_isOK   =  false                        ;
         this.batchUpdateList    =  []                           ;
         this.alertMessageSet    =  new Set()                    ;
+        this.toSendEmail        =  false                        ;
         AddSetMessage(this.alertMessageSet, tvData.thisAlertMessage) ;
 
         this.tbName_TGID           =  tvData.botNumber + '_TGID'           ; // 全局中保存的发送命令的ID
@@ -1075,6 +1076,7 @@ export const TradeBot = {
             this.batchUpdateList.push(makeRequestBodyArrayofBatchUpdate_append({ sheetID: this.sheetsID[tradeHistoryRange.split('!')[0]], values: [newFundHistoryA] }));
 
             AddSetMessage(this.alertMessageSet, `New fund fee: ${fund.fundFee}`)  ;
+            this.toSendEmail = true ;
 
             return true;
         } catch (e) { 
@@ -1221,6 +1223,7 @@ export const TradeBot = {
             }));
 
             AddSetMessage(this.alertMessageSet, "New sell order, waiting confirmed");
+            this.toSendEmail = true ;
 
             this.canBuy = false;
             AddSetMessage(this.alertMessageSet, 'cant buy: just a new sellOrder sent');
@@ -1316,6 +1319,7 @@ export const TradeBot = {
             }));
 
             AddSetMessage(this.alertMessageSet, "New buy order: waiting confirmed");
+            this.toSendEmail = true ;
 
             this.canSell = false;
             AddSetMessage(this.alertMessageSet, 'cant sell: just a new buyOrder sent');
@@ -1440,17 +1444,20 @@ export const TradeBot = {
                     (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + `Order fully confirmed`;
 
                 AddSetMessage(this.alertMessageSet, thisMessage) ;
+                this.toSendEmail = true ;
             }
 
             if (ingOrderData.ing_orderStatus === CV.order_partial && ingOrderData.ing_partial - ingOrderData.lst_partial> 0.1 ) {
                 const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(ingOrderData[v]) ? ingOrderData[v] : ingOrderData[v] || CV.NA);
                 w_toUpdateRangeList.push({ range: toGCPData.ingOrderLine, values: [new_ingOrderLineA] });
                 AddSetMessage(this.alertMessageSet, (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + "Order more partial confirmed");
+                this.toSendEmail = true ;
             }
 
             if (ingOrderData.ing_orderStatus === CV.order_cancel) {
                 w_toClearRangeSet.add(toGCPData.ingOrderLine);
                 AddSetMessage(this.alertMessageSet, (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + "Order canceled");
+                this.toSendEmail = true ;
             }
 
 
@@ -1592,11 +1599,13 @@ export const TradeBot = {
      * @returns 会抛出错误, 但无返回值
      */
     async SendToEmail() {
-        const toEmailRange = this.toGCPData.toEmailRange;
-        const rawMessagesA2d = (await try3times(GetGS, this.spreadsheetID, toEmailRange, 'read')).map(v => CleanArrayToNumStrBool(v));
-        const messageHTML = ConvertRowsToHtmlTable(rawMessagesA2d);
-        const mail_subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime);
-        await SendEmail(mail_subject, messageHTML);
+        if (this.toSendEmail) {
+            const toEmailRange = this.toGCPData.toEmailRange;
+            const rawMessagesA2d = (await try3times(GetGS, this.spreadsheetID, toEmailRange, 'read')).map(v => CleanArrayToNumStrBool(v));
+            const messageHTML = ConvertRowsToHtmlTable(rawMessagesA2d);
+            const mail_subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime);
+            await SendEmail(mail_subject, messageHTML);
+        }
     },
 
 };

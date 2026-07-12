@@ -133,10 +133,6 @@ async function HandleSignalList() {
         }
 
         await Sleep(100) ;
-
-        // console.log(`... 开始检查处理Gmail未读邮件`);
-        // const {HandleUnreadGmails} = await import('./handleUnreadGmails.js') ;
-        // HandleUnreadGmails().catch(() => { });
     }
 
     isWorkerRunning = false; 
