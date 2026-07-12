@@ -118,7 +118,7 @@ const handleSignalInterval = 1 * 1000; let lastHandleSignalTime = Date.now() - h
 const checkEmailInterval = 10 * 60 * 1000; let lastCheckEmailTime = Date.now() - checkEmailInterval;
 
 // 我的目的是让信号一个一个地处理, 从最新的信号开始处理
-// 并发处理, 每隔1s开启一个新的并发
+// 并发处理, 两个信号处理，至少间隔1s
 async function HandleSignalList() {
     if (isWorkerRunning) { return }
     console.log('... ... 新工人开始处理队列任务');
@@ -136,6 +136,7 @@ async function HandleSignalList() {
         }
         
         if (Date.now() - lastCheckEmailTime > checkEmailInterval) {
+                lastCheckEmailTime = Date.now() ;
                 console.log(`... 开始检查处理Gmail未读邮件`);
                 HandleUnreadGmails().catch(() => { });
         }
