@@ -114,6 +114,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 const MaxRunningTasks = 10 ;
+const handleSignalInterval = 1 * 1000; let lastHandleSignalTime = Date.now() - handleSignalInterval;
+const checkEmailInterval = 10 * 60 * 1000; let lastCheckEmailTime = Date.now() - checkEmailInterval;
 
 // 我的目的是让信号一个一个地处理, 从最新的信号开始处理
 // 并发处理, 每隔1s开启一个新的并发
@@ -125,21 +127,20 @@ async function HandleSignalList() {
     let runningTasks = 0 ;
     let taskNumber = 0;
     while (runningTasks > 0 || SignalList.length > 0) {
-        if (SignalList.length > 0 && runningTasks < MaxRunningTasks) {
+        if (Date.now() - lastHandleSignalTime > handleSignalInterval && SignalList.length > 0 && runningTasks < MaxRunningTasks) {
             taskNumber += 1;
             runningTasks += 1 ;
             const toHandleSignal = SignalList.pop() ;
             console.log(`... ... 开始处理第${taskNumber}个任务，共有${runningTasks}个任务同时运行，任务队列中尚有${SignalList.length}个信号等待处理`) ;
-            HandleSignal(toHandleSignal.url, toHandleSignal.body).catch(() => { }).finally(()=>{
-                runningTasks -= 1;
+            HandleSignal(toHandleSignal.url, toHandleSignal.body).catch(() => { }).finally(() => { runningTasks -= 1 });
+        }
+        
+        if (Date.now() - lastCheckEmailTime > checkEmailInterval) {
                 console.log(`... 开始检查处理Gmail未读邮件`);
                 HandleUnreadGmails().catch(() => { });
-            });
-        
-            await Sleep(1000) ;
         }
 
-
+        await Sleep(100) ;
     }
 
     isWorkerRunning = false; 
