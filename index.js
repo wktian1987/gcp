@@ -114,8 +114,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 const MaxRunningTasks = 10 ;
-const handleSignalInterval = 1 * 1000; let lastHandleSignalTime = Date.now() - handleSignalInterval;
-const checkEmailInterval = 10 * 60 * 1000; let lastCheckEmailTime = Date.now() - checkEmailInterval;
+const handleSignalInterval = 1 * 1000; let lastHandleSignalTime = 0 ;
+const checkEmailInterval = 10 * 60 * 1000; let lastCheckEmailTime = 0 ;
 
 // 我的目的是让信号一个一个地处理, 从最新的信号开始处理
 // 并发处理, 两个信号处理，至少间隔1s
@@ -127,7 +127,7 @@ async function HandleSignalList() {
     let runningTasks = 0 ;
     let taskNumber = 0;
     while (runningTasks > 0 || SignalList.length > 0) {
-        thisTimeNow = Date.now() ;
+        const thisTimeNow = Date.now() ;
         if (thisTimeNow - lastHandleSignalTime > handleSignalInterval && SignalList.length > 0 && runningTasks < MaxRunningTasks) {
             lastHandleSignalTime = thisTimeNow ;
             taskNumber += 1;
