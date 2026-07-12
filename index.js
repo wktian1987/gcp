@@ -110,7 +110,7 @@ const server = http.createServer(async (req, res) => {
     }
 });
 
-const MaxRunningTasks = 20 ;
+const MaxRunningTasks = 10 ;
 
 // 我的目的是让信号一个一个地处理, 从最新的信号开始处理
 // 并发处理, 每隔1s开启一个新的并发
