@@ -1719,7 +1719,6 @@ export async function HandleTradeBot(tvData, thisLogs) {
         });
     let sendEmail_success = true;
     thisLogs.AddNewLogLine('去发送Email') ;
-    bot.SendToTG()
     bot.SendToEmail()
         .catch((e) => { sendEmail_success = false; thisLogs.AddNewLogLine(`发送Email失败: ${e.message}`); })
         .finally(() => {
