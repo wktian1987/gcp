@@ -159,9 +159,9 @@ async function HandleSignalList() {
             const checkUnreadEmailsLogs = new LogsWithTime() ;
             checkUnreadEmailsLogs.AddNewLogLine(`开始检查处理Gmail未读邮件`, '___ ');
             HandleUnreadGmails()
-                .catch((e) => { checkUnreadEmailsLogs.AddNewErrLogLine(`HandleUnreadGmails()处理失败: + ${e.message}`) })
+                .catch((e) => { checkUnreadEmailsLogs.AddNewErrLogLine(`HandleUnreadGmails()处理失败: + ${e.message}`, '___ ') })
                 .finally(()=>{
-                    if (!checkUnreadEmailsLogs.ThereErrLog()) {checkUnreadEmailsLogs.AddNewLogLine('HandleUnreadGmails()处理成功')}
+                    if (!checkUnreadEmailsLogs.ThereErrLog()) {checkUnreadEmailsLogs.AddNewLogLine('HandleUnreadGmails()处理成功', '___ ')}
                     const thisLogMessage = checkUnreadEmailsLogs.MakeLogStr() ;
                     console.log(thisLogMessage) ;
                 });
