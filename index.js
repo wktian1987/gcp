@@ -88,14 +88,14 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(200, { 'Content-Type': 'text/plain' });
             res.end("ACK");
             const body = JSON.parse(bodyData);
-            const thisLogs = new LogsWithTime(`收到新信号来自${url}`) ;
-            thisLogs.AddNewLogLine(`新信号 ${url}, 已放入待处理队列`) ;
+            const thisLogs = new LogsWithTime(`新信号来自${url}`) ;
+            AddNewSignal({url, body, thisLogs}) ;
+            thisLogs.AddNewLogLine(`新信号, 已放入待处理队列`) ;
             if (isWorkerRunning) { thisLogs.AddNewLogLine('已经有人在处理队列任务了, 不必分配新的工人') }
             else {
                 thisLogs.AddNewLogLine('分配新的工人去处理队列任务');
                 HandleSignalList().catch(() => { }); // 这里不必写await
             } // 只有isworkerrunning 是false 的时候才会有新的工人进来, 这样设计就不会与你说的情况
-            AddNewSignal({url, body, thisLogs}) ;
         }
     } catch (e) {
         req.resume();
