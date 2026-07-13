@@ -185,7 +185,7 @@ async function HandleSignal(toHandleSignal) {
         thisLogs.AddNewLogLine("收到TradingView Message, botGate: " + body.botGate, preStr);
 
         if (body.botGate === "TradeBot") {
-            console.log("TradeBot botNumber: " + body.botNumber);
+            thisLogs.AddNewLogLine("TradeBot botNumber: " + body.botNumber);
 
             try {
                 const r_HandleTradeBot = await HandleTradeBot(body);
