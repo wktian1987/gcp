@@ -99,6 +99,7 @@ export const TradeBot = {
         this.LockTime           =  tvData.timestamp             ;
         this.lockName           =  'T' + String(this.LockTime)  ;
         this.task_setGSLOCK     =  null                         ;
+        this.task_gslock_fail   =  false                        ;
         this.task_gslock_isOK   =  false                        ;
         this.batchUpdateList    =  []                           ;
         this.alertMessageSet    =  new Set()                    ;
@@ -246,7 +247,17 @@ export const TradeBot = {
         if (currentLock === CV.noLOCK) {
             // await UpdateGS(this.spreadsheetID, toGCPData.lockRange, [[this.lockName]]);
             thisLogs.AddNewLogLine('去GS设锁')
-            this.task_setGSLOCK = try3times(UpdateGS, this.spreadsheetID, this.toGCPData.lockRange, [[this.lockName]]) ;
+            this.task_setGSLOCK = try3times(UpdateGS, this.spreadsheetID, this.toGCPData.lockRange, [[this.lockName]])
+                .catch((e) => {
+                   this.task_gslock_fail = true ;
+                   this.thisLogs.AddNewLogLine('set gslock fail: ' + e.message) ;
+                })
+                .finally(() => {
+                    if(!this.task_gslock_fail) {
+                        this.task_gslock_isOK = true ;
+                        this.thisLogs.AddNewLogLine('set gslock success') ;
+                    }
+                }) ;
         }
 
         return true ; 
@@ -296,17 +307,9 @@ export const TradeBot = {
     async CheckLockFromGS(NotGotLockValueTo = 'NotGotLockValue') {return ( await this.Get_toGCPData() ) ?.LOCK ?? NotGotLockValueTo } ,
 
     async GSLOCK_waitOK() {
-        if (this.task_gslock_isOK) {return true}
-        try {
-            await this.task_setGSLOCK;
-            this.thisLogs.AddNewLogLine('在GS设锁成功') ;
-            this.task_gslock_isOK = true ;
-            return true ;
-        } catch (e) { 
-            this.thisLogs.AddNewLogLine('在GS设锁失败') ;
-            const errMessage = `task_setGSLOCK fail: ${e.message}` ;
-            return errMessage ;
-        }
+        await this.task_setGSLOCK ;
+        if (this.task_gslock_isOK) {return true} 
+        else {return '检查set GSLOCK，发现设置失败'}
     } ,
 
     /**
@@ -551,7 +554,6 @@ export const TradeBot = {
         S.allPositionWithWaiting    = S.allPosition + S.waitingPosition             ;
 
         try {
-            this.thisLogs.AddNewLogLine('CheckAllPosition_withBroker()') ;
             S.thisLogs = this.thisLogs ;
             await CheckAllPosition(S) ;
 
