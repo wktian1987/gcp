@@ -1369,6 +1369,27 @@ export function GetTimeStringWithOffset(offsetHours, timestamp) {
 
 export class DATETIME {
     constructor(timestamp) { this.timestamp = ToStrictNumber(timestamp, Date.now()) }
+    GetTimestamp() {return this.timestamp}
+    UpdateTime(newTimestamp) { this.timestamp = ToStrictNumber(newTimestamp, Date.now()); return this; }
     TimeStringWithOffset(offsetHours) { return GetTimeStringWithOffset(offsetHours, this.timestamp) }
     HowLongToNOW() { return Math.max(0, Date.now() - this.timestamp) }
+}
+
+export class LogsWithTime{
+    constructor() {
+        this.lastLogTime    =  new DATETIME(0)  ;
+        this.logsA          =  []               ;
+    }
+    GetLastLogTime() { return this.lastLogTime.GetTimestamp() }
+    ThereErrLog() {return isStrictTrue(this.thereErr)}
+    AddNewLogLine(newLine, preStr = '', thereErr = false) {
+        this.lastLogTime.UpdateTime() ;
+        let joinStr = '✓' ;
+        if (isStrictTrue(thereErr)) {this.thereErr = true ; joinStr = '✕' ;}
+        this.logsA.push(preStr + this.lastLogTime.TimeStringWithOffset(8) + joinStr + ' ' + newLine);
+    }
+    AddNewErrLogLine(newErrLog, preStr = '') { this.AddNewLogLine(newErrLog, preStr, true) }
+    MakeLogStr() {
+        return this.logsA.join('\n') ;
+    }
 }

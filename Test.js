@@ -127,3 +127,14 @@ async function TestBatchUpdate(spreadsheetID, chat_id) {
 // }
 // await F() ; // 这样写的话, 必须走完f2() 才会继续下面的程序吗? 我的本意是, 只想等待执行完 F()中的f1()便不再等, 让f2() 在后台运行.
 // // 上面的写法是安全正确的, f2() 不会阻碍程序的运行
+
+
+// // param 是一个数组, 用来保存log
+// async function fn(param) {
+//     // 内部复杂操作，但是没有用到 param
+//     // param.push('一些log') ; // 可能在运行中没有log产生的时候不会用到这个param
+// }
+
+// fn(p)
+//     .catch((e) => { p.push(e.message) })
+//     .finally(() => { console.log(p, join('\n')) });
