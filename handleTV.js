@@ -1652,11 +1652,11 @@ export async function HandleTradeBot(tvData, thisLogs) {
         if ( isStrictString(tvData[key]) && tvData[key].includes(CV.HuanHang) ) { tvData[key] = tvData[key].replaceAll(CV.HuanHang, '\n').trim() }
     } ) ;
 
-    const bot = Object.create(TradeBot, thisLogs);
+    const bot = Object.create(TradeBot);
     thisLogs.AddNewLogLine(`创建${tvData.botNumber}机器人成功`)
 
     thisLogs.AddNewLogLine('去执行CreateBasicAttr()') ;
-    const r_CreateBasicAttr = await bot.CreateBasicAttr(tvData);
+    const r_CreateBasicAttr = await bot.CreateBasicAttr(tvData, thisLogs);
     if (r_CreateBasicAttr === CV.stopSet         ) {return r_CreateBasicAttr}
     if (r_CreateBasicAttr === CV.newerHandled    ) {return r_CreateBasicAttr}
     if (r_CreateBasicAttr === CV.stillHandleLast ) {return r_CreateBasicAttr}

@@ -15,7 +15,8 @@ import {
     BatchGetGS,
     isStrictTrue,
     isStrictFalse,
-    try3times
+    try3times,
+    LogsWithTime
 } from "./utility.js";
 
 import {TradeBot} from './handleTV.js';
@@ -67,7 +68,7 @@ export async function HandleTgBot(msg) {
     if (text.toUpperCase().includes('HANDLEUNREADGMAILS')) {
         SendTG(`收到HandleUnreadGmails信号`, '开始处理未读Gmail邮件', chat_id).catch(() => { });
         try {
-            await HandleUnreadGmails(chat_id);
+            await HandleUnreadGmails(new LogsWithTime('来自TG的查看未读邮件请求'), chat_id);
             SendTG(`HandleUnreadGmails信号处理结束`, 'HandleUnreadGmails信号处理成功', chat_id).catch(() => { });
         } catch(e) {
             SendTG(`HandleUnreadGmails信号处理结束`, 'HandleUnreadGmails信号处理失败 \n' + e.message, chat_id).catch(() => { });
