@@ -80,7 +80,6 @@ const server = http.createServer(async (req, res) => {
                 return ;
             }
 
-
             let bodyData = '';
             for await (const chunk of req) { bodyData += chunk }
             // 这里回复 ACK, 不管数据如何, 我直接回收到了,
@@ -90,7 +89,7 @@ const server = http.createServer(async (req, res) => {
             const body = JSON.parse(bodyData);
             const thisLogs = new LogsWithTime(`新信号来自${url}`) ;
             AddNewSignal({url, body, thisLogs}) ;
-            thisLogs.AddNewLogLine(`新信号, 已放入待处理队列`) ;
+            thisLogs.AddNewLogLine(`新信号已放入待处理队列`) ;
             if (isWorkerRunning) { thisLogs.AddNewLogLine('已经有人在处理队列任务了, 不必分配新的工人') }
             else {
                 thisLogs.AddNewLogLine('分配新的工人去处理队列任务');
@@ -139,7 +138,7 @@ async function HandleSignalList() {
             lastCheckEmailTime.UpdateTime();
             const checkUnreadEmailsLogs = new LogsWithTime('处理Gmail未读邮件') ;
             checkUnreadEmailsLogs.AddNewLogLine(`开始检查处理Gmail未读邮件`);
-            HandleUnreadGmails()
+            HandleUnreadGmails(checkUnreadEmailsLogs)
                 .catch((e) => { checkUnreadEmailsLogs.AddNewErrLogLine(`HandleUnreadGmails()处理失败: + ${e.message}`) })
                 .finally(()=>{
                     if (!checkUnreadEmailsLogs.ThereErrLog()) {checkUnreadEmailsLogs.AddNewLogLine('HandleUnreadGmails()处理成功')}
@@ -151,7 +150,7 @@ async function HandleSignalList() {
     }
 
     isWorkerRunning = false; 
-    console.log(`... ... 队列中的全部任务已处理完毕, 此工人共处理${taskNumber}个任务后体面退出`);
+    console.log(`... ... 队列中的全部任务已处理完毕, 此工人共处理${taskNumber}个任务后退出`);
 }
 
 async function HandleSignal(toHandleSignal) {
@@ -168,7 +167,7 @@ async function HandleSignal(toHandleSignal) {
             thisLogs.AddNewLogLine("TradeBot botNumber: " + body.botNumber);
 
             try {
-                const r_HandleTradeBot = await HandleTradeBot(body);
+                const r_HandleTradeBot = await HandleTradeBot(body, thisLogs);
                 if      (r_HandleTradeBot === CV.stopSet         ) {thisLogs.AddNewLogLine(`||| ${body.botNumber}: stopSet, 本信号丢弃`) }
                 else if (r_HandleTradeBot === CV.newerHandled    ) {thisLogs.AddNewLogLine(`||| ${body.botNumber}: 已处理更新的信号, 本信号丢弃`)}
                 else if (r_HandleTradeBot === CV.stillHandleLast ) {thisLogs.AddNewLogLine(`||| ${body.botNumber}: 仍在处理上一个信号, 但是本信号已经超时, 本信号丢弃`)}
@@ -193,11 +192,11 @@ async function HandleSignal(toHandleSignal) {
 process.on('SIGTERM', async () => {
     ToStopSartNewSignals('toStop') ;
 
-    console.log("⚠️[GCP 部署切流] 收到云端退役信号(SIGTERM)！拦截成功，大闸降下...");
+    console.log("️[GCP 部署切流] 收到云端退役信号(SIGTERM)！拦截成功，大闸降下...");
 
     // 🔒 铁血对账：只要账本里还有单子没清空，或者后台 Worker 还在埋头苦干，死死顶住！
     while (SignalList.length > 0 || isWorkerRunning) {
-        console.log(`⏳ 护盘冲刺中：队列还剩 ${SignalList.length} 单，Worker忙碌状态:，原地等待 1 秒...`);
+        console.log(`护盘冲刺中：队列还剩 ${SignalList.length} 单，Worker忙碌状态:，原地等待 1 秒...`);
         await new Promise(resolve => setTimeout(resolve, 1000)); 
     }
 

@@ -10,7 +10,8 @@ import {
     GetGS,
     UpdateGS,
     AddMessage,
-    try3times
+    try3times, 
+    LogsWithTime
 } from './utility.js';
 
 // 1. 刚性配置锁死在全局// 1. 刚性配置锁死在全局
@@ -233,8 +234,11 @@ function convertToTextTable(rawContent) {
 
 const gmailFolderName = "tradingview";
 let isImapMailboxOccupied = false ;
-export async function HandleUnreadGmails(toChatID = process.env.TG_CHAT_ID, mailReceiver = process.env.RECEIVER_EMAIL) {
-    if (isImapMailboxOccupied) {return}
+export async function HandleUnreadGmails(checkUnreadEmailsLogs, toChatID = process.env.TG_CHAT_ID, mailReceiver = process.env.RECEIVER_EMAIL) {
+    if (isImapMailboxOccupied) {
+        checkUnreadEmailsLogs.AddNewLogLine('已经有人在处理, 走退出流程') ;
+        return  ;
+    }
     else {isImapMailboxOccupied = true}
 
     let lock = null;
@@ -242,24 +246,44 @@ export async function HandleUnreadGmails(toChatID = process.env.TG_CHAT_ID, mail
 
     try {
         const client = await try3times(getImapClient) ;
-        if (!client.authenticated) { throw new Error("IMAP Client 连接失败") }
+        if (!client.authenticated) {
+            const errMessage = 'IMAP Client 连接失败' ;
+            throw new Error(errMessage) ;
+        }
+        checkUnreadEmailsLogs.AddNewLogLine('链接IMAP Client成功')
 
         // 必须先进入文件夹，search 才会生效
         await client.mailboxOpen(gmailFolderName);
+        checkUnreadEmailsLogs.AddNewLogLine('打开邮箱文件夹成功') ;
 
         lock = await client.getMailboxLock(gmailFolderName);
-        if (!lock) { throw new Error("Mail Folder lock 失败")}
+        if (!lock) { 
+            const errMessage = "Mail Folder lock 失败" ;
+            throw new Error(errMessage) ;
+        }
+        checkUnreadEmailsLogs.AddNewLogLine('邮箱设锁成功') ;
+
 
         // 搜索未读邮件
         const messages = await client.search({ seen: false });
+        checkUnreadEmailsLogs.AddNewLogLine('搜索未读邮件成功') ;
 
         // 如果没有未读邮件，则安全退出, 后面还有finally 不用担心 client 和 lock 锁定状态
-        if (messages.length === 0) { return }
+        if (messages.length === 0) {
+            checkUnreadEmailsLogs.AddNewLogLine('没有未读邮件, 直接走finally退出流程') ;
+            return ;
+        } else {
+            checkUnreadEmailsLogs.AddNewLogLine(`共有未读邮件${messages.length}封, 开始挨个处理`) ;
+        }
 
         let task_thereErr = false;
         let task_message = '';
         let task_name = '';
         let emailSerial = 0 ;
+
+        task_message = AddMessage(task_message, `共有未读邮件${messages.length}封`);
+        task_message = AddMessage(task_message, `---------------------------`);
+
         for (const uid of messages) {
             emailSerial += 1 ;
             // 下载并解析
@@ -279,7 +303,12 @@ export async function HandleUnreadGmails(toChatID = process.env.TG_CHAT_ID, mail
                 decrypt(rawBody)                                                                :
                 rawBody                                                                         ;
 
-            if (!finalBody) { finalBody = "邮件内容为空或解析失败" }
+            if (!finalBody) { 
+                const errMessage = "邮件内容为空或解析失败, 走finally退出流程" ;
+                throw new Error(errMessage) ;
+            }
+
+            checkUnreadEmailsLogs.AddNewLogLine(`下载并解析第${emailSerial}封邮件成功, 开始处理`)
 
             finalBody = finalBody.replace(/<SHEET[\s\S]*?<\/SHEET>/gi, "").trim();
 
@@ -305,29 +334,39 @@ export async function HandleUnreadGmails(toChatID = process.env.TG_CHAT_ID, mail
             // 执行并发任务
             const handleResults = await Promise.allSettled([task_markEmailRead, task_SendTG, task_SendEmail]);
 
-            if (emailSerial === 1) {
-                task_message = AddMessage(task_message, `共有未读邮件${messages.length}封`);
-                task_message = AddMessage(task_message, `---------------------------`);
-            }
-            task_message = AddMessage(task_message, `第${emailSerial}封邮件处理结果: `)
+            let thisRunningMessage = ''     ;
+            let thisRunningErr     = false  ;
+            thisRunningMessage = AddMessage(thisRunningMessage, `第${emailSerial}封邮件处理结果: `)
             handleResults.forEach((result, index) => {
                 if (index === 0) {task_name = 'task_markEmailRead'   }
                 if (index === 1) {task_name = 'task_SendTG'          }
                 if (index === 2) {task_name = 'task_SendEmail'       }
                 if (result.status === "fulfilled") { 
-                    task_message = AddMessage(task_message, task_name + '执行成功') ;
+                    thisRunningMessage = AddMessage(thisRunningMessage, task_name + '执行成功') ;
                 } else {
-                    task_thereErr   =  true                                             ;
-                    task_message    =  AddMessage(task_message, task_name + '执行失败')  ;
+                    task_thereErr           =  true  ;
+                    thisRunningErr          =  true  ;
+                    thisRunningMessage      =  AddMessage(thisRunningMessage, task_name + '执行失败')  ;
                 }
             });
 
+            if (thisRunningErr) {checkUnreadEmailsLogs.AddNewErrLogLine(thisRunningMessage)} else {
+                checkUnreadEmailsLogs.AddNewLogLine(thisRunningMessage) ;
+            }
+
         }
+
         if (task_thereErr) { throw new Error(task_message) }
         
     } finally {
         isImapMailboxOccupied = false ;
-        if (lock) { await lock.release() }
-        if (client) { await client.logout() }
+        if (lock) { 
+            await lock.release() ;
+            checkUnreadEmailsLogs.AddNewLogLine('释放Gmail锁成功') ;
+        }
+        if (client) { 
+            await client.logout() ;
+            checkUnreadEmailsLogs.AddNewLogLine('关闭client链接成功') ;
+        }
     }
 }

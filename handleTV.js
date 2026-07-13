@@ -40,7 +40,8 @@ import {
     makeRequestBodyArrayofBatchUpdate_clearUpdate,
     makeRequestBodyArrayofBatchUpdate_append,
     BatchUpdateGS,
-    try3times
+    try3times,
+    LogsWithTime
 } from "./utility.js";
 
 import { CheckAllPosition, SendOrderToBroker, CheckOrderConfirm, CheckFundFee } from "./broker.js";
@@ -79,7 +80,7 @@ export async function HandleAllPrice(tvData, thisLogs) {
     const toWriteArray  = ObjToA2dNumBoolStr(tvData)        ;
     const startWriteTime = Date.now()
     await try3times(UpdateGS, spreadsheetID, RangeAllPrices, toWriteArray) ;
-    thisLogs.AddNewLogLine(`写入GS${Math.round((Date.now()-startWriteTime)/1000)}秒`) ;
+    thisLogs.AddNewLogLine(`写入GS用时${Math.round((Date.now()-startWriteTime)/1000)}秒`) ;
 }
 
 export const TradeBot = {
@@ -91,7 +92,8 @@ export const TradeBot = {
      * @returns {boolean}   true: 成功
      * @returns {string}    string:出错信息
      */
-    async CreateBasicAttr(tvData) {
+    async CreateBasicAttr(tvData, thisLogs) {
+        this.thisLogs           =  thisLogs                     ;
         this.tvData             =  tvData                       ;
         this.cLogHead           =  tvData.botNumber + ": "      ;
         this.LockTime           =  tvData.timestamp             ;
@@ -210,7 +212,10 @@ export const TradeBot = {
         }
         if (!isEmptyObject(TradeBot[this.tbName_toGCPData]) && isObjectOfKeyValue(TradeBot[this.tbName_toGCPData])) {this.toGCPData = TradeBot[this.tbName_toGCPData] }
 
+        thisLogs.AddNewLogLine('去执行Get_gsData()') ;
         const r_Get_gsData = await this.Get_gsData();
+        thisLogs.AddNewLogLine('Get_gsData()成功') ;
+
         if (!isStrictTrue(r_Get_gsData) || isStrictString(r_Get_gsData)) { throw new Error('Get_gsData() 失败: \n' + r_Get_gsData) }
 
         let currentLock = this.toGCPData.LOCK ;
@@ -240,7 +245,8 @@ export const TradeBot = {
         // 发送设置GSLOCK任务, 写入不成功是小概率事件, 不必等待结果, 只在运行到重要情况前确认
         if (currentLock === CV.noLOCK) {
             // await UpdateGS(this.spreadsheetID, toGCPData.lockRange, [[this.lockName]]);
-            this.task_setGSLOCK = try3times(UpdateGS, this.spreadsheetID, this.toGCPData.lockRange, [[this.lockName]]);
+            thisLogs.AddNewLogLine('去GS设锁')
+            this.task_setGSLOCK = try3times(UpdateGS, this.spreadsheetID, this.toGCPData.lockRange, [[this.lockName]]) ;
         }
 
         return true ; 
@@ -293,9 +299,14 @@ export const TradeBot = {
         if (this.task_gslock_isOK) {return true}
         try {
             await this.task_setGSLOCK;
+            this.thisLogs.AddNewLogLine('在GS设锁成功') ;
             this.task_gslock_isOK = true ;
             return true ;
-        } catch (e) { return `task_setGSLOCK fail: ${e.message}` }
+        } catch (e) { 
+            this.thisLogs.AddNewLogLine('在GS设锁失败') ;
+            const errMessage = `task_setGSLOCK fail: ${e.message}` ;
+            return errMessage ;
+        }
     } ,
 
     /**
@@ -504,6 +515,7 @@ export const TradeBot = {
                     values: newHghLowV
                 }));
 
+            this.thisLogs.AddNewLogLine('去GS更新initiate') ;
             await try3times(BatchUpdateGS, this.spreadsheetID, i_toBatchUpdateList) ;
 
             const r_Get_gsData = await this.Get_gsData() ;
@@ -514,6 +526,8 @@ export const TradeBot = {
                 if (isStrictString(r_Get_gsData)) {throw new Error('Get_gsData() 失败: \n' + r_Get_gsData)}
                 if (!isStrictTrue(this.mainData.initiated)) {throw new Error('初始化后经校验初始化结果未更新') }
             }
+
+            this.thisLogs.AddNewLogLine('在GS更新initiate成功') ;
 
             AddSetMessage(this.alertMessageSet, 'just initiated')  ;
             
@@ -537,6 +551,8 @@ export const TradeBot = {
         S.allPositionWithWaiting    = S.allPosition + S.waitingPosition             ;
 
         try {
+            this.thisLogs.AddNewLogLine('CheckAllPosition_withBroker()') ;
+            S.thisLogs = this.thisLogs ;
             await CheckAllPosition(S) ;
 
             // 无仓位 无pending_orders 的情况
@@ -1068,6 +1084,8 @@ export const TradeBot = {
             fund.TradingSymbol    = tvData.TradingSymbol                                                                   ;
             fund.spreadsheetID    = this.spreadsheetID                                                                     ;
 
+            this.thisLogs.AddNewLogLine('ToCheckFundFee()') ;
+            fund.thisLogs = this.thisLogs ;
             await CheckFundFee(fund);
             if (!fund.respOK) {throw new Error('交易所返回数据不正确')}
 
@@ -1208,6 +1226,8 @@ export const TradeBot = {
             S.TradingSymbol         = this.TradingSymbol                                                        ;
             S.spreadsheetID         = this.spreadsheetID                                                        ;
 
+            this.thisLogs.AddNewLogLine('ToBuy()') ;
+            S.thisLogs = this.thisLogs ;
             await SendOrderToBroker(S);
             if (!S.respOK) {throw new Error('交易所返回数据不正确')}
             // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
@@ -1304,6 +1324,8 @@ export const TradeBot = {
             S.calcuQtyPrice = (S.ing_orderType === CV.order_T_MKT || !isStrictNumber(S.ing_orderPrice) ) ? this.TradingSymbolPrice : S.ing_orderPrice ;
             S.ing_qty               = this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin * this.leverage / S.calcuQtyPrice / this.minEnExPosition / (this.MaxGrid - this.gridNum)))     ;
 
+            this.thisLogs.AddNewLogLine('ToBuy()') ;
+            S.thisLogs = this.thisLogs ;
             await SendOrderToBroker(S);
             if (!S.respOK) { throw new Error('交易所返回数据不正确') }
             // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
@@ -1374,6 +1396,8 @@ export const TradeBot = {
             } 
 
             // 去交易所查看成交情况
+            this.thisLogs.AddNewLogLine('ToCheckWaitingOrder()') ;
+            ingOrderData.thisLogs = this.thisLogs ;
             await CheckOrderConfirm(ingOrderData);
             if (!ingOrderData.respOK) {throw new Error('交易所返回数据有错')}
 
@@ -1562,7 +1586,9 @@ export const TradeBot = {
                 values  : [[CV.noLOCK]]                                             }
             ));
 
+            this.thisLogs.AddNewLogLine('去往GS更新最终数据') ;
             await try3times(BatchUpdateGS, this.spreadsheetID, this.batchUpdateList) ;
+            this.thisLogs.AddNewLogLine('往GS更新最终数据成功') ;
 
             const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
             if (!r_ReleaseTradeBotLOCK || isStrictString(r_ReleaseTradeBotLOCK)) {
@@ -1612,7 +1638,13 @@ export const TradeBot = {
 
 };
 
-export async function HandleTradeBot(tvData) {
+/**
+ * 
+ * @param {Object} tvData 
+ * @param {LogsWithTime} thisLogs 
+ * @returns 
+ */
+export async function HandleTradeBot(tvData, thisLogs) {
     const gcpGetTime = Date.now() ;
     // 清洗来自TV的数据
     Object.keys(tvData).forEach(key => {
@@ -1620,22 +1652,26 @@ export async function HandleTradeBot(tvData) {
         if ( isStrictString(tvData[key]) && tvData[key].includes(CV.HuanHang) ) { tvData[key] = tvData[key].replaceAll(CV.HuanHang, '\n').trim() }
     } ) ;
 
-    const bot = Object.create(TradeBot);
+    const bot = Object.create(TradeBot, thisLogs);
+    thisLogs.AddNewLogLine(`创建${tvData.botNumber}机器人成功`)
 
+    thisLogs.AddNewLogLine('去执行CreateBasicAttr()') ;
     const r_CreateBasicAttr = await bot.CreateBasicAttr(tvData);
     if (r_CreateBasicAttr === CV.stopSet         ) {return r_CreateBasicAttr}
     if (r_CreateBasicAttr === CV.newerHandled    ) {return r_CreateBasicAttr}
     if (r_CreateBasicAttr === CV.stillHandleLast ) {return r_CreateBasicAttr}
     if (!r_CreateBasicAttr || isStrictString(r_CreateBasicAttr)) { throw new Error('CreateBasicAttr() 失败: \n' + r_CreateBasicAttr) }
-    // if (isStrictTrue(r_CreateBasicAttr)) { console.log(bot.cLogHead + 'CreateBasicAttr() success') }
+    if (isStrictTrue(r_CreateBasicAttr)) { thisLogs.AddNewLogLine(bot.cLogHead + 'CreateBasicAttr() success') }
 
+    thisLogs.AddNewLogLine('去执行ToCheckInitiate()') ;
     const r_ToCheckInitiate = await bot.ToCheckInitiate();
     if (!r_ToCheckInitiate || isStrictString(r_ToCheckInitiate)) { throw new Error('ToCheckInitiate() 失败: \n' + r_ToCheckInitiate) }
-    // if (isStrictTrue(r_ToCheckInitiate)) { console.log(bot.cLogHead + 'ToCheckInitiate() success') }
+    if (isStrictTrue(r_ToCheckInitiate)) { thisLogs.AddNewLogLine(bot.cLogHead + 'ToCheckInitiate() success') }
 
+    thisLogs.AddNewLogLine('去执行CheckAllPosition_withBroker()') ;
     const r_CheckAllPosition_withBroker = await bot.CheckAllPosition_withBroker();
     if (!r_CheckAllPosition_withBroker || isStrictString(r_CheckAllPosition_withBroker)) { throw new Error('CheckAllPosition_withBroker() 失败: \n' + r_CheckAllPosition_withBroker) }
-    // if (isStrictTrue(r_CheckAllPosition_withBroker)) { console.log(bot.cLogHead + 'CheckAllPosition_withBroker() success') }
+    if (isStrictTrue(r_CheckAllPosition_withBroker)) { thisLogs.AddNewLogLine(bot.cLogHead + 'CheckAllPosition_withBroker() success') }
 
     // 将 mainData 和 tvData 写入到this大对象中
     // 必须先写入mainData, 再写入tvData
@@ -1643,34 +1679,52 @@ export async function HandleTradeBot(tvData) {
     bot.UpdateDataToBot(bot.mainData)                           ;
     bot.UpdateDataToBot(bot.tvData)                             ;
     bot.gcpGetTime  = gcpGetTime  ;
-    // console.log(bot.cLogHead + 'UpdateDataToBot() success')     ;
+    thisLogs.AddNewLogLine(bot.cLogHead + 'UpdateDataToBot() success')     ;
 
     bot.ReNew();
-    // console.log(bot.cLogHead + 'ReNew() success')   ;
+    thisLogs.AddNewLogLine(bot.cLogHead + 'ReNew() success')   ;
 
+    thisLogs.AddNewLogLine('去执行ToCheckFundFee()') ;
     const r_ToCheckFundFee = await bot.ToCheckFundFee();
     if (!r_ToCheckFundFee || isStrictString(r_ToCheckFundFee)) { throw new Error('ToCheckFundFee() 失败: \n' + r_ToCheckFundFee) }
-    // if (isStrictTrue(r_ToCheckFundFee)) { console.log(bot.cLogHead + 'ToCheckFundFee() success') }
+    if (isStrictTrue(r_ToCheckFundFee)) { thisLogs.AddNewLogLine(bot.cLogHead + 'ToCheckFundFee() success') }
 
+    thisLogs.AddNewLogLine('去执行ToSell()') ;
     const r_ToSell = await bot.ToSell();
     if (!r_ToSell || isStrictString(r_ToSell)) { throw new Error('ToSell() 失败: \n' + r_ToSell) }
-    // if (isStrictTrue(r_ToSell)) { console.log(bot.cLogHead + 'ToSell() success') }
+    if (isStrictTrue(r_ToSell)) { thisLogs.AddNewLogLine(bot.cLogHead + 'ToSell() success') }
 
+    thisLogs.AddNewLogLine('去执行ToBuy()') ;
     const r_ToBuy = await bot.ToBuy();
     if (!r_ToBuy || isStrictString(r_ToBuy)) { throw new Error('ToBuy() 失败: \n' + r_ToBuy) }
-    // if (isStrictTrue(r_ToBuy)) { console.log(bot.cLogHead + 'ToBuy() success') }
+    if (isStrictTrue(r_ToBuy)) { thisLogs.AddNewLogLine(bot.cLogHead + 'ToBuy() success') }
 
+    thisLogs.AddNewLogLine('去执行ToCheckWaitingOrder()') ;
     const r_ToCheckWaitingOrder = await bot.ToCheckWaitingOrder();
     if (!r_ToCheckWaitingOrder || isStrictString(r_ToCheckWaitingOrder)) { throw new Error('ToCheckWaitingOrder() 失败: \n' + r_ToCheckWaitingOrder) }
-    // if (isStrictTrue(r_ToCheckWaitingOrder)) { console.log(bot.cLogHead + 'ToCheckWaitingOrder() success') }
+    if (isStrictTrue(r_ToCheckWaitingOrder)) { thisLogs.AddNewLogLine(bot.cLogHead + 'ToCheckWaitingOrder() success') }
 
     if (isStrictTrue(bot.toReNewBeforeWrite)) {bot.renewData()}
-    const r_WriteToGS_ReleaseLocks = await bot.WriteToGS_ReleaseLocks();
+    thisLogs.AddNewLogLine('去执行WriteToGS_ReleaseLocks()') ;
+    const r_WriteToGS_ReleaseLocks = await bot.WriteToGS_ReleaseLocksWriteToGS_ReleaseLocks();
     if (!r_WriteToGS_ReleaseLocks || isStrictString(r_WriteToGS_ReleaseLocks)) { throw new Error('WriteToGS_ReleaseLocks() 失败: \n' + r_WriteToGS_ReleaseLocks) }
-    // if (isStrictTrue(r_WriteToGS_ReleaseLocks)) { console.log(bot.cLogHead + 'WriteToGS_ReleaseLocks() success') }
+    if (isStrictTrue(r_WriteToGS_ReleaseLocks)) { thisLogs.AddNewLogLine(bot.cLogHead + 'WriteToGS_ReleaseLocks() success') }
 
-    bot.SendToTG().catch(() => { });
-    bot.SendToEmail().catch(() => { });
+    let sendTG_success = true;
+    thisLogs.AddNewLogLine('去发送TG消息') ;
+    bot.SendToTG()
+        .catch((e) => { sendTG_success = false; thisLogs.AddNewLogLine(`发送TG消息失败: ${e.message}`); })
+        .finally(() => {
+            if (sendTG_success) { thisLogs.AddNewLogLine(`发送TG消息成功`) }
+        });
+    let sendEmail_success = true;
+    thisLogs.AddNewLogLine('去发送Email') ;
+    bot.SendToTG()
+    bot.SendToEmail()
+        .catch((e) => { sendEmail_success = false; thisLogs.AddNewLogLine(`发送Email失败: ${e.message}`); })
+        .finally(() => {
+            if (sendEmail_success) { thisLogs.AddNewLogLine(`发送Email成功`) }
+        });
 
     return true ;
 
