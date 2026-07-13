@@ -452,13 +452,13 @@ export const TradeBot = {
      * @returns string: 具体的出错信息
      */
     async ToCheckInitiate() {
-        const r_gslock = await this.GSLOCK_waitOK() ;
-        if (!isStrictTrue(r_gslock)) {return ToStrictString(r_gslock)}
-
         try {
             if (this.mainData.TradingSymbol !== this.tvData.TradingSymbol ) { throw new Error ('GS和TV中的TradingSymbol不符')}
                 
             if (isStrictTrue(this.mainData.initiated)) {return true}
+
+            const r_gslock = await this.GSLOCK_waitOK() ;
+            if (!isStrictTrue(r_gslock)) {return ToStrictString(r_gslock)}
 
             // 初始化时间不能在GS中预设的交易开始时间之后
             if (this.tvData.timestamp > this.mainData.realTradeTime) {throw new Error('初始化时间不能在GS中预设的交易开始时间之后') }
