@@ -88,8 +88,8 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(200, { 'Content-Type': 'text/plain' });
             res.end("ACK");
             const body = JSON.parse(bodyData);
-            const thisLogs = new LogsWithTime() ;
-            thisLogs.AddNewLogLine(`收到新任务, ${url}, 已放入待处理队列`) ;
+            const thisLogs = new LogsWithTime(`收到新信号来自${url}`) ;
+            thisLogs.AddNewLogLine(`新信号 ${url}, 已放入待处理队列`) ;
             if (isWorkerRunning) { thisLogs.AddNewLogLine('已经有人在处理队列任务了, 不必分配新的工人') }
             else {
                 thisLogs.AddNewLogLine('分配新的工人去处理队列任务');
@@ -137,7 +137,7 @@ async function HandleSignalList() {
         
         if (lastCheckEmailTime.HowLongToNOW() > checkEmailInterval) {
             lastCheckEmailTime.UpdateTime();
-            const checkUnreadEmailsLogs = new LogsWithTime() ;
+            const checkUnreadEmailsLogs = new LogsWithTime('处理Gmail未读邮件') ;
             checkUnreadEmailsLogs.AddNewLogLine(`开始检查处理Gmail未读邮件`);
             HandleUnreadGmails()
                 .catch((e) => { checkUnreadEmailsLogs.AddNewErrLogLine(`HandleUnreadGmails()处理失败: + ${e.message}`) })
