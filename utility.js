@@ -1376,20 +1376,33 @@ export class DATETIME {
 }
 
 export class LogsWithTime{
-    constructor() {
+    constructor(logTitle) {
         this.lastLogTime    =  new DATETIME(0)  ;
         this.logsA          =  []               ;
+        if (isStrictString(logTitle)) {this.logsA.push(logTitle.trim())}
     }
     GetLastLogTime() { return this.lastLogTime.GetTimestamp() }
     ThereErrLog() {return isStrictTrue(this.thereErr)}
-    AddNewLogLine(newLine, preStr = '', thereErr = false) {
+    AddNewLogLine(newLine, thereErr = false) {
         this.lastLogTime.UpdateTime() ;
         let joinStr = '✓' ;
         if (isStrictTrue(thereErr)) {this.thereErr = true ; joinStr = '✕' ;}
-        this.logsA.push(preStr + this.lastLogTime.TimeStringWithOffset(8) + joinStr + ' ' + newLine);
+        this.logsA.push(this.lastLogTime.TimeStringWithOffset(8) + ' ' + joinStr + ' ' + newLine);
     }
-    AddNewErrLogLine(newErrLog, preStr = '') { this.AddNewLogLine(newErrLog, preStr, true) }
-    MakeLogStr() {
-        return this.logsA.join('\n') ;
+    AddNewErrLogLine(newErrLog) { this.AddNewLogLine(newErrLog, true) }
+    MakeLogStr() { return this.logsA.join('\n') }
+    consoleLogs(toSendTG = 'NO') {
+        if (toSendTG !== 'YES' && toSendTG !== 'NO' && !== 'onlyErr') {throw new Error('LogsWithTime.consoleLogs toSendTG input err')}
+        const logObj = {message: this.MakeLogStr()}
+        if (this.ThereErrLog()) {
+            logObj.severity = 'ERROR' ;
+            console.error(JSON.stringify(logObj));
+            if (toSendTG !== 'NO') { SendTG(logObj.message).catch(() => { }) }
+        } else {
+            logObj.severity = 'INFO' ;
+            console.log(JSON.stringify(logObj));
+            if (toSendTG === 'YES') { SendTG(logObj.message).catch(() => { }) }
+        }
+
     }
 }

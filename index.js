@@ -34,8 +34,6 @@ function AddNewLogLine(logsA, newLine) {
     logsA.push('... ' + thisTimeStr + ': ' + newLine) ;
 }
 
-const preStr = '... ' ;
-
 const server = http.createServer(async (req, res) => {
     try {
         const { method, url } = req;
@@ -44,7 +42,8 @@ const server = http.createServer(async (req, res) => {
 
         // 对于来自TG的消息有单独的快速通道
         if (method === 'POST' && url === targetURL.tgbot) {
-            console.log("!!! 收到/tgBot连接");
+            const tgLogs = new LogsWithTime('tgBot Message') ;
+            tgLogs.AddNewLogLine("收到/tgBot连接");
             try {
                 let bodyData = '';
                 for await (const chunk of req) { bodyData += chunk }
@@ -55,15 +54,8 @@ const server = http.createServer(async (req, res) => {
                 const body = JSON.parse(bodyData);
                 const msg = body.message;
                 await HandleTgBot(msg);
-                console.log(`✔ HandleTgBot()处理成功`);
-            } catch (e) {
-                // GCP 结构化日志
-                const errObj = {
-                    severity: "ERROR", // 强制涂红
-                    message: `✘ HandleTgBot()处理失败\n` + e.message
-                };
-                console.error(JSON.stringify(errObj));
-            }
+                tgLogs.AddNewLogLine(`HandleTgBot()处理成功`);
+            } catch (e) { tgLogs.AddNewErrLogLine(`HandleTgBot()处理失败\n` + e.message) } finally { tgLogs.consoleLogs('onlyErr') }
         } else {
             let stopHandleThisSigal = false ;
             if (stopHandleNewSignals) {
@@ -97,10 +89,10 @@ const server = http.createServer(async (req, res) => {
             res.end("ACK");
             const body = JSON.parse(bodyData);
             const thisLogs = new LogsWithTime() ;
-            thisLogs.AddNewLogLine(`收到新任务, ${url}, 已放入待处理队列`, preStr) ;
-            if (isWorkerRunning) { thisLogs.AddNewLogLine('已经有人在处理队列任务了, 不必分配新的工人', preStr) }
+            thisLogs.AddNewLogLine(`收到新任务, ${url}, 已放入待处理队列`) ;
+            if (isWorkerRunning) { thisLogs.AddNewLogLine('已经有人在处理队列任务了, 不必分配新的工人') }
             else {
-                thisLogs.AddNewLogLine('分配新的工人去处理队列任务', preStr);
+                thisLogs.AddNewLogLine('分配新的工人去处理队列任务');
                 HandleSignalList().catch(() => { }); // 这里不必写await
             } // 只有isworkerrunning 是false 的时候才会有新的工人进来, 这样设计就不会与你说的情况
             AddNewSignal({url, body, thisLogs}) ;
@@ -135,21 +127,10 @@ async function HandleSignalList() {
             taskNumber += 1;
             runningTasks += 1 ;
             const toHandleSignal = SignalList.pop() ;
-            toHandleSignal.thisLogs.AddNewLogLine(`开始处理第${taskNumber}个任务，共有${runningTasks}个任务同时运行，任务队列中尚有${SignalList.length}个信号等待处理`, preStr) ;
+            toHandleSignal.thisLogs.AddNewLogLine(`开始处理第${taskNumber}个任务，共有${runningTasks}个任务同时运行，任务队列中尚有${SignalList.length}个信号等待处理`) ;
             HandleSignal(toHandleSignal)
                 .finally(() => {
-                    const thisLogMessage = toHandleSignal.thisLogs.MakeLogStr();
-                    if (toHandleSignal.thisLogs.ThereErrLog()) {
-                        const errObj = {
-                            severity: "ERROR", // 强制涂红
-                            message: thisLogMessage
-                        };
-                        console.error(JSON.stringify(errObj));
-                        SendTG(thisLogMessage).catch(() => { });
-                    } else {
-                        console.log(thisLogMessage);
-
-                    }
+                    toHandleSignal.thisLogs.consoleLogs('onlyErr') ;
                     runningTasks -= 1;
                 });
         }
@@ -157,13 +138,12 @@ async function HandleSignalList() {
         if (lastCheckEmailTime.HowLongToNOW() > checkEmailInterval) {
             lastCheckEmailTime.UpdateTime();
             const checkUnreadEmailsLogs = new LogsWithTime() ;
-            checkUnreadEmailsLogs.AddNewLogLine(`开始检查处理Gmail未读邮件`, '___ ');
+            checkUnreadEmailsLogs.AddNewLogLine(`开始检查处理Gmail未读邮件`);
             HandleUnreadGmails()
-                .catch((e) => { checkUnreadEmailsLogs.AddNewErrLogLine(`HandleUnreadGmails()处理失败: + ${e.message}`, '___ ') })
+                .catch((e) => { checkUnreadEmailsLogs.AddNewErrLogLine(`HandleUnreadGmails()处理失败: + ${e.message}`) })
                 .finally(()=>{
-                    if (!checkUnreadEmailsLogs.ThereErrLog()) {checkUnreadEmailsLogs.AddNewLogLine('HandleUnreadGmails()处理成功', '___ ')}
-                    const thisLogMessage = checkUnreadEmailsLogs.MakeLogStr() ;
-                    console.log(thisLogMessage) ;
+                    if (!checkUnreadEmailsLogs.ThereErrLog()) {checkUnreadEmailsLogs.AddNewLogLine('HandleUnreadGmails()处理成功')}
+                    checkUnreadEmailsLogs.consoleLogs('NO') ;
                 });
         }
 
@@ -179,29 +159,29 @@ async function HandleSignal(toHandleSignal) {
 
     if (url === targetURL.tradingview) {
         if (!Object.hasOwn(body, 'fromTVcheck') || !Object.hasOwn(body, 'botGate') || body.fromTVcheck !== process.env.fromTVcheck) {
-            thisLogs.AddNewLogLine("? 收到未校验的TradingView Message:", preStr) ;
+            thisLogs.AddNewLogLine("? 收到未校验的TradingView Message:") ;
             return;
         }
-        thisLogs.AddNewLogLine("收到TradingView Message, botGate: " + body.botGate, preStr);
+        thisLogs.AddNewLogLine("收到TradingView Message, botGate: " + body.botGate);
 
         if (body.botGate === "TradeBot") {
             thisLogs.AddNewLogLine("TradeBot botNumber: " + body.botNumber);
 
             try {
                 const r_HandleTradeBot = await HandleTradeBot(body);
-                if      (r_HandleTradeBot === CV.stopSet         ) {thisLogs.AddNewLogLine(`||| ${body.botNumber}: stopSet, 本信号丢弃`, preStr) }
-                else if (r_HandleTradeBot === CV.newerHandled    ) {thisLogs.AddNewLogLine(`||| ${body.botNumber}: 已处理更新的信号, 本信号丢弃`, preStr)}
-                else if (r_HandleTradeBot === CV.stillHandleLast ) {thisLogs.AddNewLogLine(`||| ${body.botNumber}: 仍在处理上一个信号, 但是本信号已经超时, 本信号丢弃`, preStr)}
-                else if (r_HandleTradeBot === true               ) {thisLogs.AddNewLogLine(`✔ ${body.botNumber}: HandleTradeBot()处理成功`, preStr)}
+                if      (r_HandleTradeBot === CV.stopSet         ) {thisLogs.AddNewLogLine(`||| ${body.botNumber}: stopSet, 本信号丢弃`) }
+                else if (r_HandleTradeBot === CV.newerHandled    ) {thisLogs.AddNewLogLine(`||| ${body.botNumber}: 已处理更新的信号, 本信号丢弃`)}
+                else if (r_HandleTradeBot === CV.stillHandleLast ) {thisLogs.AddNewLogLine(`||| ${body.botNumber}: 仍在处理上一个信号, 但是本信号已经超时, 本信号丢弃`)}
+                else if (r_HandleTradeBot === true               ) {thisLogs.AddNewLogLine(`✔ ${body.botNumber}: HandleTradeBot()处理成功`)}
                 else {throw new Error(`${body.botNumber}: 内部逻辑错误`)}
-            } catch (e) {thisLogs.AddNewErrLogLine(`${body.botNumber}: HandleTradeBot()处理失败\n` + e.message, preStr) }
+            } catch (e) {thisLogs.AddNewErrLogLine(`${body.botNumber}: HandleTradeBot()处理失败\n` + e.message) }
         }
 
         if (body.botGate === "AllPrice") {
             try {
                 await HandleAllPrice(body);
-                thisLogs.AddNewLogLine(`HandleAllPrice()处理成功`, preStr);
-            } catch (e) {thisLogs.AddNewErrLogLine(`HandleAllPrice()处理失败: \n` + e.message, preStr)}
+                thisLogs.AddNewLogLine(`HandleAllPrice()处理成功`);
+            } catch (e) {thisLogs.AddNewErrLogLine(`HandleAllPrice()处理失败: \n` + e.message)}
         }
 
     }
