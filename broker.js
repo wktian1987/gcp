@@ -332,8 +332,8 @@ async function GATE_check_contractBasicData(isReal, contract, thisLogs) {
     const checkContract = isStrictTrue(isReal) ? contract : `demo_${contract}` ;
 
     if (contractBasicData?.[checkContract]?.name === contract && Date.now() - contractBasicData?.[checkContract]?.lastGetTime < 24 * 60 * 60 * 1000) {
+        thisLogs.AddNewLogLine('从历史缓存中直接获取contractBasic数据') ;
         return contractBasicData[checkContract];
-        thisLogs.AddNewLogLine('从历史缓存中直接获取contractBasic数据')
     } else {
         const path_contract = '/futures/' + 'usdt' + '/contracts/' + contract;
         const fetchBody_contract = new GateFetchBody(isReal, 'GET', path_contract, null, 200, { name: contract }, true);
