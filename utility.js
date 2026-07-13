@@ -1396,11 +1396,11 @@ export class LogsWithTime{
         if (this.ThereErrLog()) {
             logObj.severity = 'ERROR' ;
             console.error(JSON.stringify(logObj));
-            if (toSendTG !== 'NO') { SendTG(logObj.message).catch(() => { }) }
+            if (toSendTG !== 'NO') { SendTG('errLogsWithTime', logObj.message).catch(() => { }) }
         } else {
             logObj.severity = 'INFO' ;
             console.log(JSON.stringify(logObj));
-            if (toSendTG === 'YES') { SendTG(logObj.message).catch(() => { }) }
+            if (toSendTG === 'YES') { SendTG('logsWithTime', logObj.message).catch(() => { }) }
         }
 
     }
