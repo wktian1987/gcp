@@ -1712,19 +1712,22 @@ export async function HandleTradeBot(tvData, thisLogs) {
 
     let sendTG_success = true;
     thisLogs.AddNewLogLine('去发送TG消息') ;
-    bot.SendToTG()
+    const task_tg = bot.SendToTG()
         .catch((e) => { sendTG_success = false; thisLogs.AddNewLogLine(`发送TG消息失败: ${e.message}`); })
         .finally(() => {
             if (sendTG_success) { thisLogs.AddNewLogLine(`发送TG消息成功`) }
         });
     let sendEmail_success = true;
     thisLogs.AddNewLogLine('去发送Email') ;
-    bot.SendToEmail()
+    const task_email = bot.SendToEmail()
         .catch((e) => { sendEmail_success = false; thisLogs.AddNewLogLine(`发送Email失败: ${e.message}`); })
         .finally(() => {
             if (sendEmail_success) { thisLogs.AddNewLogLine(`发送Email成功`) }
         });
 
+    await task_tg    ;
+    await task_email ;
+    
     return true ;
 
 }
