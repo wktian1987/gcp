@@ -66,7 +66,7 @@ export const CV = {
     order_cancel    : "cancel"          } ;
 
 
-export async function HandleAllPrice(tvData) {
+export async function HandleAllPrice(tvData, thisLogs) {
     const RangeAllPrices = "fromTV!A2:B" ;
 
     // 清洗来自TV的数据
@@ -77,7 +77,9 @@ export async function HandleAllPrice(tvData) {
 
     const spreadsheetID = process.env.SHEET_ID              ;
     const toWriteArray  = ObjToA2dNumBoolStr(tvData)        ;
+    const startWriteTime = Date.now()
     await try3times(UpdateGS, spreadsheetID, RangeAllPrices, toWriteArray) ;
+    thisLogs.AddNewLogLine(`写入GS${Math.round((Date.now()-startWriteTime)/1000)}秒`) ;
 }
 
 export const TradeBot = {

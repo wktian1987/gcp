@@ -1378,17 +1378,14 @@ export class DATETIME {
 export class LogsWithTime{
     constructor(logTitle) {
         this.startTime      =  Date.now()       ;
-        this.lastLogTime    =  new DATETIME(0)  ;
         this.logsA          =  []               ;
         if (isStrictString(logTitle)) {this.logsA.push(logTitle.trim())}
     }
-    GetLastLogTime() { return this.lastLogTime.GetTimestamp() }
     ThereErrLog() {return isStrictTrue(this.thereErr)}
     AddNewLogLine(newLine, thereErr = false) {
-        this.lastLogTime.UpdateTime() ;
         let joinStr = '✓' ;
         if (isStrictTrue(thereErr)) {this.thereErr = true ; joinStr = '✕' ;}
-        this.logsA.push(this.lastLogTime.TimeStringWithOffset(8) + ' ' + joinStr + ' ' + newLine);
+        this.logsA.push(`${GetTimeStringWithOffset(8)} ${joinStr} ${newLine.trim()}`);
     }
     AddNewErrLogLine(newErrLog) { this.AddNewLogLine(newErrLog, true) }
     MakeLogStr() { return this.logsA.join('\n') }

@@ -178,8 +178,9 @@ async function HandleSignal(toHandleSignal) {
         }
 
         if (body.botGate === "AllPrice") {
+            thisLogs.AddNewLogLine('开始处理AllPrice') ;
             try {
-                await HandleAllPrice(body);
+                await HandleAllPrice(body, thisLogs);
                 thisLogs.AddNewLogLine(`HandleAllPrice()处理成功`);
             } catch (e) {thisLogs.AddNewErrLogLine(`HandleAllPrice()处理失败: \n` + e.message)}
         }
