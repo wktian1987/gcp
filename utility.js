@@ -1392,7 +1392,7 @@ export class LogsWithTime{
     AddNewErrLogLine(newErrLog) { this.AddNewLogLine(newErrLog, true) }
     MakeLogStr() { return this.logsA.join('\n') }
     consoleLogs(toSendTG = 'NO') {
-        if (toSendTG !== 'YES' && toSendTG !== 'NO' && !== 'onlyErr') {throw new Error('LogsWithTime.consoleLogs toSendTG input err')}
+        if (toSendTG !== 'YES' && toSendTG !== 'NO' && toSendTG !== 'onlyErr') {throw new Error('LogsWithTime.consoleLogs toSendTG input err')}
         const logObj = {message: this.MakeLogStr()}
         if (this.ThereErrLog()) {
             logObj.severity = 'ERROR' ;
