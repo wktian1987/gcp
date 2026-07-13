@@ -356,7 +356,7 @@ async function GATE_CheckAllPosition(S) {
 
     // Get quanto_multiplier
     S.thisLogs.AddNewLogLine('去交易所获取contractBasic数据')
-    const thisContractBasicData = await GATE_check_contractBasicData(S.isReal, brokerSymbol.contract) ;
+    const thisContractBasicData = await GATE_check_contractBasicData(S.isReal, brokerSymbol.contract, S.thisLogs) ;
     const quanto_multiplier = thisContractBasicData.quanto_multiplier ;
 
 
@@ -391,7 +391,7 @@ async function GATE_SendOrderToBroker(S) {
 
     // Get quanto_multiplier,  order_price_round
     S.thisLogs.AddNewLogLine('去获取contractBasic数据') ;
-    const thisContractBasicData = await GATE_check_contractBasicData(S.isReal, brokerSymbol.contract);
+    const thisContractBasicData = await GATE_check_contractBasicData(S.isReal, brokerSymbol.contract, S.thisLogs);
 
     const quanto_multiplier = thisContractBasicData.quanto_multiplier   ;
     const order_price_round = thisContractBasicData.order_price_round   ;

@@ -1706,7 +1706,7 @@ export async function HandleTradeBot(tvData, thisLogs) {
 
     if (isStrictTrue(bot.toReNewBeforeWrite)) {bot.renewData()}
     thisLogs.AddNewLogLine('去执行WriteToGS_ReleaseLocks()') ;
-    const r_WriteToGS_ReleaseLocks = await bot.WriteToGS_ReleaseLocksWriteToGS_ReleaseLocks();
+    const r_WriteToGS_ReleaseLocks = await bot.WriteToGS_ReleaseLocks();
     if (!r_WriteToGS_ReleaseLocks || isStrictString(r_WriteToGS_ReleaseLocks)) { throw new Error('WriteToGS_ReleaseLocks() 失败: \n' + r_WriteToGS_ReleaseLocks) }
     if (isStrictTrue(r_WriteToGS_ReleaseLocks)) { thisLogs.AddNewLogLine(bot.cLogHead + 'WriteToGS_ReleaseLocks() success') }
 
