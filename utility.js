@@ -1377,6 +1377,7 @@ export class DATETIME {
 
 export class LogsWithTime{
     constructor(logTitle) {
+        this.startTime      =  Date.now()       ;
         this.lastLogTime    =  new DATETIME(0)  ;
         this.logsA          =  []               ;
         if (isStrictString(logTitle)) {this.logsA.push(logTitle.trim())}
@@ -1393,6 +1394,7 @@ export class LogsWithTime{
     MakeLogStr() { return this.logsA.join('\n') }
     consoleLogs(toSendTG = 'NO') {
         if (toSendTG !== 'YES' && toSendTG !== 'NO' && toSendTG !== 'onlyErr') {throw new Error('LogsWithTime.consoleLogs toSendTG input err')}
+        this.AddNewLogLine(`此任务共运行${Math.round((Date.now()-this.startTime)/1000)}秒`)
         const logObj = {message: this.MakeLogStr()}
         if (this.ThereErrLog()) {
             logObj.severity = 'ERROR' ;
