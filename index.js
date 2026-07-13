@@ -172,7 +172,7 @@ async function HandleSignal(toHandleSignal) {
                 if      (r_HandleTradeBot === CV.stopSet         ) {thisLogs.AddNewLogLine(`||| ${body.botNumber}: stopSet, 本信号丢弃`) }
                 else if (r_HandleTradeBot === CV.newerHandled    ) {thisLogs.AddNewLogLine(`||| ${body.botNumber}: 已处理更新的信号, 本信号丢弃`)}
                 else if (r_HandleTradeBot === CV.stillHandleLast ) {thisLogs.AddNewLogLine(`||| ${body.botNumber}: 仍在处理上一个信号, 但是本信号已经超时, 本信号丢弃`)}
-                else if (r_HandleTradeBot === true               ) {thisLogs.AddNewLogLine(`✔ ${body.botNumber}: HandleTradeBot()处理成功`)}
+                else if (r_HandleTradeBot === true               ) {thisLogs.AddNewLogLine(`${body.botNumber}: HandleTradeBot()处理成功`)}
                 else {throw new Error(`${body.botNumber}: 内部逻辑错误`)}
             } catch (e) {thisLogs.AddNewErrLogLine(`${body.botNumber}: HandleTradeBot()处理失败\n` + e.message) }
         }
