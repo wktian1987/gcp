@@ -133,13 +133,17 @@ async function HandleSignalList() {
         
         if (lastCheckEmailTime.HowLongToNOW() > checkEmailInterval) {
             lastCheckEmailTime.UpdateTime();
-            const checkUnreadEmailsLogs = new LogsWithTime('处理Gmail未读邮件') ;
+            taskNumber += 1 ;
+            runningTasks += 1 ;
+            LogInBackground(`... ... 开始处理未读邮件, 设为第${taskNumber}个任务，共有${runningTasks}个任务同时运行，任务队列中尚有${SignalList.length}个信号等待处理`) ;
+            const checkUnreadEmailsLogs = new LogsWithTime('处理Gmail未读邮件', 'onlyErr') ;
             checkUnreadEmailsLogs.AddNewLogLine(`开始检查处理Gmail未读邮件`);
             HandleUnreadGmails(checkUnreadEmailsLogs)
                 .catch((e) => { checkUnreadEmailsLogs.AddNewErrLogLine(`HandleUnreadGmails()处理失败: + ${e.message}`) })
                 .finally(()=>{
                     if (!checkUnreadEmailsLogs.ThereErrLog()) {checkUnreadEmailsLogs.AddNewLogLine('HandleUnreadGmails()处理成功')}
-                    checkUnreadEmailsLogs.consoleLogs('NO') ;
+                    checkUnreadEmailsLogs.consoleLogs() ;
+                    runningTasks -= 1 ;
                 });
         }
 
