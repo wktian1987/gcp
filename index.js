@@ -174,7 +174,7 @@ async function HandleSignal(toHandleSignal) {
         }
 
         if (body.botGate === "AllPrice") {
-            const thisLogs = new LogsWithTime('AllPrice') ;
+            const thisLogs = new LogsWithTime('AllPrice', 'onlyErr') ;
             toHandleSignal.thisLogs = thisLogs ;
             try {
                 await HandleAllPrice(body, thisLogs);

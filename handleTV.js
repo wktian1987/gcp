@@ -469,8 +469,8 @@ export const TradeBot = {
 
             toGCPData = A2dToCleanObj(valuesArray[7]);
 
-            toReadA2d = valuesArray[8].map(v => CleanArrayToNumStrBool(v)) ;
-            toEmailA2d = valuesArray[9].map(v => CleanArrayToNumStrBool(v)) ;
+            const toReadA2d = valuesArray[8].map(v => CleanArrayToNumStrBool(v)) ;
+            const toEmailA2d = valuesArray[9].map(v => CleanArrayToNumStrBool(v)) ;
 
             this.toGCPData              =  toGCPData            ;
             this.mainData               =  mainData             ;
