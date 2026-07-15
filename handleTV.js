@@ -485,7 +485,7 @@ export const TradeBot = {
             TradeBot[this.tbName_gsData].uncloseOrdersTitleA    =  this.uncloseOrdersTitleA  ;
             TradeBot[this.tbName_gsData].tradeHistoryTitleA     =  this.tradeHistoryTitleA   ;
 
-            await makeGSCMD(commandData) ;
+            await this.makeGSCMD(commandData) ;
 
             return true ;
 
