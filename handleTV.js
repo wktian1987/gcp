@@ -110,6 +110,7 @@ export const TradeBot = {
         this.tbName_tgReset        =  tvData.botNumber + '_tgReset'        ; // 全局中的归零信号名
         this.tbName_tgSTOP         =  tvData.botNumber + '_tgSTOP'         ; // 全局中的停止本机器人信号名
         this.tbName_tgSTOP_resp    =  tvData.botNumber + '_tgSTOP_resp'    ; // 全局中的停止本机器人信号已收到名
+        this.tbName_tgToReadGSCMD  =  tvData.botNumber + '_tgToReadGSCMD'  ; // 全局中的去读取gs command信号已收到名
 
         this.tbName_isLocked       =  tvData.botNumber + '_isLocked'       ; // 全局中判断是否locked的名
         this.tbName_lastLockTime   =  tvData.botNumber + '_lastLockTime'   ; // 全局中的锁名
@@ -117,11 +118,13 @@ export const TradeBot = {
         this.tbName_spreadsheetID  =  tvData.botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID, 避免每次重新读取
         this.tbName_sheetsID       =  tvData.botNumber + '_sheetsID'       ; // 全局中保存的sheetsID, 避免每次重新读取
         this.tbName_toGCPData      =  tvData.botNumber + '_toGCPData'      ; // 全局中保存的toGCPData, 避免每次重新读取
+        this.tbName_gsData         =  tvData.botNumber + '_gsData'         ; // 全局中保存的gsData, 避免每次重新读取
 
-        if (!Object.hasOwn(TradeBot, this.tbName_tgResetGSLOCK )) { TradeBot[this.tbName_tgResetGSLOCK] = false       } 
-        if (!Object.hasOwn(TradeBot, this.tbName_tgReset       )) { TradeBot[this.tbName_tgReset      ] = false       } 
-        if (!Object.hasOwn(TradeBot, this.tbName_tgSTOP        )) { TradeBot[this.tbName_tgSTOP       ] = false       } 
-        if (!Object.hasOwn(TradeBot, this.tbName_tgSTOP_resp   )) { TradeBot[this.tbName_tgSTOP_resp  ] = false       } 
+        if (!Object.hasOwn(TradeBot, this.tbName_tgResetGSLOCK )) { TradeBot[this.tbName_tgResetGSLOCK] = false       }
+        if (!Object.hasOwn(TradeBot, this.tbName_tgReset       )) { TradeBot[this.tbName_tgReset      ] = false       }
+        if (!Object.hasOwn(TradeBot, this.tbName_tgSTOP        )) { TradeBot[this.tbName_tgSTOP       ] = false       }
+        if (!Object.hasOwn(TradeBot, this.tbName_tgSTOP_resp   )) { TradeBot[this.tbName_tgSTOP_resp  ] = false       }
+        if (!Object.hasOwn(TradeBot, this.tbName_tgToReadGSCMD )) { TradeBot[this.tbName_tgToReadGSCMD] = false       }
 
         if (!Object.hasOwn(TradeBot, this.tbName_isLocked      )) { TradeBot[this.tbName_isLocked     ] = false       } // 在全局中设置是否已经被锁
         if (!Object.hasOwn(TradeBot, this.tbName_lastLockTime  )) { TradeBot[this.tbName_lastLockTime ] = 0           } // 在全局中设锁
@@ -129,6 +132,7 @@ export const TradeBot = {
         if (!Object.hasOwn(TradeBot, this.tbName_spreadsheetID )) { TradeBot[this.tbName_spreadsheetID] = null        } // 在全局中设置spreadsheetID
         if (!Object.hasOwn(TradeBot, this.tbName_sheetsID      )) { TradeBot[this.tbName_sheetsID     ] = {}          } // 在全局中设置sheetsID
         if (!Object.hasOwn(TradeBot, this.tbName_toGCPData     )) { TradeBot[this.tbName_toGCPData    ] = {}          } // 在全局中设置toGCPData
+        if (!Object.hasOwn(TradeBot, this.tbName_gsData        )) { TradeBot[this.tbName_gsData       ] = {}          } // 在全局中设置gsData
 
 
         // 可以通过TG-RESET信号来重置全局锁 和 报错信息
@@ -142,6 +146,7 @@ export const TradeBot = {
             TradeBot[this.tbName_spreadsheetID]     = null          ;
             TradeBot[this.tbName_sheetsID     ]     = {}            ;
             TradeBot[this.tbName_toGCPData    ]     = {}            ;
+            TradeBot[this.tbName_gsData       ]     = {}            ;
 
             SendTG(`${tvData.botNumber} RESET命令已收到`, 'RESET已设置', TradeBot[this.tbName_TGID]).catch(() => { });
         }
@@ -211,10 +216,49 @@ export const TradeBot = {
         }
         if (!isEmptyObject(TradeBot[this.tbName_toGCPData]) && isObjectOfKeyValue(TradeBot[this.tbName_toGCPData])) {this.toGCPData = TradeBot[this.tbName_toGCPData] }
 
-        thisLogs.AddNewLogLine('去执行Get_gsData()') ;
-        const r_Get_gsData = await this.Get_gsData();
-        if (!isStrictTrue(r_Get_gsData) || isStrictString(r_Get_gsData)) { throw new Error('Get_gsData() 失败: \n' + r_Get_gsData) }
-        else { thisLogs.AddNewLogLine('Get_gsData()成功') }
+        if (isEmptyObject(TradeBot[this.tbName_gsData]) ) {
+            thisLogs.AddNewLogLine('缓存中未发现gsData数据, 去执行Get_gsData()');
+            const r_Get_gsData = await this.Get_gsData();
+            if (!isStrictTrue(r_Get_gsData) || isStrictString(r_Get_gsData)) { throw new Error('Get_gsData() 失败: \n' + r_Get_gsData) }
+            else { thisLogs.AddNewLogLine('Get_gsData()成功') }
+        } else {thisLogs.AddNewLogLine('直接从缓存中获取gsData')}
+        if (!isEmptyObject(TradeBot[this.tbName_gsData]) && isObjectOfKeyValue(TradeBot[this.tbName_gsData])) {
+            this.toGCPData              =  TradeBot[tbName_gsData].toGCPData            ;
+            this.mainData               =  TradeBot[tbName_gsData].mainData             ;
+            this.ingOrderData           =  TradeBot[tbName_gsData].ingOrderData         ;
+            this.ingOrderTitleA         =  TradeBot[tbName_gsData].ingOrderTitleA       ;
+            this.uncloseOrdersA2d       =  TradeBot[tbName_gsData].uncloseOrdersA2d     ;
+            this.uncloseOrdersTitleA    =  TradeBot[tbName_gsData].uncloseOrdersTitleA  ;
+            this.tradeHistoryTitleA     =  TradeBot[tbName_gsData].tradeHistoryTitleA   ;
+        }
+
+        if (TradeBot[this.tbName_tgToReadGSCMD]) {
+            const tgRspTitle = `${tvData.botNumber} 读取gsCommand命令已收到` ;
+            thisLogs.AddNewLogLine('收到命令去读取 gs command') ;
+            if (isStrictTrue(this.thereCommandFromGS)) {
+                const thisLog = 'gs command 已在缓存中, 不必再次获取' ;
+                thisLogs.AddNewLogLine(thisLog) ;
+                SendTG(tgRspTitle, thisLog, TradeBot[this.tbName_TGID]).catch(() => { });
+            } else {
+                const commandData = A2dToCleanObj(await try3times(GetGS(this.spreadsheetID, this.toGCPData.CommandRange)));
+                const r_makeGSCMD = await this.makeGSCMD(commandData);
+                if (isStrictString(r_makeGSCMD)) {
+                    const thisLog = r_makeGSCMD;
+                    thisLogs.AddNewLogLine(thisLog);
+                    SendTG(tgRspTitle, thisLog, TradeBot[this.tbName_TGID]).catch(() => { });
+                }
+                if (isStrictTrue(r_makeGSCMD)) {
+                    const thisLog = '读取 gs command 成功';
+                    thisLogs.AddNewLogLine(thisLog);
+                    SendTG(tgRspTitle, thisLog, TradeBot[this.tbName_TGID]).catch(() => { });
+                }
+
+            }
+
+            TradeBot[this.tbName_tgToReadGSCMD] = true;
+        }
+
+
 
 
         let currentLock = this.toGCPData.LOCK ;
@@ -353,6 +397,30 @@ export const TradeBot = {
         }
     } ,
 
+    async makeGSCMD(commandData) {
+        this.thereCommandFromGS = false ; // 最高等级的交易命令, 直接来自GS的交易信号, 需要亲自手动设置
+        if (isStrictTrue(this.mainData.initiated)               &&    
+            Object.hasOwn(commandData, 'thisCommandBeRead')     &&
+            Object.hasOwn(commandData, 'noCommandError')        &&
+            isStrictFalse(commandData.thisCommandBeRead)        &&
+            isStrictTrue(commandData.noCommandError)            )  {
+            commandData.thisCommandBeRead = true ;
+            await try3times(UpdateGS, this.spreadsheetID, this.toGCPData.commandReadRange, [[commandData.thisCommandBeRead]]) ;
+            let checkCommandRead = ToStrictNumBoolStr( (await try3times(GetGS, this.spreadsheetID, this.toGCPData.commandReadRange))[0][0] ) ;
+            if (checkCommandRead !== commandData.thisCommandBeRead) {
+                // 再重试一次, 重新写, 等2s再重新读
+                await try3times(UpdateGS, this.spreadsheetID, this.toGCPData.commandReadRange, [[commandData.thisCommandBeRead]]) ;
+                checkCommandRead = ToStrictNumBoolStr( (await try3times(GetGS, this.spreadsheetID, this.toGCPData.commandReadRange))[0][0] ) ;
+                if (checkCommandRead !== commandData.thisCommandBeRead) {
+                    throw new Error('读取并设置commandFromGS 失败') ;
+                }
+            }
+            this.thereCommandFromGS = true ;
+            this.commandData = commandData;
+            return true ;
+        } else { return '未发现待读取gs command' }
+    } ,
+
     /**
      * 获取GS数据, 并写入子对象中
      * 无返回值, 直接在对象上修改
@@ -409,27 +477,15 @@ export const TradeBot = {
             this.uncloseOrdersTitleA    =  uncloseOrdersTitleA  ;
             this.tradeHistoryTitleA     =  tradeHistoryTitleA   ;
 
-            this.thereCommandFromGS = false ; // 最高等级的交易命令, 直接来自GS的交易信号, 需要亲自手动设置
-            if (isStrictTrue(mainData.initiated)                    &&    
-                Object.hasOwn(commandData, 'thisCommandBeRead')     &&
-                Object.hasOwn(commandData, 'noCommandError')        &&
-                isStrictFalse(commandData.thisCommandBeRead)        &&
-                isStrictTrue(commandData.noCommandError)            )  {
-                commandData.thisCommandBeRead = true ;
-                await try3times(UpdateGS, this.spreadsheetID, toGCPData.commandReadRange, [[commandData.thisCommandBeRead]]) ;
-                let checkCommandRead = ToStrictNumBoolStr( (await try3times(GetGS, this.spreadsheetID, toGCPData.commandReadRange))[0][0] ) ;
-                if (checkCommandRead !== commandData.thisCommandBeRead) {
-                    // 再重试一次, 重新写, 等2s再重新读
-                    await try3times(UpdateGS, this.spreadsheetID, toGCPData.commandReadRange, [[commandData.thisCommandBeRead]]) ;
-                    checkCommandRead = ToStrictNumBoolStr( (await try3times(GetGS, this.spreadsheetID, toGCPData.commandReadRange))[0][0] ) ;
-                    if (checkCommandRead !== commandData.thisCommandBeRead) {
-                        throw new Error('读取并设置commandFromGS 失败') ;
-                    }
+            TradeBot[this.tbName_gsData].toGCPData              =  this.toGCPData            ;
+            TradeBot[this.tbName_gsData].mainData               =  this.mainData             ;
+            TradeBot[this.tbName_gsData].ingOrderData           =  this.ingOrderData         ;
+            TradeBot[this.tbName_gsData].ingOrderTitleA         =  this.ingOrderTitleA       ;
+            TradeBot[this.tbName_gsData].uncloseOrdersA2d       =  this.uncloseOrdersA2d     ;
+            TradeBot[this.tbName_gsData].uncloseOrdersTitleA    =  this.uncloseOrdersTitleA  ;
+            TradeBot[this.tbName_gsData].tradeHistoryTitleA     =  this.tradeHistoryTitleA   ;
 
-                }
-                this.thereCommandFromGS = true ;
-                this.commandData = commandData;
-            }
+            await makeGSCMD(commandData) ;
 
             return true ;
 
@@ -1589,6 +1645,11 @@ export const TradeBot = {
             this.thisLogs.AddNewLogLine('去往GS更新最终数据') ;
             await try3times(BatchUpdateGS, this.spreadsheetID, this.batchUpdateList) ;
             this.thisLogs.AddNewLogLine('往GS更新最终数据成功') ;
+
+
+            thisLogs.AddNewLogLine('去执行Get_gsData(), 将获得数据存入缓存');
+            const r_Get_gsData = await this.Get_gsData();
+            if (!isStrictTrue(r_Get_gsData) || isStrictString(r_Get_gsData)) { throw new Error('Get_gsData() 失败: \n' + r_Get_gsData) }
 
             const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
             if (!r_ReleaseTradeBotLOCK || isStrictString(r_ReleaseTradeBotLOCK)) {

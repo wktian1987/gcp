@@ -162,6 +162,42 @@ export async function HandleTgBot(msg) {
         return;
     }
 
+    if (text.toUpperCase().includes('TOREADGSCMD')) {
+        const messageTitle = `${botNumber} 收到ToReadGSCMD信号`;
+
+        const tbName_TGID = botNumber + '_TGID';
+        const tbName_tgToReadGSCMD = botNumber + '_tgToReadGSCMD';
+
+        let gscmdMessage = '';
+
+        if (!Object.hasOwn(TradeBot, tbName_tgToReadGSCMD)) {
+            gscmdMessage = `机器人还未创建, 先行预设ToReadGSCMD, 等待TradeBot接收`;
+            TradeBot[tbName_TGID] = chat_id;
+            TradeBot[tbName_tgToReadGSCMD] = true;
+            SendTG(messageTitle, gscmdMessage, chat_id).catch(() => { });
+            return;
+        }
+
+        if (Object.hasOwn(TradeBot, tbName_tgToReadGSCMD) && isStrictTrue(TradeBot[tbName_tgToReadGSCMD])) {
+            gscmdMessage = `ToReadGSCMD已设, 但TradeBot还未接收, 没必要重设`;
+            SendTG(messageTitle, gscmdMessage, chat_id).catch(() => { });
+            return;
+        }
+
+        if (Object.hasOwn(TradeBot, tbName_tgToReadGSCMD) && isStrictFalse(TradeBot[tbName_tgToReadGSCMD])) {
+            gscmdMessage = `ToReadGSCMD信号已创建, 等待TradeBot接收`;
+            TradeBot[tbName_TGID] = chat_id;
+            TradeBot[tbName_tgToReadGSCMD] = true;
+
+            SendTG(messageTitle, gscmdMessage, chat_id).catch(() => { });
+            return;
+        }
+
+        gscmdMessage = '出现内部逻辑错误, 本次信号丢弃';
+        SendTG(messageTitle, gscmdMessage, chat_id).catch(() => { });
+        return;
+    }
+
     if (text.toUpperCase().includes('STOP')) {
         const tbName_TGID   = botNumber + '_TGID'   ;
         const tbName_tgSTOP = botNumber + '_tgSTOP' ;
