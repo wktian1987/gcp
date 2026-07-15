@@ -1426,7 +1426,7 @@ export class LogsWithTime{
 
         for (const log of this.logsA) {
             log.message = `${this.logTitle}: ${log.message}` ;
-            if (log.severity === 'INFO') { LogInBackground(JSON.stringify(log)) }
+            if (log.severity === 'INFO') { console.log(JSON.stringify(log)) }
             if (log.severity === 'ERROR') { console.error(JSON.stringify(log)) }
         }
 
