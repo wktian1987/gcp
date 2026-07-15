@@ -1646,6 +1646,9 @@ export const TradeBot = {
             await try3times(BatchUpdateGS, this.spreadsheetID, this.batchUpdateList) ;
             this.thisLogs.AddNewLogLine('往GS更新最终数据成功') ;
 
+            thisLogs.AddNewLogLine('去发送 TG消息 和 Email信息');
+            bot.SendToTG().catch(() => { });
+            bot.SendToEmail().catch(() => { });
 
             thisLogs.AddNewLogLine('去执行Get_gsData(), 将获得数据存入缓存');
             const r_Get_gsData = await this.Get_gsData();
@@ -1771,10 +1774,6 @@ export async function HandleTradeBot(tvData, thisLogs) {
     if (!r_WriteToGS_ReleaseLocks || isStrictString(r_WriteToGS_ReleaseLocks)) { throw new Error('WriteToGS_ReleaseLocks() 失败: \n' + r_WriteToGS_ReleaseLocks) }
     if (isStrictTrue(r_WriteToGS_ReleaseLocks)) { thisLogs.AddNewLogLine('WriteToGS_ReleaseLocks() success') }
 
-    thisLogs.AddNewLogLine('去发送 TG消息 和 Email信息') ;
-    bot.SendToTG().catch(()=>{}) ;
-    bot.SendToEmail().catch(()=>{}) ;
-    
     return true ;
 
 }
