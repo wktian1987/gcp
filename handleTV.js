@@ -1651,14 +1651,14 @@ export const TradeBot = {
             await try3times(BatchUpdateGS, this.spreadsheetID, this.batchUpdateList) ;
             this.thisLogs.AddNewLogLine('往GS更新最终数据成功') ;
 
-            thisLogs.AddNewLogLine('去执行Get_gsData(), 将获得数据存入缓存');
+            this.thisLogs.AddNewLogLine('去执行Get_gsData(), 将获得数据存入缓存');
             const r_Get_gsData = await this.Get_gsData();
             if (!isStrictTrue(r_Get_gsData) || isStrictString(r_Get_gsData)) { throw new Error('Get_gsData() 失败: \n' + r_Get_gsData) }
-            else { thisLogs.AddNewLogLine('Get_gsData()并写入缓存成功') }
+            else { this.thisLogs.AddNewLogLine('Get_gsData()并写入缓存成功') }
 
-            thisLogs.AddNewLogLine('去发送 TG消息 和 Email信息');
-            bot.SendToTG(this.toReadA2d).catch(() => { });
-            bot.SendToEmail(this.toEmailA2d).catch(() => { });
+            this.thisLogs.AddNewLogLine('去发送 TG消息 和 Email信息');
+            this.SendToTG(this.toReadA2d).catch(() => { });
+            this.SendToEmail(this.toEmailA2d).catch(() => { });
 
             const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
             if (!r_ReleaseTradeBotLOCK || isStrictString(r_ReleaseTradeBotLOCK)) {
