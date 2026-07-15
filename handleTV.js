@@ -223,13 +223,13 @@ export const TradeBot = {
             else { thisLogs.AddNewLogLine('Get_gsData()成功') }
         } else {thisLogs.AddNewLogLine('直接从缓存中获取gsData')}
         if (!isEmptyObject(TradeBot[this.tbName_gsData]) && isObjectOfKeyValue(TradeBot[this.tbName_gsData])) {
-            this.toGCPData              =  TradeBot[tbName_gsData].toGCPData            ;
-            this.mainData               =  TradeBot[tbName_gsData].mainData             ;
-            this.ingOrderData           =  TradeBot[tbName_gsData].ingOrderData         ;
-            this.ingOrderTitleA         =  TradeBot[tbName_gsData].ingOrderTitleA       ;
-            this.uncloseOrdersA2d       =  TradeBot[tbName_gsData].uncloseOrdersA2d     ;
-            this.uncloseOrdersTitleA    =  TradeBot[tbName_gsData].uncloseOrdersTitleA  ;
-            this.tradeHistoryTitleA     =  TradeBot[tbName_gsData].tradeHistoryTitleA   ;
+            this.toGCPData              =  TradeBot[this.tbName_gsData].toGCPData            ;
+            this.mainData               =  TradeBot[this.tbName_gsData].mainData             ;
+            this.ingOrderData           =  TradeBot[this.tbName_gsData].ingOrderData         ;
+            this.ingOrderTitleA         =  TradeBot[this.tbName_gsData].ingOrderTitleA       ;
+            this.uncloseOrdersA2d       =  TradeBot[this.tbName_gsData].uncloseOrdersA2d     ;
+            this.uncloseOrdersTitleA    =  TradeBot[this.tbName_gsData].uncloseOrdersTitleA  ;
+            this.tradeHistoryTitleA     =  TradeBot[this.tbName_gsData].tradeHistoryTitleA   ;
         }
 
         if (TradeBot[this.tbName_tgToReadGSCMD]) {
@@ -257,9 +257,6 @@ export const TradeBot = {
 
             TradeBot[this.tbName_tgToReadGSCMD] = false ;
         }
-
-
-
 
         let currentLock = this.toGCPData.LOCK ;
         if (this.toGCPData.lstLockSignalTime > this.LockTime) { throw new Error('检查GS发现已处理过更新的信号') }
@@ -439,7 +436,10 @@ export const TradeBot = {
                                     toGCPData.uncloseOrdersTitleLine   ,    // 4
                                     toGCPData.ingOrderTitleLine        ,    // 5
                                     toGCPData.CommandRange             ,    // 6
-                                    CV.toGCPRanges                     ] ;  // 7
+                                    CV.toGCPRanges                     ,    // 7
+                                    toGCPData.toReadRange              ,    // 8
+                                    toGCPData.toEmailRange                  // 9
+                                ] ; 
                         
             const valuesArray   = await try3times(BatchGetGS, this.spreadsheetID, rangesList);
 
@@ -465,9 +465,12 @@ export const TradeBot = {
 
             const tradeHistoryTitleA    = CleanArrayToNumStrBool(valuesArray[3][0]) ;
 
-            const commandData           = A2dToCleanObj(valuesArray[6]) ;
+            // const commandData           = A2dToCleanObj(valuesArray[6]) ;
 
             toGCPData = A2dToCleanObj(valuesArray[7]);
+
+            toReadA2d = valuesArray[8].map(v => CleanArrayToNumStrBool(v)) ;
+            toEmailA2d = valuesArray[9].map(v => CleanArrayToNumStrBool(v)) ;
 
             this.toGCPData              =  toGCPData            ;
             this.mainData               =  mainData             ;
@@ -476,6 +479,8 @@ export const TradeBot = {
             this.uncloseOrdersA2d       =  uncloseOrdersA2d     ;
             this.uncloseOrdersTitleA    =  uncloseOrdersTitleA  ;
             this.tradeHistoryTitleA     =  tradeHistoryTitleA   ;
+            this.toReadA2d              =  toReadA2d            ;
+            this.toEmailA2d             =  toEmailA2d           ;
 
             TradeBot[this.tbName_gsData].toGCPData              =  this.toGCPData            ;
             TradeBot[this.tbName_gsData].mainData               =  this.mainData             ;
@@ -485,7 +490,7 @@ export const TradeBot = {
             TradeBot[this.tbName_gsData].uncloseOrdersTitleA    =  this.uncloseOrdersTitleA  ;
             TradeBot[this.tbName_gsData].tradeHistoryTitleA     =  this.tradeHistoryTitleA   ;
 
-            await this.makeGSCMD(commandData) ;
+            // await this.makeGSCMD(commandData) ;
 
             return true ;
 
@@ -1646,13 +1651,14 @@ export const TradeBot = {
             await try3times(BatchUpdateGS, this.spreadsheetID, this.batchUpdateList) ;
             this.thisLogs.AddNewLogLine('往GS更新最终数据成功') ;
 
-            thisLogs.AddNewLogLine('去发送 TG消息 和 Email信息');
-            bot.SendToTG().catch(() => { });
-            bot.SendToEmail().catch(() => { });
-
             thisLogs.AddNewLogLine('去执行Get_gsData(), 将获得数据存入缓存');
             const r_Get_gsData = await this.Get_gsData();
             if (!isStrictTrue(r_Get_gsData) || isStrictString(r_Get_gsData)) { throw new Error('Get_gsData() 失败: \n' + r_Get_gsData) }
+            else { thisLogs.AddNewLogLine('Get_gsData()并写入缓存成功') }
+
+            thisLogs.AddNewLogLine('去发送 TG消息 和 Email信息');
+            bot.SendToTG(this.toReadA2d).catch(() => { });
+            bot.SendToEmail(this.toEmailA2d).catch(() => { });
 
             const r_ReleaseTradeBotLOCK = this.ReleaseTradeBotLOCK();
             if (!r_ReleaseTradeBotLOCK || isStrictString(r_ReleaseTradeBotLOCK)) {
@@ -1676,11 +1682,8 @@ export const TradeBot = {
      * 发送TG
      * @returns 会抛出错误, 但无返回值
      */
-    async SendToTG() {
-        const toReadRange = this.toGCPData.toReadRange;
-        const rawMessagesA2d = (await try3times(GetGS, this.spreadsheetID, toReadRange, 'read')).map(v => CleanArrayToNumStrBool(v));
+    async SendToTG(rawMessagesA2d) {
         const messageString = FormatMatrixToString(rawMessagesA2d);
-
         const subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime);
 
         await SendTG(subject, messageString);
@@ -1690,10 +1693,8 @@ export const TradeBot = {
      * 发送Email
      * @returns 会抛出错误, 但无返回值
      */
-    async SendToEmail() {
+    async SendToEmail(rawMessagesA2d) {
         if (this.toSendEmail) {
-            const toEmailRange = this.toGCPData.toEmailRange;
-            const rawMessagesA2d = (await try3times(GetGS, this.spreadsheetID, toEmailRange, 'read')).map(v => CleanArrayToNumStrBool(v));
             const messageHTML = ConvertRowsToHtmlTable(rawMessagesA2d);
             const mail_subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime);
             await SendEmail(mail_subject, messageHTML);
