@@ -1712,23 +1712,9 @@ export async function HandleTradeBot(tvData, thisLogs) {
     if (!r_WriteToGS_ReleaseLocks || isStrictString(r_WriteToGS_ReleaseLocks)) { throw new Error('WriteToGS_ReleaseLocks() 失败: \n' + r_WriteToGS_ReleaseLocks) }
     if (isStrictTrue(r_WriteToGS_ReleaseLocks)) { thisLogs.AddNewLogLine(bot.cLogHead + 'WriteToGS_ReleaseLocks() success') }
 
-    let sendTG_success = true;
-    thisLogs.AddNewLogLine('去发送TG消息') ;
-    const task_tg = bot.SendToTG()
-        .catch((e) => { sendTG_success = false; thisLogs.AddNewLogLine(`发送TG消息失败: ${e.message}`); })
-        .finally(() => {
-            if (sendTG_success) { thisLogs.AddNewLogLine(`发送TG消息成功`) }
-        });
-    let sendEmail_success = true;
-    thisLogs.AddNewLogLine('去发送Email') ;
-    const task_email = bot.SendToEmail()
-        .catch((e) => { sendEmail_success = false; thisLogs.AddNewLogLine(`发送Email失败: ${e.message}`); })
-        .finally(() => {
-            if (sendEmail_success) { thisLogs.AddNewLogLine(`发送Email成功`) }
-        });
-
-    await task_tg    ;
-    await task_email ;
+    thisLogs.AddNewLogLine('去发送 TG消息 和 Email信息') ;
+    bot.SendToTG().catch(()=>{}) ;
+    bot.SendToEmail().catch(()=>{}) ;
     
     return true ;
 

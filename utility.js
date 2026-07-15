@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import { log } from 'node:console';
 import https from 'node:https';
 import { createTransport } from 'nodemailer';
 
@@ -1376,32 +1377,68 @@ export class DATETIME {
 }
 
 export class LogsWithTime{
-    constructor(logTitle) {
+    /**
+     * @param {string} logTitle 
+     * @param {string} [toSendTG='NO'] 
+     */
+    constructor(logTitle = 'undefinedLogTitle', toSendTG = 'NO') {
+        if (!isStrictString(logTitle)) { throw new Error('logTitle must be string') }
+        if (toSendTG !== 'YES' && toSendTG !== 'NO' && toSendTG !== 'onlyErr') { throw new Error('toSendTG input err') }
+
+        this.logTitle       =  logTitle         ; 
         this.startTime      =  Date.now()       ;
         this.logsA          =  []               ;
-        if (isStrictString(logTitle)) {this.logsA.push(logTitle.trim())}
+        this.toSendTG       =  toSendTG         ;
     }
+
+    ChangeLogTitle(newLogTitle) {
+        if (isStrictString(newLogTitle)) {
+            this.logTitle = newLogTitle.trim();
+        }
+        if (this.ThereErrLog() && !this.logTitle.includes('Err')) {this.logTitle += ' Err'}
+    }
+
     ThereErrLog() {return isStrictTrue(this.thereErr)}
+
+    /**
+     * @param {string} newLine 
+     * @param {boolean} [thereErr=false] 
+     */
     AddNewLogLine(newLine, thereErr = false) {
+        if (!isStrictString(newLine)) {throw new Error('newLine must be string')}
+        if (!isStrictBoolean(thereErr)) { throw new Error('thereErr must be boolean or undefined') }
         let joinStr = '✓' ;
-        if (isStrictTrue(thereErr)) {this.thereErr = true ; joinStr = '✕' ;}
-        this.logsA.push(`${GetTimeStringWithOffset(8)} ${joinStr} ${newLine.trim()}`);
+        if (isStrictTrue(thereErr)) { this.thereErr = true; this.ChangeLogTitle(); joinStr = '✕'; }
+        this.logsA.push({
+            severity: thereErr ? 'ERROR' : 'INFO',
+            message: `${GetTimeStringWithOffset(8)} ${joinStr} ${newLine.trim()}`
+        });
     }
+
     AddNewErrLogLine(newErrLog) { this.AddNewLogLine(newErrLog, true) }
-    MakeLogStr() { return this.logsA.join('\n') }
-    consoleLogs(toSendTG = 'NO') {
-        if (toSendTG !== 'YES' && toSendTG !== 'NO' && toSendTG !== 'onlyErr') {throw new Error('LogsWithTime.consoleLogs toSendTG input err')}
-        this.AddNewLogLine(`此任务共运行${Math.round((Date.now()-this.startTime)/1000)}秒`)
-        const logObj = {message: this.MakeLogStr()}
-        if (this.ThereErrLog()) {
-            logObj.severity = 'ERROR' ;
-            console.error(JSON.stringify(logObj));
-            if (toSendTG !== 'NO') { SendTG('errLogsWithTime', logObj.message).catch(() => { }) }
-        } else {
-            logObj.severity = 'INFO' ;
-            console.log(JSON.stringify(logObj));
-            if (toSendTG === 'YES') { SendTG('logsWithTime', logObj.message).catch(() => { }) }
+
+    consoleLogs(toSendTG) {
+        if (isStrictString(toSendTG)) {
+            if (toSendTG !== 'YES' && toSendTG !== 'NO' && toSendTG !== 'onlyErr') { throw new Error('toSendTG input err') }
+            this.toSendTG = toSendTG ;
         }
 
+        this.AddNewLogLine(`此任务共运行${Math.round((Date.now()-this.startTime)/1000)}秒`)
+
+        for (const log of this.logsA) {
+            log.message = `${this.logTitle}: ${log.message}` ;
+            if (log.severity === 'INFO') { console.log(JSON.stringify(log)) }
+            if (log.severity === 'ERROR') { console.error(JSON.stringify(log)) }
+        }
+
+        if (this.toSendTG !== 'NO') {
+            const longLongsStr =
+                this.logsA.reduce((acc, curr, index) => {
+                    return index === 0 ? curr.message : acc + '\n' + curr.message;
+                }, '');
+            if (this.toSendTG === 'onlyErr' && this.ThereErrLog() || this.toSendTG === 'YES') {
+                SendTG(this.logTitle, longLongsStr).catch(()=>{}) ;
+            }
+        }
     }
 }
