@@ -255,7 +255,7 @@ export const TradeBot = {
 
             }
 
-            TradeBot[this.tbName_tgToReadGSCMD] = true;
+            TradeBot[this.tbName_tgToReadGSCMD] = false ;
         }
 
 
