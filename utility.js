@@ -1432,12 +1432,12 @@ export class LogsWithTime{
         }
 
         if (this.toSendTG !== 'NO') {
-            const longLongsStr =
+            const longLogsStr =
                 this.logsA.reduce((acc, curr, index) => {
                     return index === 0 ? curr.message : acc + '\n' + curr.message;
                 }, '');
             if (this.toSendTG === 'onlyErr' && this.ThereErrLog() || this.toSendTG === 'YES') {
-                SendTG(this.logTitle, longLongsStr).catch(()=>{}) ;
+                SendTG(this.logTitle, longLogsStr).catch(()=>{}) ;
             }
         }
     }

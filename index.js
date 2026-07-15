@@ -161,10 +161,9 @@ async function HandleSignal(toHandleSignal) {
             thisLogs.AddNewLogLine("? 收到未校验的TradingView Message:") ;
             return;
         }
-        thisLogs.AddNewLogLine("收到TradingView Message, botGate: " + body.botGate);
 
         if (body.botGate === "TradeBot") {
-            thisLogs.AddNewLogLine("TradeBot botNumber: " + body.botNumber);
+            thisLogs.ChangeLogTitle(body.botNumber) ;
 
             try {
                 const r_HandleTradeBot = await HandleTradeBot(body, thisLogs);
@@ -177,7 +176,7 @@ async function HandleSignal(toHandleSignal) {
         }
 
         if (body.botGate === "AllPrice") {
-            thisLogs.AddNewLogLine('开始处理AllPrice') ;
+            thisLogs.ChangeLogTitle('AllPrice') ;
             try {
                 await HandleAllPrice(body, thisLogs);
                 thisLogs.AddNewLogLine(`HandleAllPrice()处理成功`);
