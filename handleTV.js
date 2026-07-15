@@ -111,7 +111,6 @@ export const TradeBot = {
         this.tbName_tgSTOP         =  tvData.botNumber + '_tgSTOP'         ; // 全局中的停止本机器人信号名
         this.tbName_tgSTOP_resp    =  tvData.botNumber + '_tgSTOP_resp'    ; // 全局中的停止本机器人信号已收到名
 
-
         this.tbName_isLocked       =  tvData.botNumber + '_isLocked'       ; // 全局中判断是否locked的名
         this.tbName_lastLockTime   =  tvData.botNumber + '_lastLockTime'   ; // 全局中的锁名
         this.tbName_runningWell    =  tvData.botNumber + '_runningWell'    ; // 全局中的出错名
@@ -214,9 +213,9 @@ export const TradeBot = {
 
         thisLogs.AddNewLogLine('去执行Get_gsData()') ;
         const r_Get_gsData = await this.Get_gsData();
-        thisLogs.AddNewLogLine('Get_gsData()成功') ;
-
         if (!isStrictTrue(r_Get_gsData) || isStrictString(r_Get_gsData)) { throw new Error('Get_gsData() 失败: \n' + r_Get_gsData) }
+        else { thisLogs.AddNewLogLine('Get_gsData()成功') }
+
 
         let currentLock = this.toGCPData.LOCK ;
         if (this.toGCPData.lstLockSignalTime > this.LockTime) { throw new Error('检查GS发现已处理过更新的信号') }
