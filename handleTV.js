@@ -233,29 +233,19 @@ export const TradeBot = {
         }
 
         if (TradeBot[this.tbName_tgToReadGSCMD]) {
-            const tgRspTitle = `${tvData.botNumber} 读取gsCommand命令已收到` ;
-            thisLogs.AddNewLogLine('收到命令去读取 gs command') ;
-            if (isStrictTrue(this.thereCommandFromGS)) {
-                const thisLog = 'gs command 已在缓存中, 不必再次获取' ;
-                thisLogs.AddNewLogLine(thisLog) ;
-                SendTG(tgRspTitle, thisLog, TradeBot[this.tbName_TGID]).catch(() => { });
-            } else {
-                const commandData = A2dToCleanObj(await try3times(GetGS(this.spreadsheetID, this.toGCPData.CommandRange)));
-                const r_makeGSCMD = await this.makeGSCMD(commandData);
-                if (isStrictString(r_makeGSCMD)) {
-                    const thisLog = r_makeGSCMD;
-                    thisLogs.AddNewLogLine(thisLog);
-                    SendTG(tgRspTitle, thisLog, TradeBot[this.tbName_TGID]).catch(() => { });
-                }
-                if (isStrictTrue(r_makeGSCMD)) {
-                    const thisLog = '读取 gs command 成功';
-                    thisLogs.AddNewLogLine(thisLog);
-                    SendTG(tgRspTitle, thisLog, TradeBot[this.tbName_TGID]).catch(() => { });
-                }
+            const tgRspTitle = `${tvData.botNumber} 读取gsCommand命令已收到`;
+            thisLogs.AddNewLogLine('收到命令去读取 gs command');
 
-            }
+            const commandData = A2dToCleanObj(await try3times(GetGS, this.spreadsheetID, this.toGCPData.CommandRange));
+            const r_makeGSCMD = await this.makeGSCMD(commandData);
+            let thisLog;
+            if (isStrictString(r_makeGSCMD)) { thisLog = r_makeGSCMD }
+            if (isStrictTrue(r_makeGSCMD)) { thisLog = '读取 gs command 成功' }
 
-            TradeBot[this.tbName_tgToReadGSCMD] = false ;
+            thisLogs.AddNewLogLine(thisLog);
+            SendTG(tgRspTitle, thisLog, TradeBot[this.tbName_TGID]).catch(() => { });
+
+            TradeBot[this.tbName_tgToReadGSCMD] = false;
         }
 
         let currentLock = this.toGCPData.LOCK ;
@@ -1682,10 +1672,9 @@ export const TradeBot = {
      * 发送TG
      * @returns 会抛出错误, 但无返回值
      */
-    async SendToTG(rawMessagesA2d) {
-        const messageString = FormatMatrixToString(rawMessagesA2d);
+    async SendToTG(toReadA2d) {
+        const messageString = FormatMatrixToString(toReadA2d);
         const subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime);
-
         await SendTG(subject, messageString);
     },
 
@@ -1693,9 +1682,9 @@ export const TradeBot = {
      * 发送Email
      * @returns 会抛出错误, 但无返回值
      */
-    async SendToEmail(rawMessagesA2d) {
+    async SendToEmail(toEmailA2d) {
         if (this.toSendEmail) {
-            const messageHTML = ConvertRowsToHtmlTable(rawMessagesA2d);
+            const messageHTML = ConvertRowsToHtmlTable(toEmailA2d);
             const mail_subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime);
             await SendEmail(mail_subject, messageHTML);
         }
