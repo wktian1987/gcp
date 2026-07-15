@@ -1442,9 +1442,17 @@ export class LogsWithTime{
     }
 }
 
-export function LogInBackground(logObj) {
+export function LogInBackground(log) {
     setImmediate(() => {
-        // 这一步运行在 Check 阶段，绝对不卡当前的 HTTP/WebSocket 响应
-        LogInBackground(JSON.stringify(logObj));
+        // 1. 物理检查：防止传入空对象导致报错
+        if (!log) return;
+
+        if (isStrictString(log)) { console.log(log) ; return ;}
+
+        // 2. 刚性交割：根据日志级别，投递给正确的标准输出流，绝不套娃！
+        if (isPlainObject(log) && Object.hasOwn(log, 'severity') && Object.hasOwn(log, 'message')) {
+            if (log.severity === 'ERROR') { console.error(JSON.stringify(log)) }
+            else { console.log(JSON.stringify(log)) }
+        }
     });
 }
