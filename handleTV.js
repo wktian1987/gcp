@@ -95,7 +95,6 @@ export const TradeBot = {
     async CreateBasicAttr(tvData, thisLogs) {
         this.thisLogs           =  thisLogs                     ;
         this.tvData             =  tvData                       ;
-        this.cLogHead           =  tvData.botNumber + ": "      ;
         this.LockTime           =  tvData.timestamp             ;
         this.lockName           =  'T' + String(this.LockTime)  ;
         this.task_setGSLOCK     =  null                         ;
@@ -1663,17 +1662,17 @@ export async function HandleTradeBot(tvData, thisLogs) {
     if (r_CreateBasicAttr === CV.newerHandled    ) {return r_CreateBasicAttr}
     if (r_CreateBasicAttr === CV.stillHandleLast ) {return r_CreateBasicAttr}
     if (!r_CreateBasicAttr || isStrictString(r_CreateBasicAttr)) { throw new Error('CreateBasicAttr() 失败: \n' + r_CreateBasicAttr) }
-    if (isStrictTrue(r_CreateBasicAttr)) { thisLogs.AddNewLogLine(bot.cLogHead + 'CreateBasicAttr() success') }
+    if (isStrictTrue(r_CreateBasicAttr)) { thisLogs.AddNewLogLine('CreateBasicAttr() success') }
 
     thisLogs.AddNewLogLine('去执行ToCheckInitiate()') ;
     const r_ToCheckInitiate = await bot.ToCheckInitiate();
     if (!r_ToCheckInitiate || isStrictString(r_ToCheckInitiate)) { throw new Error('ToCheckInitiate() 失败: \n' + r_ToCheckInitiate) }
-    if (isStrictTrue(r_ToCheckInitiate)) { thisLogs.AddNewLogLine(bot.cLogHead + 'ToCheckInitiate() success') }
+    if (isStrictTrue(r_ToCheckInitiate)) { thisLogs.AddNewLogLine('ToCheckInitiate() success') }
 
     thisLogs.AddNewLogLine('去执行CheckAllPosition_withBroker()') ;
     const r_CheckAllPosition_withBroker = await bot.CheckAllPosition_withBroker();
     if (!r_CheckAllPosition_withBroker || isStrictString(r_CheckAllPosition_withBroker)) { throw new Error('CheckAllPosition_withBroker() 失败: \n' + r_CheckAllPosition_withBroker) }
-    if (isStrictTrue(r_CheckAllPosition_withBroker)) { thisLogs.AddNewLogLine(bot.cLogHead + 'CheckAllPosition_withBroker() success') }
+    if (isStrictTrue(r_CheckAllPosition_withBroker)) { thisLogs.AddNewLogLine('CheckAllPosition_withBroker() success') }
 
     // 将 mainData 和 tvData 写入到this大对象中
     // 必须先写入mainData, 再写入tvData
@@ -1681,36 +1680,36 @@ export async function HandleTradeBot(tvData, thisLogs) {
     bot.UpdateDataToBot(bot.mainData)                           ;
     bot.UpdateDataToBot(bot.tvData)                             ;
     bot.gcpGetTime  = gcpGetTime  ;
-    thisLogs.AddNewLogLine(bot.cLogHead + 'UpdateDataToBot() success')     ;
+    thisLogs.AddNewLogLine('UpdateDataToBot() success')     ;
 
     bot.ReNew();
-    thisLogs.AddNewLogLine(bot.cLogHead + 'ReNew() success')   ;
+    thisLogs.AddNewLogLine('ReNew() success')   ;
 
     thisLogs.AddNewLogLine('去执行ToCheckFundFee()') ;
     const r_ToCheckFundFee = await bot.ToCheckFundFee();
     if (!r_ToCheckFundFee || isStrictString(r_ToCheckFundFee)) { throw new Error('ToCheckFundFee() 失败: \n' + r_ToCheckFundFee) }
-    if (isStrictTrue(r_ToCheckFundFee)) { thisLogs.AddNewLogLine(bot.cLogHead + 'ToCheckFundFee() success') }
+    if (isStrictTrue(r_ToCheckFundFee)) { thisLogs.AddNewLogLine('ToCheckFundFee() success') }
 
     thisLogs.AddNewLogLine('去执行ToSell()') ;
     const r_ToSell = await bot.ToSell();
     if (!r_ToSell || isStrictString(r_ToSell)) { throw new Error('ToSell() 失败: \n' + r_ToSell) }
-    if (isStrictTrue(r_ToSell)) { thisLogs.AddNewLogLine(bot.cLogHead + 'ToSell() success') }
+    if (isStrictTrue(r_ToSell)) { thisLogs.AddNewLogLine('ToSell() success') }
 
     thisLogs.AddNewLogLine('去执行ToBuy()') ;
     const r_ToBuy = await bot.ToBuy();
     if (!r_ToBuy || isStrictString(r_ToBuy)) { throw new Error('ToBuy() 失败: \n' + r_ToBuy) }
-    if (isStrictTrue(r_ToBuy)) { thisLogs.AddNewLogLine(bot.cLogHead + 'ToBuy() success') }
+    if (isStrictTrue(r_ToBuy)) { thisLogs.AddNewLogLine('ToBuy() success') }
 
     thisLogs.AddNewLogLine('去执行ToCheckWaitingOrder()') ;
     const r_ToCheckWaitingOrder = await bot.ToCheckWaitingOrder();
     if (!r_ToCheckWaitingOrder || isStrictString(r_ToCheckWaitingOrder)) { throw new Error('ToCheckWaitingOrder() 失败: \n' + r_ToCheckWaitingOrder) }
-    if (isStrictTrue(r_ToCheckWaitingOrder)) { thisLogs.AddNewLogLine(bot.cLogHead + 'ToCheckWaitingOrder() success') }
+    if (isStrictTrue(r_ToCheckWaitingOrder)) { thisLogs.AddNewLogLine('ToCheckWaitingOrder() success') }
 
     if (isStrictTrue(bot.toReNewBeforeWrite)) {bot.renewData()}
     thisLogs.AddNewLogLine('去执行WriteToGS_ReleaseLocks()') ;
     const r_WriteToGS_ReleaseLocks = await bot.WriteToGS_ReleaseLocks();
     if (!r_WriteToGS_ReleaseLocks || isStrictString(r_WriteToGS_ReleaseLocks)) { throw new Error('WriteToGS_ReleaseLocks() 失败: \n' + r_WriteToGS_ReleaseLocks) }
-    if (isStrictTrue(r_WriteToGS_ReleaseLocks)) { thisLogs.AddNewLogLine(bot.cLogHead + 'WriteToGS_ReleaseLocks() success') }
+    if (isStrictTrue(r_WriteToGS_ReleaseLocks)) { thisLogs.AddNewLogLine('WriteToGS_ReleaseLocks() success') }
 
     thisLogs.AddNewLogLine('去发送 TG消息 和 Email信息') ;
     bot.SendToTG().catch(()=>{}) ;
