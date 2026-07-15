@@ -137,4 +137,4 @@ async function TestBatchUpdate(spreadsheetID, chat_id) {
 
 // fn(p)
 //     .catch((e) => { p.push(e.message) })
-//     .finally(() => { console.log(p, join('\n')) });
+//     .finally(() => { LogInBackground(p, join('\n')) });

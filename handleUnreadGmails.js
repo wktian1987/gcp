@@ -168,7 +168,7 @@ function decrypt(fullCipher) {
         return finalResult.substring(0, finalResult.length - checkWord.length);
     } else {
         // 校验失败：打印日志方便排查，并返回友好提示
-        console.log("解密校验失败，前15位内容预览:", finalResult.substring(0, 15));
+        LogInBackground("解密校验失败，前15位内容预览:", finalResult.substring(0, 15));
         return "未成功解密！！！(校验失败)， 前100位内容预览: " + "\n" + finalResult.substring(0, 100);
     }
 

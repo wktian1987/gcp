@@ -1,5 +1,4 @@
 import { google } from 'googleapis';
-import { log } from 'node:console';
 import https from 'node:https';
 import { createTransport } from 'nodemailer';
 
@@ -1427,7 +1426,7 @@ export class LogsWithTime{
 
         for (const log of this.logsA) {
             log.message = `${this.logTitle}: ${log.message}` ;
-            if (log.severity === 'INFO') { console.log(JSON.stringify(log)) }
+            if (log.severity === 'INFO') { LogInBackground(JSON.stringify(log)) }
             if (log.severity === 'ERROR') { console.error(JSON.stringify(log)) }
         }
 
@@ -1441,4 +1440,11 @@ export class LogsWithTime{
             }
         }
     }
+}
+
+export function LogInBackground(logObj) {
+    setImmediate(() => {
+        // 这一步运行在 Check 阶段，绝对不卡当前的 HTTP/WebSocket 响应
+        LogInBackground(JSON.stringify(logObj));
+    });
 }

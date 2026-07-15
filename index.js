@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { DATETIME, isStrictTrue, LogsWithTime, SendTG, Sleep } from './utility.js';
+import { DATETIME, isStrictTrue, LogsWithTime, SendTG, Sleep, LogInBackground } from './utility.js';
 import { HandleUnreadGmails } from './handleUnreadGmails.js';
 import { HandleTradeBot, HandleAllPrice, CV } from './handleTV.js';
 import { HandleTgBot } from './handleTgBot.js';
@@ -16,9 +16,6 @@ const SignalList = [] ; // 里面的元素是 {url, body}
 let isWorkerRunning = false ; 
 export let stopHandleNewSignals = false; // 当从tg收到取消所有任务信号的时候, 取消所有信号
 export function ToStopSartNewSignals(toStopStart = 'toStop') { // 重启是'toStart')
-    // if (toStopStart === 'toStop' ) {console.log('收到信号 ToStopSartNewSignals(toStop)' )}
-    // if (toStopStart === 'toStart') {console.log('收到信号 ToStopSartNewSignals(toStart)')}
-    // if (toStopStart !== 'toStop' && toStopStart !== 'toStart') {console.log('收到错误信号 ToStopSartNewSignals(非法参数)'); return false ;}
     stopHandleNewSignals = toStopStart === 'toStart' ? false : true; // 1. 下发熔断禁令
     if (toStopStart === 'toStop') {SignalList.length = 0} // 2. 物理超渡内存中积压的所有过期信号！
     return true ;
@@ -62,13 +59,13 @@ const server = http.createServer(async (req, res) => {
                 stopHandleThisSigal = true ;
                 const stopMessage = '||| ||| stopHandleNewSignals is set, 不再处理新的信号' ;
                 SendTG(`stopMessage`, stopMessage).catch(() => { });
-                console.log(stopMessage) ;
+                LogInBackground(stopMessage) ;
             }
             if (method !== 'POST' || !urlList.includes(url)) { 
                 stopHandleThisSigal = true ;
                 const stopMessage = '||| ||| 只接受POST信号, 且信号发往指定URL' ;
                 SendTG(`stopMessage`, stopMessage).catch(() => { });
-                console.log(stopMessage) ;
+                LogInBackground(stopMessage) ;
             }
             if (stopHandleThisSigal) {
                 req.resume();
@@ -103,7 +100,7 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(200, { 'Content-Type': 'text/plain' });
             res.end("ACK");
         }
-        console.log(`✘ server收到错误信号: \n${e.message}`);
+        LogInBackground(`✘ server收到错误信号: \n${e.message}`);
     }
 });
 
@@ -115,7 +112,7 @@ const checkEmailInterval = 10 * 60 * 1000; let lastCheckEmailTime = new DATETIME
 // 并发处理, 两个信号处理，至少间隔1s
 async function HandleSignalList() {
     if (isWorkerRunning) { return }
-    console.log('... ... 新工人开始处理队列任务');
+    LogInBackground('... ... 新工人开始处理队列任务');
     isWorkerRunning = true;
 
     let runningTasks = 0 ;
@@ -126,7 +123,7 @@ async function HandleSignalList() {
             taskNumber += 1;
             runningTasks += 1 ;
             const toHandleSignal = SignalList.pop() ;
-            toHandleSignal.thisLogs.AddNewLogLine(`开始处理第${taskNumber}个任务，共有${runningTasks}个任务同时运行，任务队列中尚有${SignalList.length}个信号等待处理`) ;
+            LogInBackground(`... ... 开始处理第${taskNumber}个任务，共有${runningTasks}个任务同时运行，任务队列中尚有${SignalList.length}个信号等待处理`) ;
             HandleSignal(toHandleSignal)
                 .finally(() => {
                     toHandleSignal.thisLogs.consoleLogs('onlyErr') ;
@@ -150,7 +147,7 @@ async function HandleSignalList() {
     }
 
     isWorkerRunning = false; 
-    console.log(`... ... 队列中的全部任务已处理完毕, 此工人共处理${taskNumber}个任务后退出`);
+    LogInBackground(`... ... 队列中的全部任务已处理完毕, 此工人共处理${taskNumber}个任务后退出`);
 }
 
 async function HandleSignal(toHandleSignal) {
@@ -191,23 +188,23 @@ async function HandleSignal(toHandleSignal) {
 process.on('SIGTERM', async () => {
     ToStopSartNewSignals('toStop') ;
 
-    console.log("️[GCP 部署切流] 收到云端退役信号(SIGTERM)！拦截成功，大闸降下...");
+    LogInBackground("️[GCP 部署切流] 收到云端退役信号(SIGTERM)！拦截成功，大闸降下...");
 
     // 🔒 铁血对账：只要账本里还有单子没清空，或者后台 Worker 还在埋头苦干，死死顶住！
     while (SignalList.length > 0 || isWorkerRunning) {
-        console.log(`护盘冲刺中：队列还剩 ${SignalList.length} 单，Worker忙碌状态:，原地等待 1 秒...`);
+        LogInBackground(`护盘冲刺中：队列还剩 ${SignalList.length} 单，Worker忙碌状态:，原地等待 1 秒...`);
         await new Promise(resolve => setTimeout(resolve, 1000)); 
     }
 
     // 🟢 此时此刻，地上的单子全量安全落地，Sheets 写完，邮件发完，资产毫发无损！
-    console.log("✔ [自保大闸] 核心资产 100% 全量清仓落地。老实例完成历史使命，准予体面退役。");
+    LogInBackground("✔ [自保大闸] 核心资产 100% 全量清仓落地。老实例完成历史使命，准予体面退役。");
     process.exit(0); // 💥 主动交枪，通知谷歌：老容器已经安全交割，你可以物理回收了！
 });
 
 
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`✔ 服务开始监听端口 ${PORT}，运行...`);
+    LogInBackground(`✔ 服务开始监听端口 ${PORT}，运行...`);
 });
 
 
