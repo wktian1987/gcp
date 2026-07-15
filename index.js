@@ -84,12 +84,12 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(200, { 'Content-Type': 'text/plain' });
             res.end("ACK");
             const body = JSON.parse(bodyData);
-            const thisLogs = new LogsWithTime(`新信号来自${url}`) ;
-            AddNewSignal({url, body, thisLogs}) ;
-            thisLogs.AddNewLogLine(`新信号已放入待处理队列`) ;
-            if (isWorkerRunning) { thisLogs.AddNewLogLine('已经有人在处理队列任务了, 不必分配新的工人') }
+            LogInBackground(`... ... 新信号来自${url}`) ;
+            AddNewSignal({url, body}) ;
+            LogInBackground(`... ... 新信号已放入待处理队列`) ;
+            if (isWorkerRunning) { LogInBackground('... ... 已经有人在处理队列任务了, 不必分配新的工人') }
             else {
-                thisLogs.AddNewLogLine('分配新的工人去处理队列任务');
+                LogInBackground('... ... 分配新的工人去处理队列任务');
                 HandleSignalList().catch(() => { }); // 这里不必写await
             } // 只有isworkerrunning 是false 的时候才会有新的工人进来, 这样设计就不会与你说的情况
         }
@@ -126,7 +126,7 @@ async function HandleSignalList() {
             LogInBackground(`... ... 开始处理第${taskNumber}个任务，共有${runningTasks}个任务同时运行，任务队列中尚有${SignalList.length}个信号等待处理`) ;
             HandleSignal(toHandleSignal)
                 .finally(() => {
-                    toHandleSignal.thisLogs.consoleLogs('onlyErr') ;
+                    toHandleSignal.thisLogs.consoleLogs() ;
                     runningTasks -= 1;
                 });
         }
@@ -155,12 +155,13 @@ async function HandleSignal(toHandleSignal) {
 
     if (url === targetURL.tradingview) {
         if (!Object.hasOwn(body, 'fromTVcheck') || !Object.hasOwn(body, 'botGate') || body.fromTVcheck !== process.env.fromTVcheck) {
-            thisLogs.AddNewLogLine("? 收到未校验的TradingView Message:") ;
+            LogInBackground("? 收到未校验的TradingView Message:") ;
             return;
         }
 
         if (body.botGate === "TradeBot") {
-            thisLogs.ChangeLogTitle(body.botNumber) ;
+            const thisLogs = new LogsWithTime(body.botNumber, 'onlyErr') ;
+            toHandleSignal.thisLogs = thisLogs ;
 
             try {
                 const r_HandleTradeBot = await HandleTradeBot(body, thisLogs);
@@ -173,7 +174,8 @@ async function HandleSignal(toHandleSignal) {
         }
 
         if (body.botGate === "AllPrice") {
-            thisLogs.ChangeLogTitle('AllPrice') ;
+            const thisLogs = new LogsWithTime('AllPrice') ;
+            toHandleSignal.thisLogs = thisLogs ;
             try {
                 await HandleAllPrice(body, thisLogs);
                 thisLogs.AddNewLogLine(`HandleAllPrice()处理成功`);
