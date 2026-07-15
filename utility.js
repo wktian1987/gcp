@@ -92,6 +92,12 @@ export function isEmptyObject(A) {
     return Object.keys(A).length === 0;
 }
 
+export function isFunction(value) {
+    return Object.prototype.toString.call(value) === '[object Function]' ||
+           Object.prototype.toString.call(value) === '[object AsyncFunction]' ||
+           Object.prototype.toString.call(value) === '[object GeneratorFunction]';
+}
+
 /**
  * 👑 工业级高阶万能字符串确权器（完全体）
  * 100% 免疫任何反人类崩溃，绝不吐出 [object Object]，保留对象与数组的真实业务肉身
@@ -405,6 +411,7 @@ export function ConvertRowsToHtmlTable(rows) {
  * await try3times(clearOldSheets, targetSheetId);
  */
 export async function try3times(f, ...payloads) {
+    if (!isFunction(f)) { throw new Error('try3times @param f must be a function') }
     try { return await f(...payloads) } catch {
         await Sleep(1000);
         try { return await f(...payloads) } catch {
