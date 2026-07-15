@@ -1394,7 +1394,7 @@ export class LogsWithTime{
         if (isStrictString(newLogTitle)) {
             this.logTitle = newLogTitle.trim();
         }
-        if (this.ThereErrLog() && !this.logTitle.includes('Err')) {this.logTitle += ' Err'}
+        if (this.ThereErrLog() && !this.logTitle.includes('Err')) {this.logTitle = `Err ${this.logTitle}`}
     }
 
     ThereErrLog() {return isStrictTrue(this.thereErr)}
