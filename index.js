@@ -32,6 +32,8 @@ function AddNewLogLine(logsA, newLine) {
 }
 
 const server = http.createServer(async (req, res) => {
+    const gcpGetTime = Date.now() ;
+
     try {
         const { method, url } = req;
         // 在系统进行判断之前先去接收信号,
@@ -84,6 +86,7 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(200, { 'Content-Type': 'text/plain' });
             res.end("ACK");
             const body = JSON.parse(bodyData);
+            body.gcpGetTime = gcpGetTime ;
             LogInBackground(`... ... 新信号来自${url}`) ;
             AddNewSignal({url, body}) ;
             LogInBackground(`... ... 新信号已放入待处理队列`) ;
@@ -155,7 +158,7 @@ async function HandleSignalList() {
 }
 
 async function HandleSignal(toHandleSignal) {
-    const {url, body, thisLogs} = toHandleSignal ;
+    const {url, body} = toHandleSignal ;
 
     if (url === targetURL.tradingview) {
         if (!Object.hasOwn(body, 'fromTVcheck') || !Object.hasOwn(body, 'botGate') || body.fromTVcheck !== process.env.fromTVcheck) {

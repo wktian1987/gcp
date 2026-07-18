@@ -99,6 +99,7 @@ export const TradeBot = {
         this.TradeBotNumberTime =  GetTimeStringWithOffset(8, this.TradeBotNumber)  ;
         this.thisLogs           =  thisLogs                                         ;
         this.tvData             =  tvData                                           ;
+        this.gcpGetTime         =  tvData.gcpGetTime                                ;
         this.LockTime           =  tvData.timestamp                                 ;
         this.lockName           =  'T' + String(this.LockTime)                      ;
         this.task_setGSLOCK     =  null                                             ;
@@ -239,6 +240,44 @@ export const TradeBot = {
             TradeBot[this.tbName_tgToReadGSCMD] = false;
         }
 
+
+        const lstTargetHgh      = this.tvData.lstTargetHgh          ;
+        const lstTargetLow      = this.tvData.lstTargetLow          ;
+        const lstTouchHghTime   = this.tvData.lstTouchHghTime       ;
+        const lstTouchLowTime   = this.tvData.lstTouchLowTime       ;
+
+        this.lstRcdTargetHgh    = this.mainData.lstRcdTargetHgh     ;
+        this.lstRcdTargetLow    = this.mainData.lstRcdTargetLow     ;
+        this.lstRcdTouchHghTime = this.mainData.lstRcdTouchHghTime  ;
+        this.lstRcdTouchLowTime = this.mainData.lstRcdTouchLowTime  ;
+
+        this.markTouchTargetHgh = false ;
+        this.markTouchTargetLow = false ;
+
+        if (isStrictString(this.lstRcdTouchHghTime)) {
+            this.markTouchTargetHgh     = false             ;
+            this.lstRcdTouchHghTime     = lstTouchHghTime   ;
+            this.lstRcdTargetHgh        = lstTargetHgh      ;
+        }
+        if (isStrictNumber(this.lstRcdTouchHghTime) && this.lstRcdTouchHghTime < lstTouchHghTime) {
+            this.markTouchTargetHgh     = true              ;
+            this.lstRcdTouchHghTime     = lstTouchHghTime   ;
+            this.lstRcdTargetHgh        = lstTargetHgh      ;
+            AddSetMessage(this.alertMessageSet, "↑ mark TouchTargetHgh") ;
+        }
+        if (isStrictString(this.lstRcdTouchLowTime)) {
+            this.markTouchTargetLow     = false             ;
+            this.lstRcdTouchLowTime     = lstTouchLowTime   ;
+            this.lstRcdTargetLow        = lstTargetLow      ;
+        }
+        if (isStrictNumber(this.lstRcdTouchLowTime) && this.lstRcdTouchLowTime < this.lstTouchLowTime) {
+            this.markTouchTargetLow     = true              ;
+            this.lstRcdTouchLowTime     = lstTouchLowTime   ;
+            this.lstRcdTargetLow        = lstTargetLow      ;
+            AddSetMessage(this.alertMessageSet, "↓ mark TouchTargetLow") ;
+        }
+
+
         let currentLock = this.toGCPData.LOCK ;
         if (this.mainData.timestamp > this.LockTime) { throw new Error('检查GS发现已处理过更新的信号') }
         if (TradeBot[this.tbName_lastLockTime] !== this.LockTime) { throw new Error('临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去') }
@@ -282,7 +321,21 @@ export const TradeBot = {
 
         return true ; 
 
-    } , // 执行完此后, 已获得 大TradeBot锁 和 GS锁 , 谨记
+    } , // 执行完此后, 已获得 大TradeBot锁 和 GS锁 
+
+    GetThisTvMainData(key) {
+        let value = null ;
+        if      (key === 'tvData'             ) { value = this.tvData             }
+        else if (key === 'toGCPData'          ) { value = this.toGCPData          }
+        else if (key === 'mainData'           ) { value = this.mainData           }
+        else if (key === 'ingOrderData'       ) { value = this.ingOrderData       }
+        else if (key === 'ingOrderTitleA'     ) { value = this.ingOrderTitleA     }
+        else if (key === 'uncloseOrdersA2d'   ) { value = this.uncloseOrdersA2d   }
+        else if (key === 'uncloseOrdersTitleA') { value = this.uncloseOrdersTitleA}
+        else if (key === 'tradeHistoryTitleA' ) { value = this.tradeHistoryTitleA }
+        else {value = this[key] ?? this.tvData[key] ?? this.mainData[key] ?? null}
+        if (value === null) {throw new Error('GetThisTvMainData error')} else {return value}
+    } ,
 
     /**
      * 释放大锁
@@ -590,94 +643,28 @@ export const TradeBot = {
     } ,
 
     /**
-     * 计算 [liquidatePrice, stopPriceC, stopPriceF] ; 
-     * 直接从this大对象中获取必要参数, 不需要额外输入 
-     * @returns 计算后的 [liquidatePrice, stopPriceC, stopPriceF]
-     */
-    GetLiquidateStopPrice() {
-        // 基础变量提取 (命名对齐你的 GetAccountStatusByPrice)
-        let C = this.crtCoin;
-        let S = this.BaseCoinPrice;
-        let P = this.TradingSymbolPrice;
-        let L = this.allPosition;
-        let K = this.inFund + this.netProfit;
-        let A = this.avgBuyPrice;
-        let H = this.BaseCoinHairCut;
-        let R = this.waveUpChg;
-        let D = this.Adn2B;
-        let SF = this.stopRate4F;
-        let SC = this.stopRate4C;
-        let NF = this.notStop4F;
-        let NC = this.notStop4C;
-        let HF = this.hghestFund;
-        let HC = this.hghestCoin;
-
-        let liquidatePrice = null;
-        let stopPriceC = null;
-        let stopPriceF = null;
-
-        // ==========================================
-        // 1. 求 _liquidatePrice (爆仓价)
-        // 条件: V_f(P, Haircut) = R * L * P
-        // ==========================================
-        let slope_f_h = (C * S * D * H / P) + L;
-        let intercept_f_h = K - (L * A) + (C * S * H * (1 - D));
-
-        // 方程: slope_f_h * P + intercept_f_h = R * L * P
-        // 移项: P * (slope_f_h - R * L) = -intercept_f_h
-        liquidatePrice = -intercept_f_h / (slope_f_h - R * L);
-
-        // ==========================================
-        // 2. 求 _stopPriceF (金本位止损价)
-        // 需要计算两个条件：stopRate4F (止损) 和 notStop4C (交叉限制)
-        // 最终取两者中较高的价格 (即下跌时先碰到的那个)
-        // ==========================================
-        let slope_f = (C * S * D / P) + L;
-        let intercept_f = K - (L * A) + (C * S * (1 - D));
-
-        let targetF_1 = HF * (1 + SF / 100);
-        let targetF_2 = HF * (1 + NF / 100);
-
-        let resF1 = (targetF_1 - intercept_f) / slope_f;
-        let resF2 = (targetF_2 - intercept_f) / slope_f;
-
-        // 根据你的逻辑，最终结果由交叉条件限制，此处取 math.min 对应下跌时更高的价格
-        stopPriceF = Math.min(resF1, resF2);
-
-        // ==========================================
-        // 3. 求 _stopPriceC (币本位止损价)
-        // 条件: V_f(P, H=1) / P_b(P) = TargetCoin
-        // ==========================================
-        let targetC_1 = HC * (1 + SC / 100);
-        let targetC_2 = HC * (1 + NC / 100);
-
-        // 币本位方程推导: (slope_f * P + intercept_f) / (S0 * (1 + (P-P0)/P0 * Adn2B)) = Target
-        // 令 m_slope = S0 * Adn2B / P0, m_intercept = S0 * (1 - Adn2B)
-        let m_slope = S * D / P;
-        let m_intercept = S * (1 - D);
-
-        // 方程化简为一次方程: P * (slope_f - Target * m_slope) = Target * m_intercept - intercept_f
-        let resC1 = (targetC_1 * m_intercept - intercept_f) / (slope_f - targetC_1 * m_slope);
-        let resC2 = (targetC_2 * m_intercept - intercept_f) / (slope_f - targetC_2 * m_slope);
-
-        stopPriceC = Math.min(resC1, resC2);
-
-        return [liquidatePrice, stopPriceC, stopPriceF];
-
-    },
-
-    /**
      * 计算当价格变化多少的时候, 引起的 allFund 和 allCoin 会成为多少
      * @param {number} chgPct 价格变化的值, 例如-0.2 表示价格变化-20%, 要求: -2 < chgPct < 2
      * @returns 一个对象 {then_allFUnd, then_allCoin}
      */
     valueIfChg(chgPct) {
+        const TradingSymbolPrice    =  this.GetThisTvMainData('TradingSymbolPrice')    ;
+        const BaseCoinPrice         =  this.GetThisTvMainData('BaseCoinPrice')         ;
+        const Aup2B                 =  this.GetThisTvMainData('Aup2B')                 ;
+        const Adn2B                 =  this.GetThisTvMainData('Adn2B')                 ;
+        const inFund                =  this.GetThisTvMainData('inFund')                ;
+        const inCoin                =  this.GetThisTvMainData('inCoin')                ;
+        const therePosition         =  this.GetThisTvMainData('therePosition')         ;
+        const allPosition           =  this.GetThisTvMainData('allPosition')           ;
+        const avgBuyPrice           =  this.GetThisTvMainData('avgBuyPrice')           ;
+        const netProfit             =  this.GetThisTvMainData('netProfit')             ;
+
         if (!isStrictNumber(chgPct) || chgPct > 2 || chgPct < -2) {throw new Error('chgPct输入错误')}
-        const then_Price        =  this.TradingSymbolPrice * (1+chgPct) ;
-        const then_openProfit   =  this.therePosition ? this.allPosition * (then_Price - this.avgBuyPrice) : 0 ;
-        const then_b_chgPct     =  (chgPct > 0 ? this.Aup2B : this.Adn2B) * chgPct ;
-        const then_b_Price      =  this.BaseCoinPrice * (1+then_b_chgPct) ;
-        const then_allFUnd      =  this.inCoin * then_b_Price + this.inFund + ToStrictNumber(this.netProfit, 0) + then_openProfit ;
+        const then_Price        =  TradingSymbolPrice * (1+chgPct) ;
+        const then_openProfit   =  therePosition ? allPosition * (then_Price - avgBuyPrice) : 0 ;
+        const then_b_chgPct     =  (chgPct > 0 ? Aup2B : Adn2B) * chgPct ;
+        const then_b_Price      =  BaseCoinPrice * (1+then_b_chgPct) ;
+        const then_allFUnd      =  inCoin * then_b_Price + inFund + ToStrictNumber(netProfit, 0) + then_openProfit ;
         const then_allCoin      =  then_allFUnd / then_b_Price ;
         return {then_allFUnd, then_allCoin} ;
     } ,
@@ -838,10 +825,16 @@ export const TradeBot = {
      * @returns number: 计算出的stopPriceF
      */
     GetStopPriceF() {
-        const pct_stopF_stopF    = this.chgPctIfVALUEFchg(this.hghestFund * (1+this.stopRate4F/100), 0 , -1) ;
-        const pct_stopF_notStopC = this.chgPctIfVALUECchg(this.hghestCoin * (1+this.notStop4C /100), 0 , -1) ;
+        const TradingSymbolPrice = this.GetThisTvMainData('TradingSymbolPrice')    ;
+        const stopRate4F         = this.GetThisTvMainData('stopRate4F')            ;
+        const notStop4C          = this.GetThisTvMainData('notStop4C')             ;
+        const hghestFund         = this.GetThisTvMainData('hghestFund')            ;
+        const hghestCoin         = this.GetThisTvMainData('hghestCoin')            ;
+
+        const pct_stopF_stopF    = this.chgPctIfVALUEFchg(hghestFund * (1+stopRate4F/100), 0 , -1) ;
+        const pct_stopF_notStopC = this.chgPctIfVALUECchg(hghestCoin * (1+notStop4C /100), 0 , -1) ;
         if (!isStrictNumber(pct_stopF_stopF) || !isStrictNumber(pct_stopF_notStopC)) {return false}
-        return this.TradingSymbolPrice * (1 + Math.min(pct_stopF_stopF, pct_stopF_notStopC)) ;
+        return TradingSymbolPrice * (1 + Math.min(pct_stopF_stopF, pct_stopF_notStopC)) ;
     } ,
 
     /**
@@ -850,10 +843,16 @@ export const TradeBot = {
      * @returns number: 计算出的stopPriceC
      */
     GetStopPriceC() {
-        const pct_stopC_stopC    = this.chgPctIfVALUECchg(this.hghestCoin * (1+this.stopRate4C /100) , 0 , -1) ;
-        const pct_stopC_notStopF = this.chgPctIfVALUEFchg(this.hghestFund * (1+this.notStop4F  /100) , 0 , -1) ;
+        const TradingSymbolPrice    = this.GetThisTvMainData('TradingSymbolPrice')     ;
+        const stopRate4C            = this.GetThisTvMainData('stopRate4C')             ;
+        const notStop4F             = this.GetThisTvMainData('notStop4F')              ;
+        const hghestFund            = this.GetThisTvMainData('hghestFund')             ;
+        const hghestCoin            = this.GetThisTvMainData('hghestCoin')             ;
+
+        const pct_stopC_stopC    = this.chgPctIfVALUECchg(hghestCoin * (1+stopRate4C /100) , 0 , -1) ;
+        const pct_stopC_notStopF = this.chgPctIfVALUEFchg(hghestFund * (1+notStop4F  /100) , 0 , -1) ;
         if (!isStrictNumber(pct_stopC_stopC) || !isStrictNumber(pct_stopC_notStopF)) {return false}
-        return this.TradingSymbolPrice * (1 + Math.min(pct_stopC_stopC, pct_stopC_notStopF)) ;
+        return TradingSymbolPrice * (1 + Math.min(pct_stopC_stopC, pct_stopC_notStopF)) ;
     } ,
 
     /**
@@ -862,119 +861,110 @@ export const TradeBot = {
      * @returns number: 计算出的liquidatePrice
      */
     GetLiquidPrice() {
+        const TradingSymbolPrice = this.GetThisTvMainData('TradingSymbolPrice') ;
+
         const pct_liquid = this.chgPctIfVALUEFchg(0, 0, -1) ;
         if (!isStrictNumber(pct_liquid)){return false}
         return this.TradingSymbolPrice * (1 + pct_liquid) ;
     } ,
 
     renewData() {
-    // 有新交易后，发生变化的变量是:
-    // therePosition, allPosition, avgBuyPrice, netProfit, 
-    this.openProfit     = isStrictTrue(this.therePosition) ? this.allPosition * (this.TradingSymbolPrice - this.avgBuyPrice) : CV.NA    ;
-    this.allProfit      = ToStrictNumber(this.netProfit, 0) + ToStrictNumber(this.openProfit, 0)                                        ;
-    this.usedMargin     = isStrictTrue(this.therePosition) ? this.allPosition * this.TradingSymbolPrice / this.leverage : CV.NA         ;
-    this.crtFund        = this.inFund + ToStrictNumber(this.netProfit, 0) + ToStrictNumber(this.openProfit, 0)                          ;
-    this.crtCoin        = this.inCoin                                                                                                   ;
-    this.freeMargin     = this.crtFund + this.crtCoin * this.BaseCoinPrice * this.BaseCoinHairCut - ToStrictNumber(this.usedMargin, 0)  ;
-    this.allFund        = this.crtFund + this.crtCoin * this.BaseCoinPrice                                                              ;
-    this.allCoin        = this.crtFund / this.BaseCoinPrice + this.crtCoin                                                              ;
+        const TradingSymbolPrice    =  this.GetThisTvMainData('TradingSymbolPrice')    ;
+        const BaseCoinPrice         =  this.GetThisTvMainData('BaseCoinPrice')         ;
+        const BaseCoinHairCut       =  this.GetThisTvMainData('BaseCoinHairCut')       ;
+        const leverage              =  this.GetThisTvMainData('leverage')              ;
+        const inFund                =  this.GetThisTvMainData('inFund')                ;
+        const inCoin                =  this.GetThisTvMainData('inCoin')                ;
+        const therePosition         =  this.GetThisTvMainData('therePosition')         ;
+        const allPosition           =  this.GetThisTvMainData('allPosition')           ;
+        const avgBuyPrice           =  this.GetThisTvMainData('avgBuyPrice')           ;
+        const netProfit             =  this.GetThisTvMainData('netProfit')             ;
 
-    // [this.liquidatePrice, this.stopPriceC, this.stopPriceF] = this.GetLiquidateStopPrice();
-    this.liquidatePrice = isStrictTrue(this.therePosition) ? this.GetLiquidPrice() : CV.NA ;
-    this.stopPriceC     = isStrictTrue(this.therePosition) ? this.GetStopPriceC()  : CV.NA ;
-    this.stopPriceF     = isStrictTrue(this.therePosition) ? this.GetStopPriceF()  : CV.NA ;
-    } ,
+        // 有新交易后，发生变化的变量是:
+        // therePosition, allPosition, avgBuyPrice, netProfit, 
+        this.openProfit = isStrictTrue(therePosition) ? allPosition * (TradingSymbolPrice - avgBuyPrice) : CV.NA;
+        this.allProfit = ToStrictNumber(netProfit, 0) + ToStrictNumber(this.openProfit, 0);
+        this.usedMargin = isStrictTrue(therePosition) ? allPosition * TradingSymbolPrice / leverage : CV.NA;
+        this.crtFund = inFund + ToStrictNumber(netProfit, 0) + ToStrictNumber(this.openProfit, 0);
+        this.crtCoin = inCoin;
+        this.freeMargin = this.crtFund + this.crtCoin * BaseCoinPrice * BaseCoinHairCut - ToStrictNumber(this.usedMargin, 0);
+        this.allFund = this.crtFund + this.crtCoin * BaseCoinPrice;
+        this.allCoin = this.crtFund / BaseCoinPrice + this.crtCoin;
 
-    /**
-     * 对当前账户状态进行更新 ; 
-     * 直接从bot对象中获取数据, 不需要额外输入 ; 
-     * bot对象中的数据, 来源于GS, TV ;
-     * 除了修改的数据之外, 认为这些数据是绝对正确的
-     */
-    ReNew() {
-        this.renewData() ;
-
-        // 账户状态判断
-        this.accStatus = 'Normal';
-
-        if (this.TradingSymbolPrice < this.liquidatePrice) {
-            const accStatus_liquidated = "liquidated";
-            this.accStatus = accStatus_liquidated;
-            AddSetMessage(this.alertMessageSet, accStatus_liquidated);
-        }
-        if (this.TradingSymbolPrice < this.stopPriceC) {
-            const accStatus_stopC = "stopC";
-            this.accStatus = accStatus_stopC;
-            AddSetMessage(this.alertMessageSet, accStatus_stopC);
-        }
-        if (this.TradingSymbolPrice < this.stopPriceF) {
-            const accStatus_stopF = "stopF";
-            this.accStatus = accStatus_stopF;
-            AddSetMessage(this.alertMessageSet, accStatus_stopF);
-        }
-        if (this.TradingSymbolPrice < this.stopPriceC && this.TradingSymbolPrice < this.stopPriceF) {
-            const accStatus_stopCF = "stopCF";
-            this.accStatus = accStatus_stopCF;
-            AddSetMessage(this.alertMessageSet, accStatus_stopCF);
-        }
-
-
-        this.rcd_fund = ToStrictNumber(this.rcd_fund, this.allFund);
-        this.rcd_coin = ToStrictNumber(this.rcd_coin, this.allCoin);
-
-        if (isStrictString(this.lstRcdTouchHghTime)) {
-            this.markTouchTargetHgh     = false                     ;
-            this.lstRcdTouchHghTime     = this.lstTouchHghTime      ;
-            this.lstRcdTargetHgh        = this.lstTargetHgh         ;
-        }
-        if (isStrictNumber(this.lstRcdTouchHghTime) && this.lstRcdTouchHghTime < this.lstTouchHghTime) {
-            this.markTouchTargetHgh     = true                          ;
-            this.lstRcdTouchHghTime     = this.lstTouchHghTime          ;
-            this.lstRcdTargetHgh        = this.lstTargetHgh             ;
-            AddSetMessage(this.alertMessageSet, "↑ markTouchTargetHgh") ;
-        }
-        if (isStrictString(this.lstRcdTouchLowTime)) {
-            this.markTouchTargetLow     = false                     ;
-            this.lstRcdTouchLowTime     = this.lstTouchLowTime      ;
-            this.lstRcdTargetLow        = this.lstTargetLow         ;
-        }
-        if (isStrictNumber(this.lstRcdTouchLowTime) && this.lstRcdTouchLowTime < this.lstTouchLowTime) {
-            this.markTouchTargetLow     = true                          ;
-            this.lstRcdTouchLowTime     = this.lstTouchLowTime          ;
-            this.lstRcdTargetLow        = this.lstTargetLow             ;
-            AddSetMessage(this.alertMessageSet, "↓ markTouchTargetLow") ;
-        }
-
-
+        this.rcd_fund = ToStrictNumber(this.mainData.rcd_fund, this.allFund);
+        this.rcd_coin = ToStrictNumber(this.mainData.rcd_coin, this.allCoin);
         if (this.allFund > this.rcd_fund * (1 + this.barChgA)) { this.rcd_fund = this.allFund; AddSetMessage(this.alertMessageSet, '↑ new rcd_fund'); }
         if (this.allFund < this.rcd_fund * (1 - this.barChgA)) { this.rcd_fund = this.allFund; AddSetMessage(this.alertMessageSet, '↓ new rcd_fund'); }
         if (this.allCoin > this.rcd_coin * (1 + this.barChgB)) { this.rcd_coin = this.allCoin; AddSetMessage(this.alertMessageSet, '↑ new rcd_coin'); }
         if (this.allCoin < this.rcd_coin * (1 - this.barChgB)) { this.rcd_coin = this.allCoin; AddSetMessage(this.alertMessageSet, '↓ new rcd_coin'); }
 
-        this.toWriteHghLow = false ;
+        this.toWriteHghLow = this.toWriteHghLow ?? false ;
         if (this.allFund > this.hghestFund) { this.toWriteHghLow = true; this.hghestFund = this.allFund; AddSetMessage(this.alertMessageSet, "↑ new hghestFund"); }
         if (this.allFund < this.lowestFund) { this.toWriteHghLow = true; this.lowestFund = this.allFund; AddSetMessage(this.alertMessageSet, "↓ new lowestFund"); }
         if (this.allCoin > this.hghestCoin) { this.toWriteHghLow = true; this.hghestCoin = this.allCoin; AddSetMessage(this.alertMessageSet, "↑ new hghestCoin"); }
         if (this.allCoin < this.lowestCoin) { this.toWriteHghLow = true; this.lowestCoin = this.allCoin; AddSetMessage(this.alertMessageSet, "↓ new lowestCoin"); }
 
-        // 计算边界, 以后用
-        this.closeToRndHgh = this.roundHgh / Math.pow((1 + this.waveUpChg), this.notBuyCloseToRndHghStep);
-        this.closeToRndLow = this.roundLow / Math.pow((1 + this.waveDnChg), this.notBuyCloseToRndLowStep);
+        // [this.liquidatePrice, this.stopPriceC, this.stopPriceF] = this.GetLiquidateStopPrice();
+        this.liquidatePrice = isStrictTrue(therePosition) ? this.GetLiquidPrice() : CV.NA ;
+        this.stopPriceC     = isStrictTrue(therePosition) ? this.GetStopPriceC()  : CV.NA ;
+        this.stopPriceF     = isStrictTrue(therePosition) ? this.GetStopPriceF()  : CV.NA ;
 
-        this.enDifficultyBuyPrice  = this.therePosition ? this.lowBuyPriceUnclose * (1+this.enDifficulty*this.waveDnChg) : null ;
-        this.exDifficultySellPrice = this.therePosition ? this.lowBuyPriceUnclose * (1+this.enDifficulty*this.waveUpChg) : null ;
+        // 账户状态更新
+        this.accStatus = 'Normal';
+        if (TradingSymbolPrice < this.liquidatePrice                                            ) { this.accStatus = 'liquidated'   }
+        if (TradingSymbolPrice < this.stopPriceC                                                ) { this.accStatus = 'stopC'        }
+        if (TradingSymbolPrice < this.stopPriceF                                                ) { this.accStatus = 'stopF'        }
+        if (TradingSymbolPrice < this.stopPriceC && this.TradingSymbolPrice < this.stopPriceF   ) { this.accStatus = 'stopCF'       }
 
-        this.lowToBuy = Math.max(this.basicLowToBuy, this.closeToRndLow);
+    },
 
-        this.hghToBuy = Math.min(
-            this.basicHghToBuy                                                  ,
-            this.closeToRndHgh                                                  ) ;
-        if (this.therePosition) { this.hghToBuy = Math.min(this.hghToBuy, this.enDifficultyBuyPrice) }
+    CalcuBuySellLimit() {
+        this.renewData() ;
+
+        const timestamp = this.GetThisTvMainData('timestamp')     ;
+        const waveUpChg = this.GetThisTvMainData('waveUpChg')     ;
+        const waveDnChg = this.GetThisTvMainData('waveDnChg')     ;
+        const roundHgh  = this.GetThisTvMainData('roundHgh')      ;
+        const roundLow  = this.GetThisTvMainData('roundLow')      ;
+
+        const realTradeTime             = this.GetThisTvMainData('realTradeTime')               ;
+        const realTradeTimeTo           = this.GetThisTvMainData('realTradeTimeTo')             ;
+        const leverage                  = this.GetThisTvMainData('leverage')                    ;
+        const minEnExPosition           = this.GetThisTvMainData('minEnExPosition')             ;
+        const basicLowToBuy             = this.GetThisTvMainData('basicLowToBuy')               ;
+        const basicHghToBuy             = this.GetThisTvMainData('basicHghToBuy')               ;
+        const basicLowToSell            = this.GetThisTvMainData('basicLowToSell')              ;
+        const notBuyCloseToRndHghStep   = this.GetThisTvMainData('notBuyCloseToRndHghStep')     ;
+        const notBuyCloseToRndLowStep   = this.GetThisTvMainData('notBuyCloseToRndLowStep')     ;
+        const ordersInterval            = this.GetThisTvMainData('ordersInterval')              ;
+        const MaxGrid                   = this.GetThisTvMainData('MaxGrid')                     ;
+        const ifOrderWaiting            = this.GetThisTvMainData('ifOrderWaiting')              ;
+        const gridNum                   = this.GetThisTvMainData('gridNum')                     ;
+        const enDifficulty              = this.GetThisTvMainData('enDifficulty')                ;
+        const exDifficulty              = this.GetThisTvMainData('exDifficulty')                ;
+        const therePosition             = this.GetThisTvMainData('therePosition')               ;
+        const lstTradeTime              = this.GetThisTvMainData('lstTradeTime')                ;
+        const lowBuyPriceUnclose        = this.GetThisTvMainData('lowBuyPriceUnclose')          ;
+
+
+
+        // 计算边界
+        this.closeToRndHgh = roundHgh / Math.pow((1 + waveUpChg), notBuyCloseToRndHghStep);
+        this.closeToRndLow = roundLow / Math.pow((1 + waveDnChg), notBuyCloseToRndLowStep);
+
+        this.enDifficultyBuyPrice  = therePosition ? lowBuyPriceUnclose * (1+enDifficulty*waveDnChg) : null ;
+        this.exDifficultySellPrice = therePosition ? lowBuyPriceUnclose * (1+exDifficulty*waveUpChg) : null ;
+
+        this.lowToBuy = Math.max(basicLowToBuy, this.closeToRndLow);
+
+        this.hghToBuy = Math.min(basicHghToBuy, this.closeToRndHgh);
+
+        if (therePosition) { this.hghToBuy = Math.min(this.hghToBuy, this.enDifficultyBuyPrice) }
         
-        this.lowToSell = this.basicLowToSell;
-        if (this.therePosition) { this.lowToSell = Math.max(this.basicLowToSell, this.exDifficultySellPrice) }
+        this.lowToSell = basicLowToSell;
+        if (therePosition) { this.lowToSell = Math.max(basicLowToSell, this.exDifficultySellPrice) }
 
-        this.inTradingTime = this.timestamp > this.realTradeTime && this.timestamp < this.realTradeTimeTo;
+        this.inTradingTime = timestamp > realTradeTime && timestamp < realTradeTimeTo;
 
         // 判断严格地不能买卖条件
         this.canBuy         = true  ;
@@ -989,30 +979,30 @@ export const TradeBot = {
             this.cantSellReason = AddMessage(this.cantSellReason, 'cant sell: ' + 'not in trading time');
         }
 
-        if (this.timestamp - this.lstTradeTime < this.ordersInterval * 60000) {
+        if (timestamp - lstTradeTime < ordersInterval * 60000) {
             this.canBuy = false;
             this.canSell = false;
             this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'there order just done, wait some time');
             this.cantSellReason = AddMessage(this.cantSellReason, 'cant sell: ' + 'there order just done, wait some time');
         }
 
-        if (this.ifOrderWaiting) {
+        if (ifOrderWaiting) {
             this.canBuy = false;
             this.canSell = false;
             this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'there order waiting');
             this.cantSellReason = AddMessage(this.cantSellReason, 'cant sell: ' + 'there order waiting');
         }
 
-        if (Number(this.gridNum) >= Number(this.MaxGrid)) {
+        if (Number(gridNum) >= Number(MaxGrid)) {
             this.canBuy = false;
             this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + "gridNum >= MaxGrid");
         }
-        if (this.freeMargin / (this.MaxGrid - this.gridNum) < 1.1 * this.minEnExPosition * this.TradingSymbolPrice / this.leverage) {
+        if (this.freeMargin / (MaxGrid - gridNum) < 1.1 * minEnExPosition * TradingSymbolPrice / leverage) {
             this.canBuy = false;
             this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'Not enough freeMargin');
         }
 
-        if (!isStrictTrue(this.therePosition)) {
+        if (!isStrictTrue(therePosition)) {
             this.canSell = false;
             this.cantSellReason = AddMessage(this.cantSellReason, 'cant sell: ' + 'No position to sell');
         }
@@ -1030,10 +1020,12 @@ export const TradeBot = {
      */
     async ToCheckFundFee() {
         try {
-            const mainData              = this.mainData                     ;
-            const tvData                = this.tvData                       ;
-            const tradeHistoryTitleA    = this.tradeHistoryTitleA           ; // array
-            const tradeHistoryRange     = this.toGCPData.tradeHistoryRange  ; // string
+            const mainData              = this.GetThisTvMainData('mainData')            ;
+            const tvData                = this.GetThisTvMainData('tvData')              ;
+            const tradeHistoryTitleA    = this.GetThisTvMainData('tradeHistoryTitleA')  ; 
+            const toGCPData             = this.GetThisTvMainData('toGCPData')           ;
+
+            const tradeHistoryRange     = toGCPData.tradeHistoryRange  ;
 
             let toCheckFundFee = false;
             if (isStrictNumber(mainData.lstFundTime)) {
@@ -1099,11 +1091,29 @@ export const TradeBot = {
         }
 
         try {
+            const timestamp             =  this.GetThisTvMainData('timestamp')             ;
+            const TradingSymbolPrice    =  this.GetThisTvMainData('TradingSymbolPrice')    ;
+            const waveUpChg             =  this.GetThisTvMainData('waveUpChg')             ;
+            const roundHgh              =  this.GetThisTvMainData('roundHgh')              ;
+            const roundLow              =  this.GetThisTvMainData('roundLow')              ;
+
+            const TradingSymbol         =  this.GetThisTvMainData('TradingSymbol')         ;
+            const isReal                =  this.GetThisTvMainData('isReal')                ;
+            const tradeFeeRate          =  this.GetThisTvMainData('tradeFeeRate')          ;
+            const mustSellToPreventLiq  =  this.GetThisTvMainData('mustSellToPreventLiq')  ;
+            const mustSellProfitStep    =  this.GetThisTvMainData('mustSellProfitStep')    ;
+            const hghBuyPriceUnclose    =  this.GetThisTvMainData('hghBuyPriceUnclose')    ;
+            const lowBuyPriceUnclose    =  this.GetThisTvMainData('lowBuyPriceUnclose')    ;
+            const avgBuyPriceUnclose    =  this.GetThisTvMainData('avgBuyPriceUnclose')    ;
+            const lowBuySerialUnclose   =  this.GetThisTvMainData('lowBuySerialUnclose')   ;
+            const hghBuySerialUnclose   =  this.GetThisTvMainData('hghBuySerialUnclose')   ;
             
-            const uncloseOrdersA2d      =  this.uncloseOrdersA2d         ;
-            const uncloseOrdersTitleA   =  this.uncloseOrdersTitleA      ;
-            const ingOrderTitleA        =  this.ingOrderTitleA           ;
-            const ingOrderLine          =  this.toGCPData.ingOrderLine   ;
+            const uncloseOrdersA2d      =  this.GetThisTvMainData('uncloseOrdersA2d')      ;
+            const uncloseOrdersTitleA   =  this.GetThisTvMainData('uncloseOrdersTitleA')   ;
+            const ingOrderTitleA        =  this.GetThisTvMainData('ingOrderTitleA')        ;
+            const toGCPData             =  this.GetThisTvMainData('toGCPData')             ;
+
+            const ingOrderLine          =  toGCPData.ingOrderLine    ;
 
             let toSell = false;
             let toSellOrderA;
@@ -1113,53 +1123,53 @@ export const TradeBot = {
             const idx_confirmPrice  = uncloseOrdersTitleA.indexOf('confirmPrice')   ;
             const idx_qty           = uncloseOrdersTitleA.indexOf('qty')            ;
 
-            const inNormalSellRegion = this.TradingSymbolPrice > this.lowToSell ? true : false ;
+            const inNormalSellRegion = TradingSymbolPrice > this.lowToSell ? true : false ;
             AddSetMessage(this.alertMessageSet, inNormalSellRegion ? 'inNormalSellRegion' : 'not inNormalSellRegion');
 
             // touch targetHgh
-            if (inNormalSellRegion && (this.TradingSymbolPrice > (1 + this.tradeFeeRate) * this.lowBuyPriceUnclose) && this.markTouchTargetHgh) {
+            if (inNormalSellRegion && (TradingSymbolPrice > (1 + tradeFeeRate) * lowBuyPriceUnclose) && this.markTouchTargetHgh) {
                 toSell = true;
-                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.lowBuySerialUnclose));
+                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(lowBuySerialUnclose));
                 S.ing_orderPrice = this.lstRcdTargetHgh;
                 S.ing_orderType  = CV.order_T_LMT ;
                 S.ing_reason = 'touchTargetHgh';
             }
             // mustSellProfitStep
-            if ((this.TradingSymbolPrice > Math.pow((1 + this.waveUpChg), this.mustSellProfitStep) * Math.max(this.lowBuyPriceUnclose, this.avgBuyPriceUnclose))) {
+            if ((TradingSymbolPrice > Math.pow((1 + waveUpChg), mustSellProfitStep) * Math.max(lowBuyPriceUnclose, avgBuyPriceUnclose))) {
                 toSell = true;
-                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.lowBuySerialUnclose));
-                S.ing_orderPrice = this.TradingSymbolPrice ;
+                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(lowBuySerialUnclose));
+                S.ing_orderPrice = TradingSymbolPrice ;
                 S.ing_orderType  = CV.order_T_LMT ;
                 S.ing_reason = 'must sell Profit';
             }
             // cut too high buy order
-            if ((this.hghBuyPriceUnclose / this.TradingSymbolPrice > this.roundHgh / this.roundLow) && (this.hghBuyPriceUnclose > (1 + this.waveUpChg) * this.TradingSymbolPrice)) {
+            if ((hghBuyPriceUnclose / TradingSymbolPrice > roundHgh / roundLow) && (hghBuyPriceUnclose > (1 + waveUpChg) * TradingSymbolPrice)) {
                 toSell = true;
-                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
+                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(hghBuySerialUnclose));
                 S.ing_orderPrice = CV.NA;
                 S.ing_orderType = CV.order_T_MKT; 
                 S.ing_reason = 'cut too hgh buy order';
             }
             // cut due to stopC
-            if (this.TradingSymbolPrice < this.stopPriceC) {
+            if (TradingSymbolPrice < this.stopPriceC) {
                 toSell = true;
-                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
+                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(hghBuySerialUnclose));
                 S.ing_orderPrice = CV.NA;
                 S.ing_orderType = CV.order_T_MKT; 
                 S.ing_reason = 'cut due to stopC';
             }
             // cut due to stopF
-            if (this.TradingSymbolPrice < this.stopPriceF) {
+            if (TradingSymbolPrice < this.stopPriceF) {
                 toSell = true;
-                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
+                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(hghBuySerialUnclose));
                 S.ing_orderPrice = CV.NA;
                 S.ing_orderType = CV.order_T_MKT; 
                 S.ing_reason = 'cut due to stopF';
             }
             // cut to prevent liquidate
-            if (this.TradingSymbolPrice < (1 + this.mustSellToPreventLiq / 100) * this.liquidatePrice) {
+            if (TradingSymbolPrice < (1 + mustSellToPreventLiq / 100) * this.liquidatePrice) {
                 toSell = true;
-                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.hghBuySerialUnclose));
+                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(hghBuySerialUnclose));
                 S.ing_orderPrice = 0;
                 S.ing_orderType = CV.order_T_MKT; 
                 S.ing_reason = 'cut to prevent liquidate';
@@ -1168,7 +1178,7 @@ export const TradeBot = {
             if (this.thereCommandFromGS && isStrictTrue(this.commandData.toSell)) {
                 AddSetMessage(this.alertMessageSet, 'Get toSell signal from GS') ;
                 toSell = true;
-                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(this.lowBuySerialUnclose));
+                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(lowBuySerialUnclose));
                 S.ing_orderPrice = this.commandData.price;
                 S.ing_orderType  = this.commandData.orderType ;
                 if (S.ing_orderType === CV.order_T_MKT) {S.ing_orderPrice = CV.NA}
@@ -1180,18 +1190,18 @@ export const TradeBot = {
             const r_gslock = await this.GSLOCK_waitOK();
             if (!isStrictTrue(r_gslock)) { return ToStrictString(r_gslock) }
 
-            S.ing_orderID           = 'S-' + GetTimeStringWithOffset(8, this.timestamp)                         ;
-            S.ing_orderTimestamp    = Date.now()                                                                ;
-            S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp)                          ;
-            S.ing_serial            = -1 * toSellOrderA[idx_serial]                                             ;
-            S.ing_buysell           = CV.order_SELL                                                             ;
-            S.ing_triggerPrice      = this.TradingSymbolPrice                                                   ;
-            S.ing_boughtPrice       = toSellOrderA[idx_confirmPrice]                                            ;
-            S.ing_qty               = -1 * toSellOrderA[idx_qty]                                                ;
-            S.ing_orderStatus       = CV.order_pending                                                          ;
-            S.isReal                = this.isReal                                                               ;
-            S.TradingSymbol         = this.TradingSymbol                                                        ;
-            S.spreadsheetID         = this.spreadsheetID                                                        ;
+            S.ing_orderID           = 'S-' + GetTimeStringWithOffset(8, timestamp)      ;
+            S.ing_orderTimestamp    = Date.now()                                        ;
+            S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp)  ;
+            S.ing_serial            = -1 * toSellOrderA[idx_serial]                     ;
+            S.ing_buysell           = CV.order_SELL                                     ;
+            S.ing_triggerPrice      = TradingSymbolPrice                                ;
+            S.ing_boughtPrice       = toSellOrderA[idx_confirmPrice]                    ;
+            S.ing_qty               = -1 * toSellOrderA[idx_qty]                        ;
+            S.ing_orderStatus       = CV.order_pending                                  ;
+            S.isReal                = isReal                                            ;
+            S.TradingSymbol         = TradingSymbol                                     ;
+            S.spreadsheetID         = this.spreadsheetID                                ;
 
             this.thisLogs.AddNewLogLine('ToBuy()') ;
             S.thisLogs = this.thisLogs ;
@@ -1202,7 +1212,6 @@ export const TradeBot = {
             const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(S[v]) ? S[v] : (S[v] || CV.NA));
 
             this.ifOrderWaiting             =  true ;
-            this.mainData.ifOrderWaiting    =  true ;
             this.ingOrderData               =  S    ;
 
             this.batchUpdateList.push(...makeRequestBodyArrayofBatchUpdate_clearUpdate({
@@ -1247,13 +1256,39 @@ export const TradeBot = {
         }
 
         try {
-            const ingOrderTitleA = this.ingOrderTitleA          ;
-            const ingOrderLine   = this.toGCPData.ingOrderLine  ;
+            const timestamp             =  this.GetThisTvMainData('timestamp')            ;
+            const TradingSymbolPrice    =  this.GetThisTvMainData('TradingSymbolPrice')   ;
+            const waveUpChg             =  this.GetThisTvMainData('waveUpChg')            ;
+            const roundHgh              =  this.GetThisTvMainData('roundHgh')             ;
+            const roundLow              =  this.GetThisTvMainData('roundLow')             ;
+
+            const TradingSymbol         =  this.GetThisTvMainData('TradingSymbol')        ;
+            const isReal                =  this.GetThisTvMainData('isReal')               ;
+            const minEnExPosition       =  this.GetThisTvMainData('minEnExPosition')      ;
+            const tradeFeeRate          =  this.GetThisTvMainData('tradeFeeRate')         ;
+            const leverage              =  this.GetThisTvMainData('leverage')             ;
+            const mustSellToPreventLiq  =  this.GetThisTvMainData('mustSellToPreventLiq') ;
+            const mustSellProfitStep    =  this.GetThisTvMainData('mustSellProfitStep')   ;
+            const MaxGrid               =  this.GetThisTvMainData('MaxGrid')              ;
+            const gridNum               =  this.GetThisTvMainData('gridNum')              ;
+            const hghBuyPriceUnclose    =  this.GetThisTvMainData('hghBuyPriceUnclose')   ;
+            const lowBuyPriceUnclose    =  this.GetThisTvMainData('lowBuyPriceUnclose')   ;
+            const avgBuyPriceUnclose    =  this.GetThisTvMainData('avgBuyPriceUnclose')   ;
+            const lstBuySerial          =  this.GetThisTvMainData('lstBuySerial')         ;
+            const lowBuySerialUnclose   =  this.GetThisTvMainData('lowBuySerialUnclose')  ;
+            const hghBuySerialUnclose   =  this.GetThisTvMainData('hghBuySerialUnclose')  ;
+            
+            const uncloseOrdersA2d      =  this.GetThisTvMainData('uncloseOrdersA2d')     ;
+            const uncloseOrdersTitleA   =  this.GetThisTvMainData('uncloseOrdersTitleA')  ;
+            const ingOrderTitleA        =  this.GetThisTvMainData('ingOrderTitleA')       ;
+            const toGCPData             =  this.GetThisTvMainData('toGCPData')            ;
+
+            const ingOrderLine          =  this.toGCPData.ingOrderLine   ;
 
             let toBuy = false;
             const S = {};
 
-            const inNormalBuyRegion = this.TradingSymbolPrice > this.lowToBuy && this.TradingSymbolPrice < this.hghToBuy ? true : false ; 
+            const inNormalBuyRegion = TradingSymbolPrice > this.lowToBuy && TradingSymbolPrice < this.hghToBuy ? true : false ; 
             AddSetMessage(this.alertMessageSet, inNormalBuyRegion ? 'inNormalBuyRegion' : 'not inNormalBuyRegion') ;
 
             if (inNormalBuyRegion && isStrictTrue(this.markTouchTargetLow)) {
@@ -1277,19 +1312,19 @@ export const TradeBot = {
             const r_gslock = await this.GSLOCK_waitOK();
             if (!isStrictTrue(r_gslock)) { return ToStrictString(r_gslock) }
 
-            S.ing_orderID           = 'B-' + GetTimeStringWithOffset(8, this.timestamp)     ;
+            S.ing_orderID           = 'B-' + GetTimeStringWithOffset(8, timestamp)          ;
             S.ing_orderTimestamp    = Date.now()                                            ;
             S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp)      ;
-            S.ing_serial            = ToStrictNumber(this.lstBuySerial, 0) + 1              ;
+            S.ing_serial            = ToStrictNumber(lstBuySerial, 0) + 1                   ;
             S.ing_buysell           = CV.order_BUY                                          ;
-            S.ing_triggerPrice      = this.TradingSymbolPrice                               ;
+            S.ing_triggerPrice      = TradingSymbolPrice                                    ;
             S.ing_orderType         = S.ing_orderType || CV.order_T_LMT                     ;
             S.ing_orderStatus       = CV.order_pending                                      ;
-            S.isReal                = this.isReal                                           ;
-            S.TradingSymbol         = this.TradingSymbol                                    ;
+            S.isReal                = isReal                                                ;
+            S.TradingSymbol         = TradingSymbol                                         ;
             S.spreadsheetID         = this.spreadsheetID                                    ;
-            S.calcuQtyPrice = (S.ing_orderType === CV.order_T_MKT || !isStrictNumber(S.ing_orderPrice) ) ? this.TradingSymbolPrice : S.ing_orderPrice ;
-            S.ing_qty               = this.minEnExPosition * Math.max(1, Math.floor(this.freeMargin * this.leverage / S.calcuQtyPrice / this.minEnExPosition / (this.MaxGrid - this.gridNum)))     ;
+            S.calcuQtyPrice = (S.ing_orderType === CV.order_T_MKT || !isStrictNumber(S.ing_orderPrice) ) ? TradingSymbolPrice : S.ing_orderPrice ;
+            S.ing_qty               = minEnExPosition * Math.max(1, Math.floor(this.freeMargin * leverage / S.calcuQtyPrice / minEnExPosition / (MaxGrid - gridNum)))     ;
 
             this.thisLogs.AddNewLogLine('ToBuy()') ;
             S.thisLogs = this.thisLogs ;
@@ -1300,7 +1335,6 @@ export const TradeBot = {
             const new_ingOrderLineA = ingOrderTitleA.map(v => isStrictNumber(S[v]) ? S[v] : (S[v] || CV.NA));
 
             this.ifOrderWaiting             =  true ;
-            this.mainData.ifOrderWaiting    =  true ;
             this.ingOrderData               =  S    ;
 
             this.batchUpdateList.push(...makeRequestBodyArrayofBatchUpdate_clearUpdate({
@@ -1318,7 +1352,6 @@ export const TradeBot = {
             return true;
 
         } catch (e) {
-            // 这是核心错误, 不能解锁, 需要手动查看
             const errMessage = `核心错误: ${e.message}`.trim() ;
             this.AddRunningWellMessage(errMessage) ;
             return errMessage ;
@@ -1333,14 +1366,22 @@ export const TradeBot = {
      */
     async ToCheckWaitingOrder() {
         try {
-            const tvData                =  this.tvData                  ;
-            const mainData              =  this.mainData                ;
-            const toGCPData             =  this.toGCPData               ;
-            const ingOrderData          =  this.ingOrderData            ;
-            const ingOrderTitleA        =  this.ingOrderTitleA          ;
-            const uncloseOrdersA2d      =  this.uncloseOrdersA2d        ;
-            const uncloseOrdersTitleA   =  this.uncloseOrdersTitleA     ;
-            const tradeHistoryTitleA    =  this.tradeHistoryTitleA      ;
+            const tvData                =  this.GetThisTvMainData('tvData')                 ;
+            const mainData              =  this.GetThisTvMainData('mainData')               ;
+            const toGCPData             =  this.GetThisTvMainData('toGCPData')              ;
+            const ingOrderData          =  this.GetThisTvMainData('ingOrderData')           ;
+            const ingOrderTitleA        =  this.GetThisTvMainData('ingOrderTitleA')         ;
+            const uncloseOrdersA2d      =  this.GetThisTvMainData('uncloseOrdersA2d')       ;
+            const uncloseOrdersTitleA   =  this.GetThisTvMainData('uncloseOrdersTitleA')    ;
+            const tradeHistoryTitleA    =  this.GetThisTvMainData('tradeHistoryTitleA')     ;
+
+            const minEnExPosition       =  this.GetThisTvMainData('minEnExPosition')        ;
+            const therePosition         =  this.GetThisTvMainData('therePosition')          ;
+            const allPosition           =  this.GetThisTvMainData('allPosition')            ;
+            const avgBuyPrice           =  this.GetThisTvMainData('avgBuyPrice')            ;
+            const netProfit             =  this.GetThisTvMainData('netProfit')              ;
+
+
 
             if (!isStrictTrue(mainData.ifOrderWaiting)) { return true }
 
@@ -1386,8 +1427,8 @@ export const TradeBot = {
                 if (ingOrderData.ing_buysell === CV.order_BUY) {
                     const newUncloseOrderLine = uncloseOrdersTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || CV.NA));
                     uncloseOrdersA2d.push(newUncloseOrderLine);
-                    if (!isStrictTrue(this.therePosition)) { this.therePosition = true }
-                    this.allPosition = ToStrictNumber(this.allPosition, 0) + ingOrderData.ing_qty ;
+                    if (!isStrictTrue(therePosition)) { this.therePosition = true }
+                    this.allPosition = ToStrictNumber(allPosition, 0) + ingOrderData.ing_qty ;
                     this.avgBuyPrice = ingOrderData.ing_avgBuyPrice ;
                     // this.netProfit 无变化
                 }
@@ -1410,11 +1451,11 @@ export const TradeBot = {
                         // uncloseOrdersA2d[indexOfBoughtOrder] = theBoughtOrder ; // 这一行可以去掉, 因为引用的直接是地址
                     } else {uncloseOrdersA2d.splice(indexOfBoughtOrder, 1)}
 
-                    this.allPosition = this.allPosition + ingOrderData.ing_qty ;
-                    if (this.allPosition < this.minEnExPosition) {this.allPosition = 0}
-                    this.therePosition = this.allPosition > this.minEnExPosition ? true : false ;
+                    this.allPosition = allPosition + ingOrderData.ing_qty ;
+                    if (this.allPosition < minEnExPosition) {this.allPosition = 0}
+                    this.therePosition = this.allPosition > minEnExPosition ? true : false ;
                     // this.avgBuyPrice 无变化
-                    this.netProfit = ToStrictNumber(this.netProfit, 0) + ingOrderData.ing_qty * (ingOrderData.ing_confirmPrice - this.avgBuyPrice) + ingOrderData.ing_tradeFee;
+                    this.netProfit = ToStrictNumber(netProfit, 0) + ingOrderData.ing_qty * (ingOrderData.ing_confirmPrice - avgBuyPrice) + ingOrderData.ing_tradeFee;
                 }
 
                 w_toClearRangeSet.add(toGCPData.ingOrderLine);
@@ -1499,12 +1540,9 @@ export const TradeBot = {
      * @returns string: 具体的出错信息
      */
     async WriteToGS_ReleaseLocks() {
-        const r_gslock = await this.GSLOCK_waitOK() ;
-        if (!isStrictTrue(r_gslock)) {return ToStrictString(r_gslock)}
-
-
-
         try {
+            this.UpdateDataToBot(this.tvData) ;
+
             if (this.alertMessageSet.size > 0) { this.alertMessage = StrFromSetMessage(this.alertMessageSet) }
 
             this.gcpWriteTime = Date.now();
@@ -1544,6 +1582,10 @@ export const TradeBot = {
                 range   : this.toGCPData.lockRange                                  ,
                 values  : [[CV.noLOCK]]                                             }
             ));
+
+
+            const r_gslock = await this.GSLOCK_waitOK() ;
+            if (!isStrictTrue(r_gslock)) {return ToStrictString(r_gslock)}
 
             this.thisLogs.AddNewLogLine('去往GS更新最终数据') ;
             await try3times(BatchUpdateGS, this.spreadsheetID, this.batchUpdateList) ;
@@ -1600,6 +1642,9 @@ export const TradeBot = {
 
 };
 
+if (!Object.hasOwn(TradeBot, 'TradeBotNumber')) { TradeBot.TradeBotNumber = Date.now() } // 新创建的TradeBot 设一个Number
+
+
 /**
  * 
  * @param {Object} tvData 
@@ -1607,7 +1652,6 @@ export const TradeBot = {
  * @returns 
  */
 export async function HandleTradeBot(tvData, thisLogs) {
-    const gcpGetTime = Date.now() ;
     // 清洗来自TV的数据
     Object.keys(tvData).forEach(key => {
         tvData[key] = ToStrictNumBoolStr(tvData[key], 'notAvailableValueFromTV') ;
@@ -1635,16 +1679,8 @@ export async function HandleTradeBot(tvData, thisLogs) {
     if (!r_CheckAllPosition_withBroker || isStrictString(r_CheckAllPosition_withBroker)) { throw new Error('CheckAllPosition_withBroker() 失败: \n' + r_CheckAllPosition_withBroker) }
     if (isStrictTrue(r_CheckAllPosition_withBroker)) { thisLogs.AddNewLogLine('CheckAllPosition_withBroker() success') }
 
-    // 将 mainData 和 tvData 写入到this大对象中
-    // 必须先写入mainData, 再写入tvData
-    // 因为mainData包含旧数据
-    bot.UpdateDataToBot(bot.mainData)                           ;
-    bot.UpdateDataToBot(bot.tvData)                             ;
-    bot.gcpGetTime  = gcpGetTime  ;
-    thisLogs.AddNewLogLine('UpdateDataToBot() success')     ;
-
-    bot.ReNew();
-    thisLogs.AddNewLogLine('ReNew() success')   ;
+    bot.CalcuBuySellLimit();
+    thisLogs.AddNewLogLine('CalcuBuySellLimit() success');
 
     thisLogs.AddNewLogLine('去执行ToCheckFundFee()') ;
     const r_ToCheckFundFee = await bot.ToCheckFundFee();
