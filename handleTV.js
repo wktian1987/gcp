@@ -320,7 +320,7 @@ export const TradeBot = {
         else if (key === 'uncloseOrdersTitleA') { value = this.uncloseOrdersTitleA}
         else if (key === 'tradeHistoryTitleA' ) { value = this.tradeHistoryTitleA }
         else {value = this[key] ?? this.tvData[key] ?? this.mainData[key] ?? null}
-        if (value === null) {throw new Error('GetThisTvMainData error')} else {return value}
+        if (value === null) {throw new Error(`GetThisTvMainData error: ${key}`)} else {return value}
     } ,
 
     /**
@@ -1517,6 +1517,8 @@ export const TradeBot = {
      */
     async WriteToGS_ReleaseLocks() {
         try {
+            if (isStrictTrue(this.toReNewBeforeWrite)) { this.renewData() }
+
             this.UpdateDataToBot(this.tvData) ;
 
             if (this.alertMessageSet.size > 0) { this.alertMessage = StrFromSetMessage(this.alertMessageSet) }
@@ -1677,7 +1679,6 @@ export async function HandleTradeBot(tvData, thisLogs) {
     if (!r_ToCheckWaitingOrder || isStrictString(r_ToCheckWaitingOrder)) { throw new Error('ToCheckWaitingOrder() 失败: \n' + r_ToCheckWaitingOrder) }
     if (isStrictTrue(r_ToCheckWaitingOrder)) { thisLogs.AddNewLogLine('ToCheckWaitingOrder() success') }
 
-    if (isStrictTrue(bot.toReNewBeforeWrite)) {bot.renewData()}
     thisLogs.AddNewLogLine('去执行WriteToGS_ReleaseLocks()') ;
     const r_WriteToGS_ReleaseLocks = await bot.WriteToGS_ReleaseLocks();
     if (!r_WriteToGS_ReleaseLocks || isStrictString(r_WriteToGS_ReleaseLocks)) { throw new Error('WriteToGS_ReleaseLocks() 失败: \n' + r_WriteToGS_ReleaseLocks) }
