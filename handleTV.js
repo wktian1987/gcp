@@ -286,7 +286,7 @@ export const TradeBot = {
             let resetGSLOCKMessage = '收到resetGSLOCK信号, GSLOCK已释放';
             // await UpdateGS(this.spreadsheetID, toGCPData.lockRange, [[CV.noLOCK]]);
             await try3times(UpdateGS, this.spreadsheetID, this.toGCPData.lockRange, [[CV.noLOCK]]);
-            await this.Get_toGCPData();
+            this.toGCPData = A2dToCleanObj(await try3times(GetGS, this.spreadsheetID, CV.toGCPRanges)) ;
             currentLock = this.toGCPData.LOCK;
             if (isStrictTrue(currentLock !== CV.noLOCK)) { 
                 resetGSLOCKMessage = '收到RESETGSLOCK信号, 但往GS写入noLOCK失败' ;
@@ -359,18 +359,6 @@ export const TradeBot = {
      * @returns false: 运行中有错误
      */
     isRunningWell() { return TradeBot[this.tbName_runningWell].size === 0 },
-
-    /**
-     * 获取当前toGCPData
-     * @returns {Promise<Object>}
-     */
-    async Get_toGCPData() { return A2dToCleanObj(await try3times(GetGS, this.spreadsheetID, CV.toGCPRanges)) },
-
-    // /**
-    //  * 检测当前GS中分布式锁的真实归属,
-    //  * @returns {Promise<String>} String: 当前的lockName
-    //  */
-    // async CheckLockFromGS(NotGotLockValueTo = 'NotGotLockValue') {return ( await this.Get_toGCPData() ) ?.LOCK ?? NotGotLockValueTo } ,
 
     async GSLOCK_waitOK() {
         await this.task_setGSLOCK ;
