@@ -921,11 +921,12 @@ export const TradeBot = {
     CalcuBuySellLimit() {
         this.renewData() ;
 
-        const timestamp = this.GetThisTvMainData('timestamp')     ;
-        const waveUpChg = this.GetThisTvMainData('waveUpChg')     ;
-        const waveDnChg = this.GetThisTvMainData('waveDnChg')     ;
-        const roundHgh  = this.GetThisTvMainData('roundHgh')      ;
-        const roundLow  = this.GetThisTvMainData('roundLow')      ;
+        const timestamp             = this.GetThisTvMainData('timestamp')           ;
+        const TradingSymbolPrice    = this.GetThisTvMainData('TradingSymbolPrice')  ;
+        const waveUpChg             = this.GetThisTvMainData('waveUpChg')           ;
+        const waveDnChg             = this.GetThisTvMainData('waveDnChg')           ;
+        const roundHgh              = this.GetThisTvMainData('roundHgh')            ;
+        const roundLow              = this.GetThisTvMainData('roundLow')            ;
 
         const realTradeTime             = this.GetThisTvMainData('realTradeTime')               ;
         const realTradeTimeTo           = this.GetThisTvMainData('realTradeTimeTo')             ;
