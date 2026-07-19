@@ -416,8 +416,8 @@ export const TradeBot = {
                     gsData.ingOrderTitleA = CleanArrayToNumStrBool(rawDataA2d[0]);
                 } else if (v.name === 'ingOrderData') {
                     const rawDataA2d = valuesArray[i];
-                    const ingOrderLineA = gsData.mainData.ing_orderStatus === CV.order_waiting ? CleanArrayToNumStrBool(rawDataA2d[0]) : null;
-                    gsData.ingOrderData = gsData.mainData.ing_orderStatus === CV.order_waiting ? A2LinesToCleanObj([gsData.ingOrderTitleA, ingOrderLineA]) : null;
+                    const ingOrderLineA = gsData.mainData.ing_orderStatus === CV.order_waiting ? CleanArrayToNumStrBool(rawDataA2d[0]) : [];
+                    gsData.ingOrderData = gsData.mainData.ing_orderStatus === CV.order_waiting ? A2LinesToCleanObj([gsData.ingOrderTitleA, ingOrderLineA]) : {};
                 } else if (v.name === 'uncloseOrdersTitleA') {
                     const rawDataA2d = valuesArray[i];
                     gsData.uncloseOrdersTitleA = CleanArrayToNumStrBool(rawDataA2d[0]);
@@ -1344,7 +1344,6 @@ export const TradeBot = {
             const tvData                =  this.getThisTvMainData('tvData')                 ;
             const toGCPData             =  this.getThisTvMainData('toGCPData')              ;
             const mainData              =  this.getThisTvMainData('mainData')               ;
-            const ifOrderWaiting        =  this.getThisTvMainData('ifOrderWaiting')         ;
             const ingOrderData          =  this.getThisTvMainData('ingOrderData')           ;
             const ingOrderTitleA        =  this.getThisTvMainData('ingOrderTitleA')         ;
             const uncloseOrdersA2d      =  this.getThisTvMainData('uncloseOrdersA2d')       ;
@@ -1352,6 +1351,7 @@ export const TradeBot = {
             const tradeHistoryTitleA    =  this.getThisTvMainData('tradeHistoryTitleA')     ;
 
             const minEnExPosition       =  this.getThisTvMainData('minEnExPosition')        ;
+            const ifOrderWaiting        =  this.getThisTvMainData('ifOrderWaiting')         ;
             const therePosition         =  this.getThisTvMainData('therePosition')          ;
             const allPosition           =  this.getThisTvMainData('allPosition')            ;
             const avgBuyPrice           =  this.getThisTvMainData('avgBuyPrice')            ;
