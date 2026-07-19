@@ -84,6 +84,8 @@ export async function HandleAllPrice(tvData, thisLogs) {
 }
 
 export const TradeBot = {
+    TradeBotNumber : Date.now() ,
+
     /**
      * 为大对象和子对象创建基本的运行参数 ;
      * 每次子对象创建后, 必须运行这个函数 ;
@@ -93,8 +95,6 @@ export const TradeBot = {
      * @returns {string}    string:出错信息
      */
     async CreateBasicAttr(tvData, thisLogs) {
-        if (!Object.hasOwn(TradeBot, 'TradeBotNumber')) { TradeBot.TradeBotNumber = tvData.timestamp } // 新创建的TradeBot 设一个Number
-
         this.TradeBotNumber     =  TradeBot.TradeBotNumber                          ;
         this.TradeBotNumberTime =  GetTimeStringWithOffset(8, this.TradeBotNumber)  ;
         this.thisLogs           =  thisLogs                                         ;
@@ -1626,9 +1626,6 @@ export const TradeBot = {
     },
 
 };
-
-if (!Object.hasOwn(TradeBot, 'TradeBotNumber')) { TradeBot.TradeBotNumber = Date.now() } // 新创建的TradeBot 设一个Number
-
 
 /**
  * 
