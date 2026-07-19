@@ -468,8 +468,8 @@ export const TradeBot = {
                 
             if (isStrictTrue(this.mainData.initiated)) {return true}
 
-            // const r_gslock = await this.gslock_waitOK() ;
-            // if (!isStrictTrue(r_gslock)) { throw new Error(ToStrictString(r_gslock)) }
+            const r_gslock = await this.gslock_waitOK() ;
+            if (!isStrictTrue(r_gslock)) { throw new Error(ToStrictString(r_gslock)) }
 
             // 初始化时间不能在GS中预设的交易开始时间之后
             if (this.tvData.timestamp > this.mainData.realTradeTime) {throw new Error('初始化时间不能在GS中预设的交易开始时间之后') }
@@ -1180,8 +1180,8 @@ export const TradeBot = {
 
             if (isStrictFalse(toSell)) { return true }
 
-            // const r_gslock = await this.gslock_waitOK() ;
-            // if (!isStrictTrue(r_gslock)) { throw new Error(ToStrictString(r_gslock)) }
+            const r_gslock = await this.gslock_waitOK() ;
+            if (!isStrictTrue(r_gslock)) { throw new Error(ToStrictString(r_gslock)) }
 
             S.ing_orderID           = 'S-' + GetTimeStringWithOffset(8, timestamp)      ;
             S.ing_orderTimestamp    = Date.now()                                        ;
@@ -1302,8 +1302,8 @@ export const TradeBot = {
 
             if (isStrictFalse(toBuy)) { return true }
 
-            // const r_gslock = await this.gslock_waitOK() ;
-            // if (!isStrictTrue(r_gslock)) { throw new Error(ToStrictString(r_gslock)) }
+            const r_gslock = await this.gslock_waitOK() ;
+            if (!isStrictTrue(r_gslock)) { throw new Error(ToStrictString(r_gslock)) }
 
             S.ing_orderID           = 'B-' + GetTimeStringWithOffset(8, timestamp)          ;
             S.ing_orderTimestamp    = Date.now()                                            ;
