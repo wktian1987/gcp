@@ -947,6 +947,16 @@ export const TradeBot = {
         this.lowToSell = basicLowToSell;
         if (therePosition) { this.lowToSell = Math.max(basicLowToSell, this.exDifficultySellPrice) }
 
+        // if ((hghBuyPriceUnclose / TradingSymbolPrice > roundHgh / roundLow) && (hghBuyPriceUnclose > (1 + waveUpChg) * TradingSymbolPrice)) {
+        this.cutTooHighBuyPrice = CV.NA ;
+        if (therePosition) {
+            this.cutTooHighBuyPrice = Math.min(
+                hghBuyPriceUnclose / (roundHgh / roundLow) ,
+                hghBuyPriceUnclose / (1 + waveUpChg)
+            ) ;
+        }
+
+
         this.inTradingTime = timestamp > realTradeTime && timestamp < realTradeTimeTo;
 
         // 判断严格地不能买卖条件
