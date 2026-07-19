@@ -206,7 +206,6 @@ export const TradeBot = {
             this.uncloseOrdersA2d       =  TradeBot[this.tbName_gsData].uncloseOrdersA2d     ;
             this.tradeHistoryTitleA     =  TradeBot[this.tbName_gsData].tradeHistoryTitleA   ;
             if (this.TradeBotNumber !== this.mainData.TradeBotNumber) { throw new Error('this.TradeBotNumber !== this.mainData.TradeBotNumber') }
-
             thisLogs.AddNewLogLine('直接从缓存中获取gsData') ;
         }
 
@@ -923,6 +922,7 @@ export const TradeBot = {
         const MaxGrid                   = this.getThisTvMainData('MaxGrid')                     ;
         const ifOrderWaiting            = this.getThisTvMainData('ifOrderWaiting')              ;
         const gridNum                   = this.getThisTvMainData('gridNum')                     ;
+        const hghBuyPriceUnclose        = this.getThisTvMainData('hghBuyPriceUnclose')          ;
         const enDifficulty              = this.getThisTvMainData('enDifficulty')                ;
         const exDifficulty              = this.getThisTvMainData('exDifficulty')                ;
         const therePosition             = this.getThisTvMainData('therePosition')               ;
@@ -1136,7 +1136,7 @@ export const TradeBot = {
                 S.ing_reason = 'must sell Profit';
             }
             // cut too high buy order
-            if ((hghBuyPriceUnclose / TradingSymbolPrice > roundHgh / roundLow) && (hghBuyPriceUnclose > (1 + waveUpChg) * TradingSymbolPrice)) {
+            if (TradingSymbolPrice < this.cut) {
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(hghBuySerialUnclose));
                 S.ing_orderPrice = CV.NA;
@@ -1374,6 +1374,7 @@ export const TradeBot = {
             const allPosition           =  this.getThisTvMainData('allPosition')            ;
             const avgBuyPrice           =  this.getThisTvMainData('avgBuyPrice')            ;
             const netProfit             =  this.getThisTvMainData('netProfit')              ;
+            const hghBuyPriceUnclose    =  this.getThisTvMainData('hghBuyPriceUnclose')     ;
 
 
 
@@ -1421,6 +1422,8 @@ export const TradeBot = {
                 if (ingOrderData.ing_buysell === CV.order_BUY) {
                     const newUncloseOrderLine = uncloseOrdersTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || CV.NA));
                     uncloseOrdersA2d.push(newUncloseOrderLine);
+
+                    if (ingOrderData.confirmPrice > hghBuyPriceUnclose) { this.hghBuyPriceUnclose = ingOrderData.confirmPrice }
                     if (!isStrictTrue(therePosition)) { this.therePosition = true }
                     this.allPosition = ToStrictNumber(allPosition, 0) + ingOrderData.ing_qty ;
                     this.avgBuyPrice = ingOrderData.ing_avgBuyPrice ;
