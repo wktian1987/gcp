@@ -198,6 +198,7 @@ export const TradeBot = {
             if (!isStrictTrue(r_Get_gsData) || isStrictString(r_Get_gsData)) { throw new Error('Get_gsData() 失败: \n' + r_Get_gsData) }
             else { thisLogs.AddNewLogLine('Get_gsData()成功') }
         } else {
+            if (this.TradeBotNumber !== this.mainData.TradeBotNumber) {throw new ErrorEvent('this.TradeBotNumber !== this.mainData.TradeBotNumber')}
             this.toGCPData              =  TradeBot[this.tbName_gsData].toGCPData            ;
             this.mainData               =  TradeBot[this.tbName_gsData].mainData             ;
             this.ingOrderTitleA         =  TradeBot[this.tbName_gsData].ingOrderTitleA       ;
