@@ -194,7 +194,7 @@ export const TradeBot = {
 
         if (isEmptyObject(TradeBot[this.tbName_gsData]) || !TradeBot[this.tbName_gsData].getFromLastUpdate) {
             thisLogs.AddNewLogLine('缓存中未发现gsData数据, 去执行Get_gsData()');
-            const r_Get_gsData = await this.Get_gsData();
+            const r_Get_gsData = await this.get_gsData();
             if (!isStrictTrue(r_Get_gsData) || isStrictString(r_Get_gsData)) { throw new Error('Get_gsData() 失败: \n' + r_Get_gsData) }
             else { thisLogs.AddNewLogLine('Get_gsData()成功') }
         } else {thisLogs.AddNewLogLine('直接从缓存中获取gsData')}
@@ -284,7 +284,7 @@ export const TradeBot = {
 
         if (currentLock !== CV.noLOCK) {
             const errMessage = '上一次运行大TradeBot锁被释放的情况下, GS锁未被释放';
-            this.AddRunningWellMessage(errMessage);
+            this.addRunningWellMessage(errMessage);
             throw new Error(errMessage);
         }
 
@@ -337,7 +337,7 @@ export const TradeBot = {
      * 将新的出错信息写入 大TradeBot对象 中
      * @param {string} errMessage 
      */
-    AddRunningWellMessage(errMessage) { AddSetMessage(TradeBot[this.tbName_runningWell], errMessage) } ,
+    addRunningWellMessage(errMessage) { AddSetMessage(TradeBot[this.tbName_runningWell], errMessage) } ,
 
     /**
      * 依据runningWellSet中是否有元素来判断是否有运行错误
@@ -346,7 +346,7 @@ export const TradeBot = {
      */
     isRunningWell() { return TradeBot[this.tbName_runningWell].size === 0 },
 
-    async GSLOCK_waitOK() {
+    async gslock_waitOK() {
         await this.task_setGSLOCK ;
         if (this.task_gslock_isOK) {return true} 
         else {return '检查set GSLOCK，发现设置失败'}
@@ -383,7 +383,7 @@ export const TradeBot = {
      * @returns true: 获取数据并写入对象成功
      * @returns string: 具体的出错信息
      */
-    async Get_gsData() {
+    async get_gsData() {
         try {
             const toGCPData = Object.hasOwn(this, 'toGCPData') && Object.hasOwn(this.toGCPData, 'mainRange')    ?
                 this.toGCPData                                                                                  :
@@ -438,7 +438,7 @@ export const TradeBot = {
 
             if (gsData.mainData.TradingSymbol !== this.tvData.TradingSymbol) {
                 const errMessage = 'The TradingSymbol in GS is different from TV' ;
-                this.AddRunningWellMessage(errMessage) ; // 这是很严重的错误, 需要记录
+                this.addRunningWellMessage(errMessage) ; // 这是很严重的错误, 需要记录
                 throw new Error(errMessage) ;
             }
 
@@ -461,8 +461,8 @@ export const TradeBot = {
                 
             if (isStrictTrue(this.mainData.initiated)) {return true}
 
-            const r_gslock = await this.GSLOCK_waitOK() ;
-            if (!isStrictTrue(r_gslock)) {return ToStrictString(r_gslock)}
+            // const r_gslock = await this.gslock_waitOK() ;
+            // if (!isStrictTrue(r_gslock)) {return ToStrictString(r_gslock)}
 
             // 初始化时间不能在GS中预设的交易开始时间之后
             if (this.tvData.timestamp > this.mainData.realTradeTime) {throw new Error('初始化时间不能在GS中预设的交易开始时间之后') }
@@ -522,11 +522,11 @@ export const TradeBot = {
             this.thisLogs.AddNewLogLine('去GS更新initiate') ;
             await try3times(BatchUpdateGS, this.spreadsheetID, i_toBatchUpdateList) ;
 
-            const r_Get_gsData = await this.Get_gsData() ;
+            const r_Get_gsData = await this.get_gsData() ;
             if (!isStrictTrue(r_Get_gsData) || isStrictString(r_Get_gsData)) {throw new Error('Get_gsData() 失败: \n' + r_Get_gsData)}
             if (!isStrictTrue(this.mainData.initiated)) {
                 await Sleep(2000) ; // 第一次校验不成功的话, 等2s再校验一次
-                const r_Get_gsData = await this.Get_gsData() ;
+                const r_Get_gsData = await this.get_gsData() ;
                 if (isStrictString(r_Get_gsData)) {throw new Error('Get_gsData() 失败: \n' + r_Get_gsData)}
                 if (!isStrictTrue(this.mainData.initiated)) {throw new Error('初始化后经校验初始化结果未更新') }
             }
@@ -539,7 +539,7 @@ export const TradeBot = {
 
         } catch(e) {
             // 这属于严重核心错误, 不必解锁了, 让它一直锁着, 等手动调试
-            this.AddRunningWellMessage(e.message) ;
+            this.addRunningWellMessage(e.message) ;
             return e.message ;
         }
     } ,
@@ -578,7 +578,7 @@ export const TradeBot = {
             return true ;
         } catch (e) {
             const errMessage = `核心错误: ${e.message}` ;
-            this.AddRunningWellMessage(errMessage);
+            this.addRunningWellMessage(errMessage);
             return errMessage ;
         }
 
@@ -605,7 +605,7 @@ export const TradeBot = {
      * @param {Object} newData 需要写入的新数据, 需保证newData是clean状态
      * @returns string: 失败返回具体熔断错误字符串
      */
-    UpdateDataToBot(newData) {
+    updateDataToBot(newData) {
         // 前置安全门禁与类型确权
         if (!isObjectOfKeyValue(newData)) {
             return 'incoming newData must be a valid plain object';
@@ -798,7 +798,7 @@ export const TradeBot = {
      * @returns false: 表示永远不会触发stopPriceF
      * @returns number: 计算出的stopPriceF
      */
-    GetStopPriceF() {
+    getStopPriceF() {
         const TradingSymbolPrice = this.getThisTvMainData('TradingSymbolPrice')    ;
         const stopRate4F         = this.getThisTvMainData('stopRate4F')            ;
         const notStop4C          = this.getThisTvMainData('notStop4C')             ;
@@ -816,7 +816,7 @@ export const TradeBot = {
      * @returns false: 表示永远不会触发stopPriceC
      * @returns number: 计算出的stopPriceC
      */
-    GetStopPriceC() {
+    getStopPriceC() {
         const TradingSymbolPrice    = this.getThisTvMainData('TradingSymbolPrice')     ;
         const stopRate4C            = this.getThisTvMainData('stopRate4C')             ;
         const notStop4F             = this.getThisTvMainData('notStop4F')              ;
@@ -834,7 +834,7 @@ export const TradeBot = {
      * @returns false: 表示永远不会触发liquidatePrice
      * @returns number: 计算出的liquidatePrice
      */
-    GetLiquidPrice() {
+    getLiquidPrice() {
         const TradingSymbolPrice = this.getThisTvMainData('TradingSymbolPrice') ;
 
         const pct_liquid = this.chgPctIfVALUEFchg(0, 0, -1) ;
@@ -879,9 +879,9 @@ export const TradeBot = {
         if (this.allCoin < this.lowestCoin) { this.toWriteHghLow = true; this.lowestCoin = this.allCoin; AddSetMessage(this.alertMessageSet, "↓ new lowestCoin"); }
 
         // [this.liquidatePrice, this.stopPriceC, this.stopPriceF] = this.GetLiquidateStopPrice();
-        this.liquidatePrice = isStrictTrue(therePosition) ? this.GetLiquidPrice() : CV.NA ;
-        this.stopPriceC     = isStrictTrue(therePosition) ? this.GetStopPriceC()  : CV.NA ;
-        this.stopPriceF     = isStrictTrue(therePosition) ? this.GetStopPriceF()  : CV.NA ;
+        this.liquidatePrice = isStrictTrue(therePosition) ? this.getLiquidPrice() : CV.NA ;
+        this.stopPriceC     = isStrictTrue(therePosition) ? this.getStopPriceC()  : CV.NA ;
+        this.stopPriceF     = isStrictTrue(therePosition) ? this.getStopPriceF()  : CV.NA ;
 
         // 账户状态更新
         this.accStatus = 'Normal';
@@ -1162,8 +1162,8 @@ export const TradeBot = {
 
             if (isStrictFalse(toSell)) { return true }
 
-            const r_gslock = await this.GSLOCK_waitOK();
-            if (!isStrictTrue(r_gslock)) { return ToStrictString(r_gslock) }
+            // const r_gslock = await this.gslock_waitOK();
+            // if (!isStrictTrue(r_gslock)) { return ToStrictString(r_gslock) }
 
             S.ing_orderID           = 'S-' + GetTimeStringWithOffset(8, timestamp)      ;
             S.ing_orderTimestamp    = Date.now()                                        ;
@@ -1205,7 +1205,7 @@ export const TradeBot = {
         } catch(e) {
             // 这是核心错误, 不能解锁, 需要手动查看
             const errMessage = `核心错误: ${e.message}`.trim() ;
-            this.AddRunningWellMessage(errMessage) ;
+            this.addRunningWellMessage(errMessage) ;
             return errMessage ;
         }
 
@@ -1284,8 +1284,8 @@ export const TradeBot = {
 
             if (isStrictFalse(toBuy)) { return true }
 
-            const r_gslock = await this.GSLOCK_waitOK();
-            if (!isStrictTrue(r_gslock)) { return ToStrictString(r_gslock) }
+            // const r_gslock = await this.gslock_waitOK();
+            // if (!isStrictTrue(r_gslock)) { return ToStrictString(r_gslock) }
 
             S.ing_orderID           = 'B-' + GetTimeStringWithOffset(8, timestamp)          ;
             S.ing_orderTimestamp    = Date.now()                                            ;
@@ -1328,7 +1328,7 @@ export const TradeBot = {
 
         } catch (e) {
             const errMessage = `核心错误: ${e.message}`.trim() ;
-            this.AddRunningWellMessage(errMessage) ;
+            this.addRunningWellMessage(errMessage) ;
             return errMessage ;
         }
     },
@@ -1519,7 +1519,7 @@ export const TradeBot = {
         try {
             if (isStrictTrue(this.toReNewBeforeWrite)) { this.renewData() }
 
-            this.UpdateDataToBot(this.tvData) ;
+            this.updateDataToBot(this.tvData) ;
 
             if (this.alertMessageSet.size > 0) { this.alertMessage = StrFromSetMessage(this.alertMessageSet) }
 
@@ -1562,34 +1562,39 @@ export const TradeBot = {
             ));
 
 
-            const r_gslock = await this.GSLOCK_waitOK() ;
-            if (!isStrictTrue(r_gslock)) {return ToStrictString(r_gslock)}
+            // const r_gslock = await this.gslock_waitOK() ;
+            // if (!isStrictTrue(r_gslock)) {return ToStrictString(r_gslock)}
 
             this.thisLogs.AddNewLogLine('去往GS更新最终数据') ;
             await try3times(BatchUpdateGS, this.spreadsheetID, this.batchUpdateList) ;
             this.thisLogs.AddNewLogLine('往GS更新最终数据成功') ;
 
-            this.thisLogs.AddNewLogLine('去执行Get_gsData(), 将获得数据存入缓存');
-            const r_Get_gsData = await this.Get_gsData();
-            if (!isStrictTrue(r_Get_gsData) || isStrictString(r_Get_gsData)) { throw new Error('Get_gsData() 失败: \n' + r_Get_gsData) }
-            else { this.thisLogs.AddNewLogLine('Get_gsData()并写入缓存成功') }
+            this.thisLogs.AddNewLogLine('去执行get_gsData(), 将获得数据存入缓存');
+            const r_get_gsData = await this.get_gsData();
+            if      (!isStrictTrue(r_get_gsData) || isStrictString(r_get_gsData)) { throw new Error('get_gsData() 失败: \n' + r_get_gsData) }
+            else if (this.mainData.timestamp !== this.tvData.timestamp) {throw new Error('get_gsData() 失败: timestamp 不匹配\n') }
+            else { 
+                this.thisLogs.AddNewLogLine('get_gsData()并写入缓存成功') ;
+                this.toReadA2d    =  TradeBot[this.tbName_gsData].toReadA2d  ;
+                this.toReadA2d    =  TradeBot[this.tbName_gsData].toReadA2d  ;
+            }
 
             this.thisLogs.AddNewLogLine('去发送 TG消息 和 Email信息');
-            this.SendToTG(this.toReadA2d).catch(() => { });
-            this.SendToEmail(this.toEmailA2d).catch(() => { });
+            this.sendToTG(this.toReadA2d).catch(() => { });
+            this.sendToEmail(this.toEmailA2d).catch(() => { });
 
             const r_releaseTradeBotLOCK = this.releaseTradeBotLOCK();
             if (!r_releaseTradeBotLOCK || isStrictString(r_releaseTradeBotLOCK)) {
                 const errMessage = 'ReleaseTradeBotLOCK() 失败: ' + r_releaseTradeBotLOCK ;
                 // 无法为GS解锁, 是严重错误, 需要手动解锁
-                this.AddRunningWellMessage(errMessage);
+                this.addRunningWellMessage(errMessage);
                 throw new Error(errMessage);
             }
 
             return true;
         } catch (e) {
             const errMessage = `核心错误: ${e.message}`.trim();
-            this.AddRunningWellMessage(errMessage);
+            this.addRunningWellMessage(errMessage);
             return errMessage;
         }
 
@@ -1599,7 +1604,7 @@ export const TradeBot = {
      * 发送TG
      * @returns 会抛出错误, 但无返回值
      */
-    async SendToTG(toReadA2d) {
+    async sendToTG(toReadA2d) {
         const messageString = FormatMatrixToString(toReadA2d);
         const subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime);
         await SendTG(subject, messageString);
@@ -1609,7 +1614,7 @@ export const TradeBot = {
      * 发送Email
      * @returns 会抛出错误, 但无返回值
      */
-    async SendToEmail(toEmailA2d) {
+    async sendToEmail(toEmailA2d) {
         if (this.toSendEmail) {
             const messageHTML = ConvertRowsToHtmlTable(toEmailA2d);
             const mail_subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime);
