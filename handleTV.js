@@ -198,7 +198,6 @@ export const TradeBot = {
             if (!isStrictTrue(r_Get_gsData) || isStrictString(r_Get_gsData)) { throw new Error('Get_gsData() 失败: \n' + r_Get_gsData) }
             else { thisLogs.AddNewLogLine('Get_gsData()成功') }
         } else {
-            if (this.TradeBotNumber !== this.mainData.TradeBotNumber) { throw new Error('this.TradeBotNumber !== this.mainData.TradeBotNumber') }
             this.toGCPData              =  TradeBot[this.tbName_gsData].toGCPData            ;
             this.mainData               =  TradeBot[this.tbName_gsData].mainData             ;
             this.ingOrderTitleA         =  TradeBot[this.tbName_gsData].ingOrderTitleA       ;
@@ -206,6 +205,7 @@ export const TradeBot = {
             this.uncloseOrdersTitleA    =  TradeBot[this.tbName_gsData].uncloseOrdersTitleA  ;
             this.uncloseOrdersA2d       =  TradeBot[this.tbName_gsData].uncloseOrdersA2d     ;
             this.tradeHistoryTitleA     =  TradeBot[this.tbName_gsData].tradeHistoryTitleA   ;
+            if (this.TradeBotNumber !== this.mainData.TradeBotNumber) { throw new Error('this.TradeBotNumber !== this.mainData.TradeBotNumber') }
 
             thisLogs.AddNewLogLine('直接从缓存中获取gsData') ;
         }
