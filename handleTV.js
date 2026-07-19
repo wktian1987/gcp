@@ -192,22 +192,21 @@ export const TradeBot = {
         }
         if (!isEmptyObject(TradeBot[this.tbName_sheetsID]) && isObjectOfKeyValue(TradeBot[this.tbName_sheetsID])) {this.sheetsID = TradeBot[this.tbName_sheetsID] }
 
-        if (isEmptyObject(TradeBot[this.tbName_gsData]) || !TradeBot[this.tbName_gsData].getFromLastUpdate) {
+        if (isEmptyObject(TradeBot[this.tbName_gsData]) ) {
             thisLogs.AddNewLogLine('缓存中未发现gsData数据, 去执行Get_gsData()');
             const r_Get_gsData = await this.get_gsData();
             if (!isStrictTrue(r_Get_gsData) || isStrictString(r_Get_gsData)) { throw new Error('Get_gsData() 失败: \n' + r_Get_gsData) }
             else { thisLogs.AddNewLogLine('Get_gsData()成功') }
-        } else {thisLogs.AddNewLogLine('直接从缓存中获取gsData')}
-        if (!isEmptyObject(TradeBot[this.tbName_gsData]) && isObjectOfKeyValue(TradeBot[this.tbName_gsData])) {
+        } else {
             this.toGCPData              =  TradeBot[this.tbName_gsData].toGCPData            ;
             this.mainData               =  TradeBot[this.tbName_gsData].mainData             ;
-            this.ingOrderData           =  TradeBot[this.tbName_gsData].ingOrderData         ;
             this.ingOrderTitleA         =  TradeBot[this.tbName_gsData].ingOrderTitleA       ;
-            this.uncloseOrdersA2d       =  TradeBot[this.tbName_gsData].uncloseOrdersA2d     ;
+            this.ingOrderData           =  TradeBot[this.tbName_gsData].ingOrderData         ;
             this.uncloseOrdersTitleA    =  TradeBot[this.tbName_gsData].uncloseOrdersTitleA  ;
+            this.uncloseOrdersA2d       =  TradeBot[this.tbName_gsData].uncloseOrdersA2d     ;
             this.tradeHistoryTitleA     =  TradeBot[this.tbName_gsData].tradeHistoryTitleA   ;
 
-            TradeBot[this.tbName_gsData].getFromLastUpdate = false ;
+            thisLogs.AddNewLogLine('直接从缓存中获取gsData') ;
         }
 
         if (TradeBot[this.tbName_tgToReadGSCMD]) {
@@ -442,7 +441,15 @@ export const TradeBot = {
                 throw new Error(errMessage) ;
             }
 
-            TradeBot[this.tbName_gsData].getFromLastUpdate = true ;
+            this.toGCPData              =  TradeBot[this.tbName_gsData].toGCPData            ;
+            this.mainData               =  TradeBot[this.tbName_gsData].mainData             ;
+            this.ingOrderTitleA         =  TradeBot[this.tbName_gsData].ingOrderTitleA       ;
+            this.ingOrderData           =  TradeBot[this.tbName_gsData].ingOrderData         ;
+            this.uncloseOrdersTitleA    =  TradeBot[this.tbName_gsData].uncloseOrdersTitleA  ;
+            this.uncloseOrdersA2d       =  TradeBot[this.tbName_gsData].uncloseOrdersA2d     ;
+            this.tradeHistoryTitleA     =  TradeBot[this.tbName_gsData].tradeHistoryTitleA   ;
+            this.toReadA2d              =  TradeBot[this.tbName_gsData].toReadA2d            ;
+            this.toEmailA2d             =  TradeBot[this.tbName_gsData].toEmailA2d           ;
 
             return true ;
 
@@ -461,8 +468,8 @@ export const TradeBot = {
                 
             if (isStrictTrue(this.mainData.initiated)) {return true}
 
-            // const r_gslock = await this.gslock_waitOK() ;
-            // if (!isStrictTrue(r_gslock)) {return ToStrictString(r_gslock)}
+            const r_gslock = await this.gslock_waitOK() ;
+            if (!isStrictTrue(r_gslock)) { throw new Error(ToStrictString(r_gslock)) }
 
             // 初始化时间不能在GS中预设的交易开始时间之后
             if (this.tvData.timestamp > this.mainData.realTradeTime) {throw new Error('初始化时间不能在GS中预设的交易开始时间之后') }
@@ -1162,8 +1169,8 @@ export const TradeBot = {
 
             if (isStrictFalse(toSell)) { return true }
 
-            // const r_gslock = await this.gslock_waitOK();
-            // if (!isStrictTrue(r_gslock)) { return ToStrictString(r_gslock) }
+            const r_gslock = await this.gslock_waitOK() ;
+            if (!isStrictTrue(r_gslock)) { throw new Error(ToStrictString(r_gslock)) }
 
             S.ing_orderID           = 'S-' + GetTimeStringWithOffset(8, timestamp)      ;
             S.ing_orderTimestamp    = Date.now()                                        ;
@@ -1284,8 +1291,8 @@ export const TradeBot = {
 
             if (isStrictFalse(toBuy)) { return true }
 
-            // const r_gslock = await this.gslock_waitOK();
-            // if (!isStrictTrue(r_gslock)) { return ToStrictString(r_gslock) }
+            const r_gslock = await this.gslock_waitOK() ;
+            if (!isStrictTrue(r_gslock)) { throw new Error(ToStrictString(r_gslock)) }
 
             S.ing_orderID           = 'B-' + GetTimeStringWithOffset(8, timestamp)          ;
             S.ing_orderTimestamp    = Date.now()                                            ;
@@ -1562,8 +1569,8 @@ export const TradeBot = {
             ));
 
 
-            // const r_gslock = await this.gslock_waitOK() ;
-            // if (!isStrictTrue(r_gslock)) {return ToStrictString(r_gslock)}
+            const r_gslock = await this.gslock_waitOK() ;
+            if (!isStrictTrue(r_gslock)) { throw new Error(ToStrictString(r_gslock)) }
 
             this.thisLogs.AddNewLogLine('去往GS更新最终数据') ;
             await try3times(BatchUpdateGS, this.spreadsheetID, this.batchUpdateList) ;
@@ -1573,11 +1580,7 @@ export const TradeBot = {
             const r_get_gsData = await this.get_gsData();
             if      (!isStrictTrue(r_get_gsData) || isStrictString(r_get_gsData)) { throw new Error('get_gsData() 失败: \n' + r_get_gsData) }
             else if (this.mainData.timestamp !== this.tvData.timestamp) {throw new Error('get_gsData() 失败: timestamp 不匹配\n') }
-            else { 
-                this.thisLogs.AddNewLogLine('get_gsData()并写入缓存成功') ;
-                this.toReadA2d    =  TradeBot[this.tbName_gsData].toReadA2d  ;
-                this.toReadA2d    =  TradeBot[this.tbName_gsData].toReadA2d  ;
-            }
+            else { this.thisLogs.AddNewLogLine('get_gsData()并写入缓存成功') }
 
             this.thisLogs.AddNewLogLine('去发送 TG消息 和 Email信息');
             this.sendToTG(this.toReadA2d).catch(() => { });
