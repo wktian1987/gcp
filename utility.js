@@ -902,15 +902,15 @@ export function makeRequestBodyArrayofBatchUpdate_clear(clearObj) {
 /**
  * 拼装器：生成 batchUpdate 结构轨道所需的指定区域大清洗并定点平铺覆盖写入原子请求数组
  * * 业务特性：支持全地形坐标。自动处理 0-based 索引与开区间对账，先后两发子弹顺序串行，微秒级原子交割。
- * * @param {Object} clearUpdateObj - 触发清洗并定点覆盖写入的任务配置对象
- * @param {number} clearUpdateObj.sheetID - 目标标签页的纯数字物理 ID
- * @param {string} clearUpdateObj.range - 目标 A1 区域坐标字符串
- * @param {Array<Array<string|number|boolean>>} clearUpdateObj.values - 准备平铺覆盖写入的纯净二维数组
+ * * @param {Object} updateObj - 触发清洗并定点覆盖写入的任务配置对象
+ * @param {number} updateObj.sheetID - 目标标签页的纯数字物理 ID
+ * @param {string} updateObj.range - 目标 A1 区域坐标字符串
+ * @param {Array<Array<string|number|boolean>>} updateObj.values - 准备平铺覆盖写入的纯净二维数组
  * @returns {Array<Object>} 包含一发大清洗和一发覆盖写入的顺序串行请求数组（外部需配合 .flat() 或展开运算符）
  * @throws {Error} 当传入字段缺失、类型错误或 A1 坐标正则解析失败时抛出错误
  */
-export function makeRequestBodyArrayofBatchUpdate_update(clearUpdateObj) {
-    const { sheetID, range, values } = clearUpdateObj;
+export function makeRequestBodyArrayofBatchUpdate_update(updateObj) {
+    const { sheetID, range, values } = updateObj;
 
     // 入站刚性风控
     if (typeof sheetID !== 'number' || !range || !values) {
