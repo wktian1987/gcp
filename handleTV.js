@@ -269,7 +269,7 @@ export const TradeBot = {
         let currentLock = this.mainData.LOCK ;
         if (this.mainData.timestamp > this.LockTime) { throw new Error('检查GS发现已处理过更新的信号') }
         if (TradeBot[this.tbName_lastLockTime] !== this.LockTime) { throw new Error('临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去') }
-        if (currentLock !== CV.noLOCK) {
+        if (currentLock !== CV.noLOCK && !toResetGSLOCK) {
             const errMessage = '上一次运行大TradeBot锁被释放的情况下, GS锁未被释放';
             this.addRunningWellMessage(errMessage);
             throw new Error(errMessage);
