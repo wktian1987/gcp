@@ -267,8 +267,8 @@ export const TradeBot = {
 
 
         let currentLock = this.mainData.LOCK ;
-        if (this.mainData.timestamp > this.LockTime) { this.releaseTradeBotLOCK(); throw new Error('检查GS发现已处理过更新的信号');}
-        if (TradeBot[this.tbName_lastLockTime] !== this.LockTime) {this.releaseTradeBotLOCK() ;throw new Error('临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去'); }
+        if (this.mainData.timestamp > this.LockTime) { this.releaseTradeBotLOCK(); throw new Error('检查GS发现已处理过更新的信号'); }
+        if (TradeBot[this.tbName_lastLockTime] !== this.LockTime) { this.releaseTradeBotLOCK(); throw new Error('临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去'); }
         if (currentLock !== CV.noLOCK && !toResetGSLOCK) {
             const errMessage = '上一次运行大TradeBot锁被释放的情况下, GS锁未被释放';
             this.addRunningWellMessage(errMessage);
@@ -867,7 +867,13 @@ export const TradeBot = {
         if (this.allCoin > this.rcd_coin * (1 + this.barChgB)) { this.rcd_coin = this.allCoin; AddSetMessage(this.alertMessageSet, '↑ new rcd_coin'); }
         if (this.allCoin < this.rcd_coin * (1 - this.barChgB)) { this.rcd_coin = this.allCoin; AddSetMessage(this.alertMessageSet, '↓ new rcd_coin'); }
 
-        this.toWriteHghLow = this.toWriteHghLow ?? false ;
+        this.initialFund    = ToStrictNumber(this.mainData.initialFund  , this.allFund) ;
+        this.hghestFund     = ToStrictNumber(this.mainData.hghestFund   , this.allFund) ;
+        this.lowestFund     = ToStrictNumber(this.mainData.lowestFund   , this.allFund) ;
+        this.initialCoin    = ToStrictNumber(this.mainData.initialCoin  , this.allCoin) ;
+        this.hghestCoin     = ToStrictNumber(this.mainData.hghestCoin   , this.allCoin) ;
+        this.lowestCoin     = ToStrictNumber(this.mainData.lowestCoin   , this.allCoin) ;
+        this.toWriteHghLow  = this.toWriteHghLow ?? false ;
         if (this.allFund > this.hghestFund) { this.toWriteHghLow = true; this.hghestFund = this.allFund; AddSetMessage(this.alertMessageSet, "↑ new hghestFund"); }
         if (this.allFund < this.lowestFund) { this.toWriteHghLow = true; this.lowestFund = this.allFund; AddSetMessage(this.alertMessageSet, "↓ new lowestFund"); }
         if (this.allCoin > this.hghestCoin) { this.toWriteHghLow = true; this.hghestCoin = this.allCoin; AddSetMessage(this.alertMessageSet, "↑ new hghestCoin"); }
