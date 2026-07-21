@@ -915,6 +915,7 @@ export const TradeBot = {
         const basicLowToSell            = this.getThisTvMainData('basicLowToSell')              ;
         const notBuyCloseToRndHghStep   = this.getThisTvMainData('notBuyCloseToRndHghStep')     ;
         const notBuyCloseToRndLowStep   = this.getThisTvMainData('notBuyCloseToRndLowStep')     ;
+        const mustSellToPreventLiq      = this.getThisTvMainData('mustSellToPreventLiq')        ;
         const ordersInterval            = this.getThisTvMainData('ordersInterval')              ;
         const MaxGrid                   = this.getThisTvMainData('MaxGrid')                     ;
         const ifOrderWaiting            = this.getThisTvMainData('ifOrderWaiting')              ;
@@ -952,6 +953,7 @@ export const TradeBot = {
             ) ;
         }
 
+        this.cutToPreventLiqPrice = this.liquidatePrice > 0 ? this.liquidatePrice / (1 + mustSellToPreventLiq/100) : CV.NA ;
 
         this.inTradingTime = timestamp > realTradeTime && timestamp < realTradeTimeTo;
 
@@ -1083,15 +1085,11 @@ export const TradeBot = {
             const timestamp             =  this.getThisTvMainData('timestamp')             ;
             const TradingSymbolPrice    =  this.getThisTvMainData('TradingSymbolPrice')    ;
             const waveUpChg             =  this.getThisTvMainData('waveUpChg')             ;
-            const roundHgh              =  this.getThisTvMainData('roundHgh')              ;
-            const roundLow              =  this.getThisTvMainData('roundLow')              ;
 
             const TradingSymbol         =  this.getThisTvMainData('TradingSymbol')         ;
             const isReal                =  this.getThisTvMainData('isReal')                ;
             const tradeFeeRate          =  this.getThisTvMainData('tradeFeeRate')          ;
-            const mustSellToPreventLiq  =  this.getThisTvMainData('mustSellToPreventLiq')  ;
             const mustSellProfitStep    =  this.getThisTvMainData('mustSellProfitStep')    ;
-            const hghBuyPriceUnclose    =  this.getThisTvMainData('hghBuyPriceUnclose')    ;
             const lowBuyPriceUnclose    =  this.getThisTvMainData('lowBuyPriceUnclose')    ;
             const avgBuyPriceUnclose    =  this.getThisTvMainData('avgBuyPriceUnclose')    ;
             const lowBuySerialUnclose   =  this.getThisTvMainData('lowBuySerialUnclose')   ;
@@ -1132,7 +1130,7 @@ export const TradeBot = {
                 S.ing_reason = 'must sell Profit';
             }
             // cut too high buy order
-            if (TradingSymbolPrice < this.cut) {
+            if (TradingSymbolPrice < this.cutTooHighBuyPrice) {
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(hghBuySerialUnclose));
                 S.ing_orderPrice = CV.NA;
@@ -1156,7 +1154,7 @@ export const TradeBot = {
                 S.ing_reason = 'cut due to stopF';
             }
             // cut to prevent liquidate
-            if (TradingSymbolPrice < (1 + mustSellToPreventLiq / 100) * this.liquidatePrice) {
+            if (TradingSymbolPrice < this.cutToPreventLiqPrice) {
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(hghBuySerialUnclose));
                 S.ing_orderPrice = 0;
