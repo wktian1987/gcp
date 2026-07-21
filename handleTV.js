@@ -517,14 +517,9 @@ export const TradeBot = {
             this.thisLogs.AddNewLogLine('去GS更新initiate') ;
             await try3times(BatchUpdateGS, this.spreadsheetID, i_toBatchUpdateList) ;
 
-            const r_Get_gsData = await this.get_gsData() ;
-            if (!isStrictTrue(r_Get_gsData) || isStrictString(r_Get_gsData)) {throw new Error('Get_gsData() 失败: \n' + r_Get_gsData)}
-            if (!isStrictTrue(this.mainData.initiated)) {
-                await Sleep(2000) ; // 第一次校验不成功的话, 等2s再校验一次
-                const r_Get_gsData = await this.get_gsData() ;
-                if (isStrictString(r_Get_gsData)) {throw new Error('Get_gsData() 失败: \n' + r_Get_gsData)}
-                if (!isStrictTrue(this.mainData.initiated)) {throw new Error('初始化后经校验初始化结果未更新') }
-            }
+            const r_Get_gsData = await this.get_gsData();
+            if (!isStrictTrue(this.mainData.initiated)) { throw new Error('初始化后经校验初始化结果未更新') }
+
 
             this.thisLogs.AddNewLogLine('在GS更新initiate成功') ;
 
@@ -533,7 +528,6 @@ export const TradeBot = {
             return true ;
 
         } catch(e) {
-            // 这属于严重核心错误, 不必解锁了, 让它一直锁着, 等手动调试
             this.addRunningWellMessage(e.message) ;
             return e.message ;
         }
@@ -867,6 +861,8 @@ export const TradeBot = {
         if (this.allCoin > this.rcd_coin * (1 + this.barChgB)) { this.rcd_coin = this.allCoin; AddSetMessage(this.alertMessageSet, '↑ new rcd_coin'); }
         if (this.allCoin < this.rcd_coin * (1 - this.barChgB)) { this.rcd_coin = this.allCoin; AddSetMessage(this.alertMessageSet, '↓ new rcd_coin'); }
 
+
+
         this.initialFund    = ToStrictNumber(this.mainData.initialFund  , this.allFund) ;
         this.hghestFund     = ToStrictNumber(this.mainData.hghestFund   , this.allFund) ;
         this.lowestFund     = ToStrictNumber(this.mainData.lowestFund   , this.allFund) ;
@@ -878,6 +874,13 @@ export const TradeBot = {
         if (this.allFund < this.lowestFund) { this.toWriteHghLow = true; this.lowestFund = this.allFund; AddSetMessage(this.alertMessageSet, "↓ new lowestFund"); }
         if (this.allCoin > this.hghestCoin) { this.toWriteHghLow = true; this.hghestCoin = this.allCoin; AddSetMessage(this.alertMessageSet, "↑ new hghestCoin"); }
         if (this.allCoin < this.lowestCoin) { this.toWriteHghLow = true; this.lowestCoin = this.allCoin; AddSetMessage(this.alertMessageSet, "↓ new lowestCoin"); }
+
+        if (this.toWriteHghLow) {
+            this.initiated              = isStrictTrue(this.mainData.initiated) ? true : false;
+            this.initiateTime           = ToStrictNumber(this.mainData.initialFund  , this.allFund) ;
+            this.inTradingSymbolPrice   = ToStrictNumber(this.mainData.initialFund  , this.allFund) ;
+            this.inBaseCoinPrice        = ToStrictNumber(this.mainData.initialFund  , this.allFund) ;
+        }
 
         // [this.liquidatePrice, this.stopPriceC, this.stopPriceF] = this.GetLiquidateStopPrice();
         this.liquidatePrice = isStrictTrue(therePosition) ? this.getLiquidPrice() : CV.NA ;
@@ -941,7 +944,6 @@ export const TradeBot = {
         this.lowToSell = basicLowToSell;
         if (therePosition) { this.lowToSell = Math.max(basicLowToSell, this.exDifficultySellPrice) }
 
-        // if ((hghBuyPriceUnclose / TradingSymbolPrice > roundHgh / roundLow) && (hghBuyPriceUnclose > (1 + waveUpChg) * TradingSymbolPrice)) {
         this.cutTooHighBuyPrice = CV.NA ;
         if (therePosition) {
             this.cutTooHighBuyPrice = Math.min(
