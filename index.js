@@ -1,116 +1,23 @@
 import http from 'node:http';
-import { DATETIME, isStrictTrue, LogsWithTime, SendTG, Sleep, LogInBackground } from './utility.js';
+import { DATETIME, LogsWithTime, SendTG, Sleep, LogInBackground } from './utility.js';
 import { HandleUnreadGmails } from './handleUnreadGmails.js';
 import { HandleTradeBot, HandleAllPrice, CV } from './handleTV.js';
 import { HandleTgBot } from './handleTgBot.js';
 
-
-// 创建原生 HTTP 监听基座
-const targetURL = {
-    tgbot       :   '/tgBot'        ,
-    tradingview :   '/tradingview'  } ;
-
-const urlList = Object.keys(targetURL).map(k => String(targetURL[k]));
-
-const SignalList = [] ; // 里面的元素是 {url, body}
-let isWorkerRunning = false ; 
-export let stopHandleNewSignals = false; // 当从tg收到取消所有任务信号的时候, 取消所有信号
-export function ToStopSartNewSignals(toStopStart = 'toStop') { // 重启是'toStart')
-    stopHandleNewSignals = toStopStart === 'toStart' ? false : true; // 1. 下发熔断禁令
-    if (toStopStart === 'toStop') {SignalList.length = 0} // 2. 物理超渡内存中积压的所有过期信号！
-    return true ;
-}
 // 最多保留100个队列任务
+const MaxWaitingSignalQty = 100 ;
+const SignalList = [] ; // 里面的元素是 {url, body}
 function AddNewSignal(sigObj) {
     SignalList.push(sigObj) ;
-    while (SignalList.length > 100) {SignalList.shift()}
+    while (SignalList.length > MaxWaitingSignalQty) {SignalList.shift()}
 }
 
-function AddNewLogLine(logsA, newLine) {
-    const thisTimeStr = new DATETIME().TimeStringWithOffset(8) ;
-    logsA.push('... ' + thisTimeStr + ': ' + newLine) ;
-}
-
-const server = http.createServer(async (req, res) => {
-    const gcpGetTime = Date.now() ;
-
-    try {
-        const { method, url } = req;
-        // 在系统进行判断之前先去接收信号,
-        // 这是不得以的做法, 
-
-        // 对于来自TG的消息有单独的快速通道
-        if (method === 'POST' && url === targetURL.tgbot) {
-            const tgLogs = new LogsWithTime('tgBot Message') ;
-            tgLogs.AddNewLogLine("收到/tgBot连接");
-            try {
-                let bodyData = '';
-                for await (const chunk of req) { bodyData += chunk }
-                // 这里回复 ACK, 不管数据如何, 我直接回收到了,
-                // 至此已经不需要再接收数据了
-                res.writeHead(200, { 'Content-Type': 'text/plain' });
-                res.end("ACK");
-                const body = JSON.parse(bodyData);
-                const msg = body.message;
-                await HandleTgBot(msg);
-                tgLogs.AddNewLogLine(`HandleTgBot()处理成功`);
-            } catch (e) { tgLogs.AddNewErrLogLine(`HandleTgBot()处理失败\n` + e.message) } finally { tgLogs.consoleLogs('onlyErr') }
-        } else {
-            let stopHandleThisSigal = false ;
-            if (stopHandleNewSignals) {
-                stopHandleThisSigal = true ;
-                const stopMessage = '||| ||| stopHandleNewSignals is set, 不再处理新的信号' ;
-                SendTG(`stopMessage`, stopMessage).catch(() => { });
-                LogInBackground(stopMessage) ;
-            }
-            if (method !== 'POST' || !urlList.includes(url)) { 
-                stopHandleThisSigal = true ;
-                const stopMessage = '||| ||| 只接受POST信号, 且信号发往指定URL' ;
-                SendTG(`stopMessage`, stopMessage).catch(() => { });
-                LogInBackground(stopMessage) ;
-            }
-            if (stopHandleThisSigal) {
-                req.resume();
-                // 这里回复 ACK, 不管数据如何, 我直接回收到了,
-                if (!res.headersSent) {
-                    res.writeHead(200, { 'Content-Type': 'text/plain' });
-                    res.end("ACK");
-                }
-                return ;
-            }
-
-            let bodyData = '';
-            for await (const chunk of req) { bodyData += chunk }
-            // 这里回复 ACK, 不管数据如何, 我直接回收到了,
-            // 至此已经不需要再接收数据了
-            res.writeHead(200, { 'Content-Type': 'text/plain' });
-            res.end("ACK");
-            const body = JSON.parse(bodyData);
-            body.gcpGetTime = gcpGetTime ;
-            LogInBackground(`... ... 新信号来自${url}`) ;
-            AddNewSignal({url, body}) ;
-            LogInBackground(`... ... 新信号已放入待处理队列`) ;
-            if (isWorkerRunning) { LogInBackground('... ... 已经有人在处理队列任务了, 不必分配新的工人') }
-            else {
-                LogInBackground('... ... 分配新的工人去处理队列任务');
-                HandleSignalList().catch(() => { }); // 这里不必写await
-            } // 只有isworkerrunning 是false 的时候才会有新的工人进来, 这样设计就不会与你说的情况
-        }
-    } catch (e) {
-        req.resume();
-        // 这里回复 ACK, 不管数据如何, 我直接回收到了,
-        if (!res.headersSent) {
-            res.writeHead(200, { 'Content-Type': 'text/plain' });
-            res.end("ACK");
-        }
-        LogInBackground(`✘ server收到错误信号: \n${e.message}`);
-    }
-});
-
-const MaxRunningTasks = 10 ;
-const handleSignalInterval = 1 * 1000; let lastHandleSignalTime = new DATETIME(0) ;
-const checkEmailInterval = 10 * 60 * 1000; let lastCheckEmailTime = new DATETIME(0) ;
-
+const MaxRunningTasks = 10;
+const handleSignalInterval = 1 * 1000;
+let lastHandleSignalTime = new DATETIME(0);
+const checkEmailInterval = 10 * 60 * 1000;
+let lastCheckEmailTime = new DATETIME(0);
+let isWorkerRunning = false; 
 // 我的目的是让信号一个一个地处理, 从最新的信号开始处理
 // 并发处理, 两个信号处理，至少间隔1s
 async function HandleSignalList() {
@@ -193,6 +100,95 @@ async function HandleSignal(toHandleSignal) {
 
 }
 
+export let stopHandleNewSignals = false; // 当从tg收到取消所有任务信号的时候, 取消所有信号
+export function ToStopSartNewSignals(toStopStart = 'toStop') { // 重启是'toStart')
+    if (toStopStart !== 'toStop' && toStopStart !== 'toStart') { return 'ToStopSartNewSignals()输入参数只能是toStop或toStart' }
+    stopHandleNewSignals = toStopStart === 'toStart' ? false : true; // 1. 下发熔断禁令
+    if (toStopStart === 'toStop') {SignalList.length = 0} // 2. 物理超渡内存中积压的所有过期信号！
+    return true ;
+}
+
+const targetURL = {
+    tgbot       :   '/tgBot'        ,
+    tradingview :   '/tradingview'  } ;
+const urlList = Object.keys(targetURL).map(k => String(targetURL[k]));
+
+const server = http.createServer(async (req, res) => {
+    const gcpGetTime = Date.now() ;
+
+    try {
+        const { method, url } = req;
+        // 在系统进行判断之前先去接收信号,
+        // 这是不得以的做法, 
+
+        // 对于来自TG的消息有单独的快速通道
+        if (method === 'POST' && url === targetURL.tgbot) {
+            const tgLogs = new LogsWithTime('tgBot Message') ;
+            tgLogs.AddNewLogLine("收到/tgBot连接");
+            try {
+                let bodyData = '';
+                for await (const chunk of req) { bodyData += chunk }
+                // 这里回复 ACK, 不管数据如何, 我直接回收到了,
+                // 至此已经不需要再接收数据了
+                res.writeHead(200, { 'Content-Type': 'text/plain' });
+                res.end("ACK");
+                const body = JSON.parse(bodyData);
+                const msg = body.message;
+                await HandleTgBot(msg);
+                tgLogs.AddNewLogLine(`HandleTgBot()处理成功`);
+            } catch (e) { tgLogs.AddNewErrLogLine(`HandleTgBot()处理失败\n` + e.message) } finally { tgLogs.consoleLogs('onlyErr') }
+        } else {
+            let stopHandleThisSigal = false ;
+            if (stopHandleNewSignals) {
+                stopHandleThisSigal = true ;
+                const stopMessage = '||| ||| stopHandleNewSignals is set, 不再处理新的信号' ;
+                SendTG(`stopMessage`, stopMessage).catch(() => { });
+                LogInBackground(stopMessage) ;
+            }
+            if (method !== 'POST' || !urlList.includes(url)) { 
+                stopHandleThisSigal = true ;
+                const stopMessage = '||| ||| 只接受POST信号, 且信号发往指定URL' ;
+                SendTG(`stopMessage`, stopMessage).catch(() => { });
+                LogInBackground(stopMessage) ;
+            }
+            if (stopHandleThisSigal) {
+                req.resume();
+                // 这里回复 ACK, 不管数据如何, 我直接回收到了,
+                if (!res.headersSent) {
+                    res.writeHead(200, { 'Content-Type': 'text/plain' });
+                    res.end("ACK");
+                }
+                return ;
+            }
+
+            let bodyData = '';
+            for await (const chunk of req) { bodyData += chunk }
+            // 这里回复 ACK, 不管数据如何, 我直接回收到了,
+            // 至此已经不需要再接收数据了
+            res.writeHead(200, { 'Content-Type': 'text/plain' });
+            res.end("ACK");
+            const body = JSON.parse(bodyData);
+            body.gcpGetTime = gcpGetTime ;
+            LogInBackground(`... ... 新信号来自${url}`) ;
+            AddNewSignal({url, body}) ;
+            LogInBackground(`... ... 新信号已放入待处理队列`) ;
+            if (isWorkerRunning) { LogInBackground('... ... 已经有人在处理队列任务了, 不必分配新的工人') }
+            else {
+                LogInBackground('... ... 分配新的工人去处理队列任务');
+                HandleSignalList().catch(() => { }); // 这里不必写await
+            } // 只有isworkerrunning 是false 的时候才会有新的工人进来, 这样设计就不会与你说的情况
+        }
+    } catch (e) {
+        req.resume();
+        // 这里回复 ACK, 不管数据如何, 我直接回收到了,
+        if (!res.headersSent) {
+            res.writeHead(200, { 'Content-Type': 'text/plain' });
+            res.end("ACK");
+        }
+        LogInBackground(`✘ server收到错误信号: \n${e.message}`);
+    }
+});
+
 // 实际上下面的代码用处不大
 process.on('SIGTERM', async () => {
     ToStopSartNewSignals('toStop') ;
@@ -205,7 +201,7 @@ process.on('SIGTERM', async () => {
         await new Promise(resolve => setTimeout(resolve, 1000)); 
     }
 
-    // 🟢 此时此刻，地上的单子全量安全落地，Sheets 写完，邮件发完，资产毫发无损！
+    // 此时此刻，地上的单子全量安全落地，Sheets 写完，邮件发完，资产毫发无损！
     LogInBackground("✔ [自保大闸] 核心资产 100% 全量清仓落地。老实例完成历史使命，准予体面退役。");
     process.exit(0); // 💥 主动交枪，通知谷歌：老容器已经安全交割，你可以物理回收了！
 });

@@ -359,14 +359,17 @@ export async function HandleUnreadGmails(checkUnreadEmailsLogs, toChatID = proce
         if (task_thereErr) { throw new Error(task_message) }
         
     } finally {
-        isImapMailboxOccupied = false ;
         if (lock) { 
             await lock.release() ;
             checkUnreadEmailsLogs.AddNewLogLine('释放Gmail锁成功') ;
         }
         if (client) { 
-            await client.logout() ;
+            checkUnreadEmailsLogs.AddNewErrLogLine('client链接存在, 尝试关闭之') ; 
+            try { await client.logout() } catch (e) { checkUnreadEmailsLogs.AddNewErrLogLine('关闭client链接出错') }
             checkUnreadEmailsLogs.AddNewLogLine('关闭client链接成功') ; // 读取邮件成功的情况下，为什么这一行没有执行，整个程序也没有报错
+        } else {
+            checkUnreadEmailsLogs.AddNewErrLogLine('client链接不存在, 奇怪奇怪！') ; 
         }
+        isImapMailboxOccupied = false ;
     }
 }
