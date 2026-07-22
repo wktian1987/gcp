@@ -235,17 +235,14 @@ function convertToTextTable(rawContent) {
 const gmailFolderName = "tradingview";
 let isImapMailboxOccupied = false ;
 export async function HandleUnreadGmails(checkUnreadEmailsLogs, toChatID = process.env.TG_CHAT_ID, mailReceiver = process.env.RECEIVER_EMAIL) {
-    if (isImapMailboxOccupied) {
-        checkUnreadEmailsLogs.AddNewLogLine('已经有人在处理, 走退出流程') ;
-        return  ;
-    }
+    if (isImapMailboxOccupied) { checkUnreadEmailsLogs.AddNewLogLine('已经有人在处理, 走退出流程'); return; }
     else {isImapMailboxOccupied = true}
 
     let lock = null;
     let client = null;
 
     try {
-        const client = await try3times(getImapClient) ;
+        client = await try3times(getImapClient) ;
         if (!client.authenticated) {
             const errMessage = 'IMAP Client 连接失败' ;
             throw new Error(errMessage) ;
@@ -359,17 +356,14 @@ export async function HandleUnreadGmails(checkUnreadEmailsLogs, toChatID = proce
         if (task_thereErr) { throw new Error(task_message) }
         
     } finally {
-        if (lock) { 
-            await lock.release() ;
-            checkUnreadEmailsLogs.AddNewLogLine('释放Gmail锁成功') ;
+        if (lock) {
+            await lock.release();
+            checkUnreadEmailsLogs.AddNewLogLine('释放Gmail锁成功');
         }
-        if (client) { 
-            checkUnreadEmailsLogs.AddNewErrLogLine('client链接存在, 尝试关闭之') ; 
-            try { await client.logout() } catch (e) { checkUnreadEmailsLogs.AddNewErrLogLine('关闭client链接出错') }
-            checkUnreadEmailsLogs.AddNewLogLine('关闭client链接成功') ; // 读取邮件成功的情况下，为什么这一行没有执行，整个程序也没有报错
-        } else {
-            checkUnreadEmailsLogs.AddNewErrLogLine('client链接不存在, 奇怪奇怪！') ; 
+        if (client) {
+            await client.logout();
+            checkUnreadEmailsLogs.AddNewLogLine('关闭client链接成功');
         }
-        isImapMailboxOccupied = false ;
+        isImapMailboxOccupied = false;
     }
 }
