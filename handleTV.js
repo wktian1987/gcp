@@ -832,6 +832,7 @@ export const TradeBot = {
     } ,
 
     renewData() {
+        const timestamp             =  this.getThisTvMainData('timestamp')             ;
         const TradingSymbolPrice    =  this.getThisTvMainData('TradingSymbolPrice')    ;
         const BaseCoinPrice         =  this.getThisTvMainData('BaseCoinPrice')         ;
         const BaseCoinHairCut       =  this.getThisTvMainData('BaseCoinHairCut')       ;
@@ -861,8 +862,6 @@ export const TradeBot = {
         if (this.allCoin > this.rcd_coin * (1 + this.barChgB)) { this.rcd_coin = this.allCoin; AddSetMessage(this.alertMessageSet, '↑ new rcd_coin'); }
         if (this.allCoin < this.rcd_coin * (1 - this.barChgB)) { this.rcd_coin = this.allCoin; AddSetMessage(this.alertMessageSet, '↓ new rcd_coin'); }
 
-
-
         this.initialFund    = ToStrictNumber(this.mainData.initialFund  , this.allFund) ;
         this.hghestFund     = ToStrictNumber(this.mainData.hghestFund   , this.allFund) ;
         this.lowestFund     = ToStrictNumber(this.mainData.lowestFund   , this.allFund) ;
@@ -877,9 +876,9 @@ export const TradeBot = {
 
         if (this.toWriteHghLow) {
             this.initiated              = isStrictTrue(this.mainData.initiated) ? true : false;
-            this.initiateTime           = ToStrictNumber(this.mainData.initialFund  , this.allFund) ;
-            this.inTradingSymbolPrice   = ToStrictNumber(this.mainData.initialFund  , this.allFund) ;
-            this.inBaseCoinPrice        = ToStrictNumber(this.mainData.initialFund  , this.allFund) ;
+            this.initiateTime           = ToStrictNumber(this.mainData.initiateTime             ,timestamp              ) ;
+            this.inTradingSymbolPrice   = ToStrictNumber(this.mainData.inTradingSymbolPrice     , TradingSymbolPrice    ) ;
+            this.inBaseCoinPrice        = ToStrictNumber(this.mainData.inBaseCoinPrice          , BaseCoinPrice         ) ;
         }
 
         // [this.liquidatePrice, this.stopPriceC, this.stopPriceF] = this.GetLiquidateStopPrice();

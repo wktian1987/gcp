@@ -14,7 +14,7 @@ import {
     LogsWithTime
 } from './utility.js';
 
-// 1. 刚性配置锁死在全局// 1. 刚性配置锁死在全局
+// 1. 刚性配置锁死在全局
 const IMAP_CONFIG = {
     host    : 'imap.gmail.com',
     port    : 993,
@@ -22,11 +22,8 @@ const IMAP_CONFIG = {
     auth    : { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASS },
     logger  : { level: 'error'} // 关键设置：只输出错误级别的日志 // 可选值: 'debug', 'info', 'warn', 'error', 'silent'
 };
-
-
 // 2. 全局唯一的 client 座位（单例物理壳）
 let globalImapClient = null;
-
 /**
  * 核心大闸：获取满血可用的 IMAP 连接单例
  * 确保整个系统生命周期只有一条管道，断线自动重连
@@ -53,7 +50,6 @@ async function getImapClient() {
         throw err; 
     }
 }
-
 
 // 同步 Pine Script 的 SwapChars
 function swapChars(src, idx1, idx2) {
