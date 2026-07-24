@@ -1588,7 +1588,7 @@ export const TradeBot = {
                 // 无法为GS解锁, 是严重错误, 需要手动解锁
                 this.addRunningWellMessage(errMessage);
                 throw new Error(errMessage);
-            }
+            } else {this.thisLogs.AddNewLogLine('get_gsData()并写入缓存成功') }
 
             return true;
         } catch (e) {
