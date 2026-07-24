@@ -361,7 +361,7 @@ export function FormatMatrixToString(matrix, padding = 4) {
  * @param {Array[]} rows 从 Google Sheets 读取的原始数据
  * @returns {string} HTML 字符串
  */
-export function _ConvertRowsToHtmlTable(rows) {
+export function ConvertRowsToHtmlTable(rows) {
     if (!rows || rows.length === 0) return '<p>无数据</p>';
 
     let html = '<table style="border-collapse: collapse; border: 1px solid; text-align: left; white-space: pre; font-family: monospace; font-size: 1em">';
@@ -393,7 +393,7 @@ export function _ConvertRowsToHtmlTable(rows) {
  * @param {Array<Array<any>>} rows - 二维数组数据
  * @returns {string} HTML 字符串
  */
-export function ConvertRowsToHtmlTable(rows) {
+export function _ConvertRowsToHtmlTable(rows) {
     if (!Array.isArray(rows) || rows.length === 0) return '<p>无数据</p>';
 
     // 辅助转义函数：防止内容中的 < > & 破坏 HTML 结构，并确保空值保留 &nbsp; 充填
