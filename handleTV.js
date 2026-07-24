@@ -294,7 +294,7 @@ export const TradeBot = {
 
         return true ; 
 
-    } , // 执行完此后, 已获得 大TradeBot锁 和 GS锁 
+    } , // 执行完此后, 已获得 大TradeBot锁, 设GS锁执行中, 等真正需要的时候，检查是否执行成功 
 
     getThisTvMainData(key) {
         let value = null ;
@@ -828,7 +828,7 @@ export const TradeBot = {
 
         const pct_liquid = this.chgPctIfVALUEFchg(0, 0, -1) ;
         if (!isStrictNumber(pct_liquid)){return false}
-        return this.TradingSymbolPrice * (1 + pct_liquid) ;
+        return TradingSymbolPrice * (1 + pct_liquid) ;
     } ,
 
     renewData() {
@@ -891,7 +891,7 @@ export const TradeBot = {
         if (TradingSymbolPrice < this.liquidatePrice                                            ) { this.accStatus = 'liquidated'   }
         if (TradingSymbolPrice < this.stopPriceC                                                ) { this.accStatus = 'stopC'        }
         if (TradingSymbolPrice < this.stopPriceF                                                ) { this.accStatus = 'stopF'        }
-        if (TradingSymbolPrice < this.stopPriceC && this.TradingSymbolPrice < this.stopPriceF   ) { this.accStatus = 'stopCF'       }
+        if (TradingSymbolPrice < this.stopPriceC && TradingSymbolPrice < this.stopPriceF        ) { this.accStatus = 'stopCF'       }
 
     },
 
