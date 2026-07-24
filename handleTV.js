@@ -784,7 +784,7 @@ export const TradeBot = {
 
     /**
      * 计算stopPriceF
-     * @returns false: 表示永远不会触发stopPriceF
+     * @returns NA: 表示永远不会触发stopPriceF
      * @returns number: 计算出的stopPriceF
      */
     getStopPriceF() {
@@ -796,13 +796,13 @@ export const TradeBot = {
 
         const pct_stopF_stopF    = this.chgPctIfVALUEFchg(hghestFund * (1+stopRate4F/100), 0 , -1) ;
         const pct_stopF_notStopC = this.chgPctIfVALUECchg(hghestCoin * (1+notStop4C /100), 0 , -1) ;
-        if (!isStrictNumber(pct_stopF_stopF) || !isStrictNumber(pct_stopF_notStopC)) {return false}
+        if (!isStrictNumber(pct_stopF_stopF) || !isStrictNumber(pct_stopF_notStopC)) {return CV.NA}
         return TradingSymbolPrice * (1 + Math.min(pct_stopF_stopF, pct_stopF_notStopC)) ;
     } ,
 
     /**
      * 计算stopPriceC
-     * @returns false: 表示永远不会触发stopPriceC
+     * @returns NA: 表示永远不会触发stopPriceC
      * @returns number: 计算出的stopPriceC
      */
     getStopPriceC() {
@@ -814,20 +814,20 @@ export const TradeBot = {
 
         const pct_stopC_stopC    = this.chgPctIfVALUECchg(hghestCoin * (1+stopRate4C /100) , 0 , -1) ;
         const pct_stopC_notStopF = this.chgPctIfVALUEFchg(hghestFund * (1+notStop4F  /100) , 0 , -1) ;
-        if (!isStrictNumber(pct_stopC_stopC) || !isStrictNumber(pct_stopC_notStopF)) {return false}
+        if (!isStrictNumber(pct_stopC_stopC) || !isStrictNumber(pct_stopC_notStopF)) {return CV.NA}
         return TradingSymbolPrice * (1 + Math.min(pct_stopC_stopC, pct_stopC_notStopF)) ;
     } ,
 
     /**
      * 计算liquidatePrice
-     * @returns false: 表示永远不会触发liquidatePrice
+     * @returns NA: 表示永远不会触发liquidatePrice
      * @returns number: 计算出的liquidatePrice
      */
     getLiquidPrice() {
         const TradingSymbolPrice = this.getThisTvMainData('TradingSymbolPrice') ;
 
         const pct_liquid = this.chgPctIfVALUEFchg(0, 0, -1) ;
-        if (!isStrictNumber(pct_liquid)){return false}
+        if (!isStrictNumber(pct_liquid)){return CV.NA}
         return TradingSymbolPrice * (1 + pct_liquid) ;
     } ,
 
@@ -952,7 +952,7 @@ export const TradeBot = {
             ) ;
         }
 
-        this.cutToPreventLiqPrice = this.liquidatePrice > 0 ? this.liquidatePrice / (1 + mustSellToPreventLiq/100) : CV.NA ;
+        this.cutToPreventLiqPrice = isStrictNumber(this.liquidatePrice) && this.liquidatePrice > 0 ? this.liquidatePrice / (1 + mustSellToPreventLiq/100) : CV.NA ;
 
         this.inTradingTime = timestamp > realTradeTime && timestamp < realTradeTimeTo;
 
