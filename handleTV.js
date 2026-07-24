@@ -384,8 +384,6 @@ export const TradeBot = {
             getDataList.push({name: 'uncloseOrdersTitleA'   , range: toGCPData.uncloseOrdersTitleLine   }) ;
             getDataList.push({name: 'uncloseOrdersA2d'      , range: toGCPData.uncloseOrdersRange       }) ;
             getDataList.push({name: 'tradeHistoryTitleA'    , range: toGCPData.tradeHistoryTitleLine    }) ;
-            getDataList.push({name: 'toReadA2d'             , range: toGCPData.toReadRange              }) ;
-            getDataList.push({name: 'toEmailA2d'            , range: toGCPData.toEmailRange             }) ;
 
             const rangesList = getDataList.map(v => v.range) ;
             const valuesArray   = await try3times(BatchGetGS, this.spreadsheetID, rangesList);
@@ -414,12 +412,6 @@ export const TradeBot = {
                 } else if (v.name === 'tradeHistoryTitleA') {
                     const rawDataA2d = valuesArray[i];
                     gsData.tradeHistoryTitleA = CleanArrayToNumStrBool(rawDataA2d[0]);
-                } else if (v.name === 'toReadA2d') {
-                    const rawDataA2d = valuesArray[i];
-                    gsData.toReadA2d = rawDataA2d.map(v => CleanArrayToNumStrBool(v))
-                } else if (v.name === 'toEmailA2d') {
-                    const rawDataA2d = valuesArray[i];
-                    gsData.toEmailA2d = rawDataA2d.map(v => CleanArrayToNumStrBool(v))
                 } else { throw new Error('get data from gs error') }
             }
 
@@ -436,8 +428,6 @@ export const TradeBot = {
             this.uncloseOrdersTitleA    =  TradeBot[this.tbName_gsData].uncloseOrdersTitleA  ;
             this.uncloseOrdersA2d       =  TradeBot[this.tbName_gsData].uncloseOrdersA2d     ;
             this.tradeHistoryTitleA     =  TradeBot[this.tbName_gsData].tradeHistoryTitleA   ;
-            this.toReadA2d              =  TradeBot[this.tbName_gsData].toReadA2d            ;
-            this.toEmailA2d             =  TradeBot[this.tbName_gsData].toEmailA2d           ;
 
             return true ;
 
@@ -1589,6 +1579,11 @@ export const TradeBot = {
             else if (this.mainData.timestamp !== this.tvData.timestamp) {throw new Error('get_gsData() 失败: timestamp 不匹配\n') }
             else { this.thisLogs.AddNewLogLine('get_gsData()并写入缓存成功') }
 
+            this.thisLogs.AddNewLogLine('去执行get_toReadData()');
+            const r_get_toReadData = await this.get_toReadData();
+            if (!isStrictTrue(r_get_toReadData) || isStrictString(r_get_toReadData)) { throw new Error('get_toReadData() 失败: \n' + r_get_gsData) }
+            else { this.thisLogs.AddNewLogLine('get_toReadData()成功') }
+
             this.thisLogs.AddNewLogLine('去发送 TG消息 和 Email信息');
             this.sendToTG(this.toReadA2d).catch(() => { });
             this.sendToEmail(this.toEmailA2d).catch(() => { });
@@ -1608,7 +1603,34 @@ export const TradeBot = {
             return errMessage;
         }
 
-    },
+    } ,
+
+    async get_toReadData() {
+        try {
+            const toGCPData = this.toGCPData ;
+
+            const getDataList = [] ; 
+            getDataList.push({name: 'toReadA2d'             , range: toGCPData.toReadRange              }) ;
+            getDataList.push({name: 'toEmailA2d'            , range: toGCPData.toEmailRange             }) ;
+
+            const rangesList = getDataList.map(v => v.range) ;
+            const valuesArray   = await try3times(BatchGetGS, this.spreadsheetID, rangesList, 'read');
+
+            for (const [i, v] of getDataList.entries()) {
+                if (v.name === 'toReadA2d') {
+                    const rawDataA2d = valuesArray[i];
+                    this.toReadA2d = rawDataA2d.map(v => CleanArrayToNumStrBool(v))
+                } 
+                if (v.name === 'toEmailA2d') {
+                    const rawDataA2d = valuesArray[i];
+                    this.toEmailA2d = rawDataA2d.map(v => CleanArrayToNumStrBool(v))
+                } 
+            }
+
+            return true ;
+
+        } catch (e) { return e.message.trim() }
+    } ,
 
     /**
      * 发送TG
@@ -1618,7 +1640,7 @@ export const TradeBot = {
         const messageString = FormatMatrixToString(toReadA2d);
         const subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime);
         await SendTG(subject, messageString);
-    },
+    } ,
 
     /**
      * 发送Email
@@ -1630,7 +1652,7 @@ export const TradeBot = {
             const mail_subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime);
             await SendEmail(mail_subject, messageHTML);
         }
-    },
+    } ,
 
 };
 

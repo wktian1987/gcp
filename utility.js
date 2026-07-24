@@ -587,8 +587,7 @@ export async function GetGS(spreadsheetID, fullRange, read_calculate = 'calculat
     const response = await sheetsClient.spreadsheets.values.get(  {
         spreadsheetId           : spreadsheetID         ,
         range                   : fullRange             ,
-        valueRenderOption       : valueRenderOption     , // 脱掉格式外衣，直接拿最底层的 Number, Boolean 和纯 String（保护精度）
-        dateTimeRenderOption    : 'FORMATTED_STRING'    }   )   ;  // 日期保持字符串形式（防止时间戳沦为奇怪的浮点数）
+        valueRenderOption       : valueRenderOption     }   )   ; 
 
     const rows = response.data.values;
     // 安全兜底：如果表格完全为空，rows 为 undefined，此时转为空数组 [] 返回
@@ -659,7 +658,9 @@ export async function AppendGS(spreadsheetID, fullRange, values) {
  * @param {Array<string>} rangesList - 想要读取的区域数组，例如 ['MAIN!A:B', 'LOG!C:D']
  * @returns {Array<Array<Array>>} 返回一个三维数组，顺序对应 rangesList 中每个区域的二维数据
  */
-export async function BatchGetGS(spreadsheetID, rangesList) {
+export async function BatchGetGS(spreadsheetID, rangesList, read_calculate = 'calculate') {
+        const valueRenderOption = read_calculate === 'read' ? 'FORMATTED_VALUE' : 'UNFORMATTED_VALUE' ;
+
     // 哨兵防线 1：鉴别大外壳是否为数组，且不能为空
     if (!Array.isArray(rangesList) || rangesList.length === 0) {
         throw new Error('BatchGetGS @param rangesList 输入错误，期望非空数组');
@@ -672,11 +673,7 @@ export async function BatchGetGS(spreadsheetID, rangesList) {
     const response = await sheetsClient.spreadsheets.values.batchGet({
         spreadsheetId: spreadsheetID,
         ranges: rangesList, // 👈 直接把你的区域数组丢给 ranges 参数
-        
-        // 🌟 核心补丁 1：脱掉格式外衣，直接拿最底层的 Number, Boolean 和纯 String（保护精度）
-        valueRenderOption: 'UNFORMATTED_VALUE',
-        
-        // 💡 核心补丁 2：日期保持字符串形式（防止时间戳沦为奇怪的 Excel 浮点数）
+        valueRenderOption: valueRenderOption,
         dateTimeRenderOption: 'FORMATTED_STRING' 
     });
 
