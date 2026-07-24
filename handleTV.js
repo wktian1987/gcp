@@ -1579,14 +1579,8 @@ export const TradeBot = {
             else if (this.mainData.timestamp !== this.tvData.timestamp) {throw new Error('get_gsData() 失败: timestamp 不匹配\n') }
             else { this.thisLogs.AddNewLogLine('get_gsData()并写入缓存成功') }
 
-            this.thisLogs.AddNewLogLine('去执行get_toReadData()');
-            const r_get_toReadData = await this.get_toReadData();
-            if (!isStrictTrue(r_get_toReadData) || isStrictString(r_get_toReadData)) { throw new Error('get_toReadData() 失败: \n' + r_get_gsData) }
-            else { this.thisLogs.AddNewLogLine('get_toReadData()成功') }
-
-            this.thisLogs.AddNewLogLine('去发送 TG消息 和 Email信息');
-            this.sendToTG(this.toReadA2d).catch(() => { });
-            this.sendToEmail(this.toEmailA2d).catch(() => { });
+            this.thisLogs.AddNewLogLine('去执行toSendAlertMessage()');
+            this.toSendAlertMessage().catch(() => { });
 
             const r_releaseTradeBotLOCK = this.releaseTradeBotLOCK();
             if (!r_releaseTradeBotLOCK || isStrictString(r_releaseTradeBotLOCK)) {
@@ -1605,7 +1599,7 @@ export const TradeBot = {
 
     } ,
 
-    async get_toReadData() {
+    async toSendAlertMessage() {
         try {
             const toGCPData = this.toGCPData ;
 
@@ -1626,6 +1620,9 @@ export const TradeBot = {
                     this.toEmailA2d = rawDataA2d.map(v => CleanArrayToNumStrBool(v))
                 } 
             }
+
+            this.sendToTG(this.toReadA2d).catch(() => { });
+            this.sendToEmail(this.toEmailA2d).catch(() => { });
 
             return true ;
 

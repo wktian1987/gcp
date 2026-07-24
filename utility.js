@@ -673,8 +673,7 @@ export async function BatchGetGS(spreadsheetID, rangesList, read_calculate = 'ca
     const response = await sheetsClient.spreadsheets.values.batchGet({
         spreadsheetId: spreadsheetID,
         ranges: rangesList, // 👈 直接把你的区域数组丢给 ranges 参数
-        valueRenderOption: valueRenderOption,
-        dateTimeRenderOption: 'FORMATTED_STRING' 
+        valueRenderOption: valueRenderOption
     });
 
     // Google 返回的结构在 response.data.valueRanges 中
