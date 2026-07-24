@@ -1611,14 +1611,8 @@ export const TradeBot = {
             const valuesArray   = await try3times(BatchGetGS, this.spreadsheetID, rangesList, 'read');
 
             for (const [i, v] of getDataList.entries()) {
-                if (v.name === 'toReadA2d') {
-                    const rawDataA2d = valuesArray[i];
-                    this.toReadA2d = rawDataA2d.map(v => CleanArrayToNumStrBool(v))
-                } 
-                if (v.name === 'toEmailA2d') {
-                    const rawDataA2d = valuesArray[i];
-                    this.toEmailA2d = rawDataA2d.map(v => CleanArrayToNumStrBool(v))
-                } 
+                if (v.name === 'toReadA2d') {this.toReadA2d = valuesArray[i]} 
+                if (v.name === 'toEmailA2d') {this.toEmailA2d = valuesArray[i]} 
             }
 
             this.sendToTG(this.toReadA2d).catch(() => { });
