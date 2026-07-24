@@ -361,7 +361,7 @@ export function FormatMatrixToString(matrix, padding = 4) {
  * @param {Array[]} rows 从 Google Sheets 读取的原始数据
  * @returns {string} HTML 字符串
  */
-export function ConvertRowsToHtmlTable(rows) {
+export function _ConvertRowsToHtmlTable(rows) {
     if (!rows || rows.length === 0) return '<p>无数据</p>';
 
     let html = '<table style="border-collapse: collapse; border: 1px solid; text-align: left; white-space: pre; font-family: monospace; font-size: 1em">';
@@ -384,6 +384,74 @@ export function ConvertRowsToHtmlTable(rows) {
     }
     html += '</tbody></table>';
     html = String(html).replaceAll("\n", "<br/>")  ;
+
+    return html;
+}
+
+/**
+ * 将二维数组转换为 HTML 表格（完美保留空行、空格、换行符及单元格样式）
+ * @param {Array<Array<any>>} rows - 二维数组数据
+ * @returns {string} HTML 字符串
+ */
+export function ConvertRowsToHtmlTable(rows) {
+    if (!Array.isArray(rows) || rows.length === 0) return '<p>无数据</p>';
+
+    // 辅助转义函数：防止内容中的 < > & 破坏 HTML 结构，并确保空值保留 &nbsp; 充填
+    const formatCellContent = (val) => {
+        // 1. 刚性防空：如果值是 undefined、null 或空字符串 ''
+        if (val === undefined || val === null || val === '') {
+            return '&nbsp;'; // 使用不换行空格填充，确保单元格撑开不塌陷
+        }
+
+        // 2. 将内容转为字符串（注意：数字 0 和 false 也能正常保留）
+        let str = String(val);
+
+        // 3. 安全转义基础 HTML 字符
+        str = str
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+
+        // 4. 处理换行符：配合 white-space: pre-wrap 或 pre 均可安全显示空行
+        str = str.replaceAll('\n', '<br/>');
+
+        // 5. 如果洗完后全是纯空格字符串（例如 "   "），转义为 &nbsp; 放置样式丢失
+        if (str.trim() === '') {
+            return str.replaceAll(' ', '&nbsp;');
+        }
+
+        return str;
+    };
+
+    let html = '<table style="border-collapse: collapse; border: 1px solid; text-align: left; font-family: monospace; font-size: 1em; width: 100%;">';
+
+    // 1. 处理表头 (第一行)
+    if (rows[0] && Array.isArray(rows[0])) {
+        html += '<thead><tr>';
+        rows[0].forEach(header => {
+            const cleanHeader = formatCellContent(header);
+            html += `<th style="border-collapse: collapse; border: 1px solid; text-align: left; white-space: pre-wrap; font-family: monospace; font-size: 1.1em; padding: 0.3em 0.5em; background-color: #f2f2f2;">${cleanHeader}</th>`;
+        });
+        html += '</tr></thead>';
+    }
+
+    // 2. 处理数据行 (第 2 行开始)
+    html += '<tbody>';
+    for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!Array.isArray(row)) continue;
+
+        html += '<tr>';
+        row.forEach(cell => {
+            const cleanCell = formatCellContent(cell);
+            // 💡 关键改动：样式中使用 white-space: pre-wrap; 既保留空格与换行，又能防止超出屏幕
+            html += `<td style="border-collapse: collapse; border: 1px solid; text-align: left; white-space: pre-wrap; font-family: monospace; font-size: 1em; padding: 0.3em 0.5em;">${cleanCell}</td>`;
+        });
+        html += '</tr>';
+    }
+    html += '</tbody></table>';
 
     return html;
 }
