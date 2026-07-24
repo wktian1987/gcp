@@ -825,6 +825,8 @@ export const TradeBot = {
         const timestamp             =  this.getThisTvMainData('timestamp')             ;
         const TradingSymbolPrice    =  this.getThisTvMainData('TradingSymbolPrice')    ;
         const BaseCoinPrice         =  this.getThisTvMainData('BaseCoinPrice')         ;
+        const barChgA               =  this.getThisTvMainData('barChgA')               ;
+        const barChgB               =  this.getThisTvMainData('barChgB')               ;
         const BaseCoinHairCut       =  this.getThisTvMainData('BaseCoinHairCut')       ;
         const leverage              =  this.getThisTvMainData('leverage')              ;
         const inFund                =  this.getThisTvMainData('inFund')                ;
@@ -833,6 +835,7 @@ export const TradeBot = {
         const allPosition           =  this.getThisTvMainData('allPosition')           ;
         const avgBuyPrice           =  this.getThisTvMainData('avgBuyPrice')           ;
         const netProfit             =  this.getThisTvMainData('netProfit')             ;
+       
 
         // 有新交易后，发生变化的变量是:
         // therePosition, allPosition, avgBuyPrice, netProfit, 
@@ -847,10 +850,10 @@ export const TradeBot = {
 
         this.rcd_fund = ToStrictNumber(this.mainData.rcd_fund, this.allFund);
         this.rcd_coin = ToStrictNumber(this.mainData.rcd_coin, this.allCoin);
-        if (this.allFund > this.rcd_fund * (1 + this.barChgA)) { this.rcd_fund = this.allFund; AddSetMessage(this.alertMessageSet, '↑ new rcd_fund'); }
-        if (this.allFund < this.rcd_fund * (1 - this.barChgA)) { this.rcd_fund = this.allFund; AddSetMessage(this.alertMessageSet, '↓ new rcd_fund'); }
-        if (this.allCoin > this.rcd_coin * (1 + this.barChgB)) { this.rcd_coin = this.allCoin; AddSetMessage(this.alertMessageSet, '↑ new rcd_coin'); }
-        if (this.allCoin < this.rcd_coin * (1 - this.barChgB)) { this.rcd_coin = this.allCoin; AddSetMessage(this.alertMessageSet, '↓ new rcd_coin'); }
+        if (this.allFund > this.rcd_fund * (1 + barChgA)) { this.rcd_fund = this.allFund; AddSetMessage(this.alertMessageSet, '↑ new rcd_fund'); }
+        if (this.allFund < this.rcd_fund * (1 - barChgA)) { this.rcd_fund = this.allFund; AddSetMessage(this.alertMessageSet, '↓ new rcd_fund'); }
+        if (this.allCoin > this.rcd_coin * (1 + barChgB)) { this.rcd_coin = this.allCoin; AddSetMessage(this.alertMessageSet, '↑ new rcd_coin'); }
+        if (this.allCoin < this.rcd_coin * (1 - barChgB)) { this.rcd_coin = this.allCoin; AddSetMessage(this.alertMessageSet, '↓ new rcd_coin'); }
 
         this.initialFund    = ToStrictNumber(this.mainData.initialFund  , this.allFund) ;
         this.hghestFund     = ToStrictNumber(this.mainData.hghestFund   , this.allFund) ;
