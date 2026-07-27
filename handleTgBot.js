@@ -1,0 +1,241 @@
+import {
+    SendTG,
+    SendEmail,
+    FormatMatrixToString,
+    ConvertRowsToHtmlTable,
+    GetSpreadsheetID,
+    GetGS,
+    isStrictString,
+    A2dToCleanObj,
+    Sleep,
+    BatchGetGS,
+    isStrictTrue,
+    isStrictFalse,
+    try3times,
+    LogsWithTime
+} from "./utility.js";
+
+import {TradeBot} from './handleTV.js';
+import { stopHandleNewSignals, ToStopSartNewSignals } from "./index.js";
+import { HandleUnreadGmails } from "./handleUnreadGmails.js";
+import { testA1FromGS00 } from "./Test.js";
+import { AskGemini } from "./geminiAI.js";
+
+const tempStore = {} ;
+export async function HandleTgBot(msg) {
+    const myTgID            = process.env.myTgID        ;
+    const myGroupAlertTgID  = process.env.TG_CHAT_ID    ;
+
+    const Range_toGCP       = "toGCP!A:B"   ;
+    const botNumber_start   = 'TradingBot_' ;
+
+    const chat_id   = String(msg.chat.id || "unknown").trim()   ;
+    const text      = msg.text || ""                            ;
+    if (!text) {return };
+
+    // 只处理我或者群内发来的消息
+    if (chat_id !== myTgID && chat_id !== myGroupAlertTgID) {
+        SendTG("收到未授权联系人信息", "已忽略本条消息", myTgID).catch(()=>{});
+        await Sleep(1000);
+        SendTG("收到未授权联系人信息", "已忽略本条消息", myGroupAlertTgID).catch(()=>{});
+        return ;
+    }
+
+    if (text.toUpperCase().includes('STOPHANDLENEWSIGNALS')) { //  检查文本中是否包含"STOPHANDLENEWSIGNALS"字符串（不区分大小写）
+        let message = '停止对新的信号进行处理'; //  默认消息
+        if (stopHandleNewSignals) { message = '已经发送停止新信号处理命令, 无需再次发送' } else { 
+            const r = ToStopSartNewSignals('toStop') ;
+            if (!isStrictTrue(r)) { message = isStrictString(r) ? r.trim() : 'there error in handle this message' }
+        }
+        SendTG(`收到stop handle New Signals信号`, message, chat_id).catch(() => { });
+        return ;
+    }
+
+    if (text.toUpperCase().includes('STARTHANDLENEWSIGNALS')) {
+        let message = '开始对新的信号进行处理';
+        if (!stopHandleNewSignals) { message = '现在新的信号处理正常, 无需手动开始' } else { 
+            const r = ToStopSartNewSignals('toStart') ;
+            if (!isStrictTrue(r)) { message = isStrictString(r) ? r.trim() : 'there error in handle this message' }
+        }
+        SendTG(`收到start handle New Signals信号`, message, chat_id).catch(() => { });
+        return ;
+    }
+
+    if (text.toUpperCase().includes('HANDLEUNREADGMAILS')) {
+        SendTG(`收到HandleUnreadGmails信号`, '开始处理未读Gmail邮件', chat_id).catch(() => { });
+        try {
+            await HandleUnreadGmails(new LogsWithTime('来自TG的查看未读邮件请求'), chat_id);
+            SendTG(`HandleUnreadGmails信号处理结束`, 'HandleUnreadGmails信号处理成功', chat_id).catch(() => { });
+        } catch(e) {
+            SendTG(`HandleUnreadGmails信号处理结束`, 'HandleUnreadGmails信号处理失败 \n' + e.message, chat_id).catch(() => { });
+        }
+        return ;
+    }
+
+    if (text.toUpperCase().includes('ASKAI:')) {
+        SendTG(`收到AskAI信号`, '等待AI回复', chat_id).catch(() => { });
+        let answer = '' ;
+        const question = text.replace('ASKAI:', '').trim();
+        if (!isStrictString(question)) {answer = '问题格式错误, 请重新输入'}
+        else {
+            try { answer = await AskGemini(question) } catch(e) {answer = `AI出错: ${e.message}`}
+        }
+
+        SendTG(`AskAI回复`, answer, chat_id).catch(() => { });
+        return;
+    }
+
+    if (text.toUpperCase().includes('TEST')) {
+        SendTG(`收到TEST信号`, '开始测试Test.js文件中的testA1FromGS00()', chat_id).catch(() => { });
+        await testA1FromGS00(chat_id) ;
+        return ;
+    }
+
+    // 下面的命令是针对特定botnumber的，所以发命令时需要先打入机器人名, 例如trd01
+
+    const botNumber = (txt => {
+        const match = txt.match(/trd(\d{2})/); // 匹配 trd 加上两位数字
+        return match ? `${botNumber_start}${match[1]}` : null;
+    })(text);
+
+    if (!isStrictString(botNumber) || !botNumber.startsWith(botNumber_start)) {
+        if (!text.toUpperCase().includes('STOPHANDLENEWSIGNALS') && !text.toUpperCase().includes('STARTHANDLENEWSIGNALS')) {
+            SendTG("消息格式错误", "请检查", chat_id).catch(()=>{});
+        }
+        return ;
+    }
+
+    if (text.toUpperCase().includes('RESET')) {
+        const tbName_TGID = botNumber + '_TGID';
+        const tbName_tgReset = botNumber + '_tgReset';
+
+        let resetMessage = '';
+
+        if (!Object.hasOwn(TradeBot, tbName_tgReset)) {
+            resetMessage = `机器人还未创建, 先行预设RESET, 等待TradeBot接收`;
+            TradeBot[tbName_TGID]       = chat_id;
+            TradeBot[tbName_tgReset]    = true      ;
+            SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(() => { });
+            return;
+        }
+
+        if (Object.hasOwn(TradeBot, tbName_tgReset) && isStrictTrue(TradeBot[tbName_tgReset])) {
+            resetMessage = `RESET已设, 但TradeBot还未接收, 没必要重设`;
+            SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(() => { });
+            return;
+        }
+
+        if (Object.hasOwn(TradeBot, tbName_tgReset) && isStrictFalse(TradeBot[tbName_tgReset])) {
+            resetMessage = `RESET信号已创建, 等待TradeBot接收`;
+            TradeBot[tbName_TGID] = chat_id;
+            TradeBot[tbName_tgReset] = true;
+
+            SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(() => { });
+            return;
+        }
+
+        resetMessage = '出现内部逻辑错误, 本次信号丢弃';
+        SendTG(`${botNumber} 收到RESET信号`, resetMessage, chat_id).catch(() => { });
+        return;
+    }
+
+    if (text.toUpperCase().includes('TOREADGSCMD')) {
+        const messageTitle = `${botNumber} 收到ToReadGSCMD信号`;
+
+        const tbName_TGID = botNumber + '_TGID';
+        const tbName_tgToReadGSCMD = botNumber + '_tgToReadGSCMD';
+
+        let gscmdMessage = '';
+
+        if (!Object.hasOwn(TradeBot, tbName_tgToReadGSCMD)) {
+            gscmdMessage = `机器人还未创建, 先行预设ToReadGSCMD, 等待TradeBot接收`;
+            TradeBot[tbName_TGID] = chat_id;
+            TradeBot[tbName_tgToReadGSCMD] = true;
+            SendTG(messageTitle, gscmdMessage, chat_id).catch(() => { });
+            return;
+        }
+
+        if (Object.hasOwn(TradeBot, tbName_tgToReadGSCMD) && isStrictTrue(TradeBot[tbName_tgToReadGSCMD])) {
+            gscmdMessage = `ToReadGSCMD已设, 但TradeBot还未接收, 没必要重设`;
+            SendTG(messageTitle, gscmdMessage, chat_id).catch(() => { });
+            return;
+        }
+
+        if (Object.hasOwn(TradeBot, tbName_tgToReadGSCMD) && isStrictFalse(TradeBot[tbName_tgToReadGSCMD])) {
+            gscmdMessage = `ToReadGSCMD信号已创建, 等待TradeBot接收`;
+            TradeBot[tbName_TGID] = chat_id;
+            TradeBot[tbName_tgToReadGSCMD] = true;
+
+            SendTG(messageTitle, gscmdMessage, chat_id).catch(() => { });
+            return;
+        }
+
+        gscmdMessage = '出现内部逻辑错误, 本次信号丢弃';
+        SendTG(messageTitle, gscmdMessage, chat_id).catch(() => { });
+        return;
+    }
+
+    if (text.toUpperCase().includes('STOP')) {
+        const tbName_TGID   = botNumber + '_TGID'   ;
+        const tbName_tgSTOP = botNumber + '_tgSTOP' ;
+
+        let stopMessage = '';
+
+        if (!Object.hasOwn(TradeBot, tbName_tgSTOP)) {
+            stopMessage = `机器人还未创建, 先行预设STOP, 等待TradeBot接收`;
+            TradeBot[tbName_TGID] = chat_id;
+            TradeBot[tbName_tgSTOP] = true;
+            SendTG(`${botNumber} 收到STOP信号`, stopMessage, chat_id).catch(() => { });
+            return;
+        }
+
+        if (Object.hasOwn(TradeBot, tbName_tgSTOP) && isStrictTrue(TradeBot[tbName_tgSTOP])) {
+            stopMessage = `STOP已设, 但TradeBot还未接收, 没必要重设`;
+            SendTG(`${botNumber} 收到STOP信号`, stopMessage, chat_id).catch(() => { });
+            return;
+        }
+
+        if (Object.hasOwn(TradeBot, tbName_tgSTOP) && isStrictFalse(TradeBot[tbName_tgSTOP])) {
+            stopMessage = `STOP信号已创建, 等待TradeBot接收, 可通过RESET信号, 开启新信号处理`;
+            TradeBot[tbName_TGID] = chat_id;
+            TradeBot[tbName_tgSTOP] = true;
+
+            SendTG(`${botNumber} 收到STOP信号`, stopMessage, chat_id).catch(() => { });
+            return;
+        }
+
+        stopMessage = '出现内部逻辑错误, 本次信号丢弃';
+        SendTG(`${botNumber} 收到STOP信号`, stopMessage, chat_id).catch(() => { });
+        return;
+    }
+
+    const tbName_spreadsheetID  =  botNumber + '_spreadsheetID'  ; // 全局中保存的spreadsheetID
+    const spreadsheetID = Object.hasOwn(TradeBot, tbName_spreadsheetID) && isStrictString(TradeBot[tbName_spreadsheetID]) ? TradeBot[tbName_spreadsheetID] : await try3times(GetSpreadsheetID, botNumber);
+
+    const toReadRangeName  = botNumber + '_toReadRange'     ;
+    const toEmailRangeName = botNumber + '_toEmailRange'    ;
+    if (!isStrictString(tempStore[toReadRangeName]) || !isStrictString(tempStore[toEmailRangeName])) {
+        const toGCPData = A2dToCleanObj(await try3times(GetGS, spreadsheetID, Range_toGCP) ) ;
+        tempStore[toReadRangeName]  = toGCPData.toReadRange     ;
+        tempStore[toEmailRangeName] = toGCPData.toEmailRange    ;
+    }
+    let DataFromGS = await try3times(BatchGetGS, spreadsheetID, [tempStore[toReadRangeName], tempStore[toEmailRangeName], Range_toGCP], 'read') ;
+    const toGCPData = A2dToCleanObj(DataFromGS[2]) ;
+    if (tempStore[toReadRangeName] !== toGCPData.toReadRange || tempStore[toEmailRangeName] !== toGCPData.toEmailRange) {
+        tempStore[toReadRangeName]  = toGCPData.toReadRange     ;
+        tempStore[toEmailRangeName] = toGCPData.toEmailRange    ;
+        DataFromGS = await try3times(BatchGetGS, spreadsheetID, [tempStore[toReadRangeName], tempStore[toEmailRangeName]], 'read') ;
+    }
+
+    const toTGData    = DataFromGS[0];
+    const toEmailData = DataFromGS[1];
+
+    const toTGDataString = FormatMatrixToString(toTGData);
+    // const task_SendTG = SendTG(botNumber, toTGDataString, chat_id);
+    SendTG(botNumber, toTGDataString, chat_id).catch(()=>{}) ;
+
+    const toEmailHtml = ConvertRowsToHtmlTable(toEmailData);
+    // const task_SendEmail = SendEmail(botNumber, toEmailHtml);
+    SendEmail(botNumber, toEmailHtml).catch(()=>{}) ;
+
+}
