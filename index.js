@@ -3,6 +3,7 @@ import { DATETIME, LogsWithTime, SendTG, Sleep, LogInBackground } from './utilit
 import { HandleUnreadGmails } from './handleUnreadGmails.js';
 import { HandleTradeBot, HandleAllPrice, CV } from './handleTV.js';
 import { HandleTgBot } from './handleTgBot.js';
+import { checkServerIdentity } from 'node:tls';
 
 // 最多保留100个队列任务
 const MaxWaitingSignalQty = 100 ;
@@ -110,7 +111,8 @@ export function ToStopSartNewSignals(toStopStart = 'toStop') { // 重启是'toSt
 
 const targetURL = {
     tgbot       :   '/tgBot'        ,
-    tradingview :   '/tradingview'  } ;
+    tradingview :   '/tradingview'  ,
+    web         :   '/web'          } ;
 const urlList = Object.keys(targetURL).map(k => String(targetURL[k]));
 
 const server = http.createServer(async (req, res) => {
@@ -139,15 +141,15 @@ const server = http.createServer(async (req, res) => {
             } catch (e) { tgLogs.AddNewErrLogLine(`HandleTgBot()处理失败: ${e.message}`) } finally { tgLogs.consoleLogs() }
         } else {
             let stopHandleThisSigal = false ;
-            if (stopHandleNewSignals) {
+            if (stopHandleNewSignals && method === 'POST') {
                 stopHandleThisSigal = true ;
                 const stopMessage = '||| ||| stopHandleNewSignals is set, 不再处理新的信号' ;
                 SendTG(`stopMessage`, stopMessage).catch(() => { });
                 LogInBackground(stopMessage) ;
             }
-            if (method !== 'POST' || !urlList.includes(url)) { 
+            if (!urlList.includes(url)) { 
                 stopHandleThisSigal = true ;
-                const stopMessage = '||| ||| 只接受POST信号, 且信号发往指定URL' ;
+                const stopMessage = '||| ||| 只接受发往指定URL的信号' ;
                 SendTG(`stopMessage`, stopMessage).catch(() => { });
                 LogInBackground(stopMessage) ;
             }
@@ -167,11 +169,18 @@ const server = http.createServer(async (req, res) => {
             // 至此已经不需要再接收数据了
             res.writeHead(200, { 'Content-Type': 'text/plain' });
             res.end("ACK");
+
+            const newMessageLog = {severity: 'INFO', message: '... ... 新信号'} ;
+            newMessageLog.message   += '\n' + `url: ${url}` ;
+            newMessageLog.message   += '\n' + `method: ${method}` ;
+            newMessageLog.message   += '\n' + `body: ${bodyData}` ;
+            LogInBackground(newMessageLog) ;
+
             const body = JSON.parse(bodyData);
             body.gcpGetTime = gcpGetTime ;
-            LogInBackground(`... ... 新信号来自${url}`) ;
             AddNewSignal({url, body}) ;
             LogInBackground(`... ... 新信号已放入待处理队列`) ;
+
             if (isWorkerRunning) { LogInBackground('... ... 已经有人在处理队列任务了, 不必分配新的工人') }
             else {
                 LogInBackground('... ... 分配新的工人去处理队列任务');

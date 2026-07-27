@@ -1481,17 +1481,56 @@ export class LogsWithTime{
     }
 }
 
+
+/**
+ * 离位异步日志交割官：在当前事件循环末端（setImmediate）非阻塞地投递日志。
+ * 100% 物理隔绝日志处理对主业务链路的性能干扰，确保核心业务秒级出港。
+ * 
+ * @param {string|object} log - 待投递的日志载荷。
+ *   - 若为 string: 直接 console.log 投递。
+ *   - 若为带有 {severity: 'ERROR', message: '...'} 的对象: 自动分流至 console.error 或 console.log 并串化。
+ *   - 若为其他对象: 自动 JSON 串化后投递。
+ */
 export function LogInBackground(log) {
+    // 定义标准的日志严重程度白名单 (符合 GCP/RFC5424 标准)
+    const VALID_SEVERITIES = ['DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY'];
+
     setImmediate(() => {
-        // 1. 物理检查：防止传入空对象导致报错
         if (!log) return;
 
-        if (isStrictString(log)) { console.log(log) ; return ;}
-
-        // 2. 刚性交割：根据日志级别，投递给正确的标准输出流，绝不套娃！
-        if (isPlainObject(log) && Object.hasOwn(log, 'severity') && Object.hasOwn(log, 'message')) {
-            if (log.severity === 'ERROR') { console.error(JSON.stringify(log)) }
-            else { console.log(JSON.stringify(log)) }
+        // 1. 字符串直接输出
+        if (isStrictString(log)) { 
+            console.log(log); 
+            return; 
         }
+
+        // 2. 结构化日志处理
+        if (isObjectOfKeyValue(log) && Object.hasOwn(log, 'message')) {
+            // 提取并确权 severity
+            let severity = 'INFO'; // 默认值
+            if (Object.hasOwn(log, 'severity')) {
+                const upperSeverity = String(log.severity).toUpperCase();
+                // 核心校验：如果传入的级别不在白名单内，强制修正为 INFO
+                if (VALID_SEVERITIES.includes(upperSeverity)) {
+                    severity = upperSeverity;
+                }
+            }
+
+            // 构造最终输出对象，确保字段顺序和合规性
+            const finalLog = { ...log, severity };
+
+            // 3. 刚性分流：ERROR 级别及以上走标准错误流，其余走标准输出流
+            const isErrorLevel = ['ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY'].includes(severity);
+            
+            if (isErrorLevel) {
+                console.error(JSON.stringify(finalLog));
+            } else {
+                console.log(JSON.stringify(finalLog));
+            }
+            return;
+        }
+
+        // 3. 非标准对象或其它类型，兜底串化输出
+        console.log(typeof log === 'object' ? JSON.stringify(log) : String(log));
     });
 }
