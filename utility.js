@@ -1418,7 +1418,7 @@ export class LogsWithTime{
      * @param {string} logTitle 
      * @param {string} [toSendTG='NO'] 
      */
-    constructor(logTitle = 'undefinedLogTitle', toSendTG = 'NO') {
+    constructor(logTitle = 'undefinedLogTitle', toSendTG = 'NO', toChatID = process.env.TG_CHAT_ID) {
         if (!isStrictString(logTitle)) { throw new Error('logTitle must be string') }
         if (toSendTG !== 'YES' && toSendTG !== 'NO' && toSendTG !== 'onlyErr') { throw new Error('toSendTG input err') }
 
@@ -1426,6 +1426,7 @@ export class LogsWithTime{
         this.startTime      =  Date.now()       ;
         this.logsA          =  []               ;
         this.toSendTG       =  toSendTG         ;
+        this.toChatID       =  toChatID         ;
     }
 
     ChangeLogTitle(newLogTitle) {
@@ -1474,7 +1475,7 @@ export class LogsWithTime{
                     return index === 0 ? curr.message : acc + '\n' + curr.message;
                 }, '');
             if (this.toSendTG === 'onlyErr' && this.ThereErrLog() || this.toSendTG === 'YES') {
-                SendTG(this.logTitle, longLogsStr).catch(()=>{}) ;
+                SendTG(this.logTitle, longLogsStr, this.toChatID).catch(()=>{}) ;
             }
         }
     }

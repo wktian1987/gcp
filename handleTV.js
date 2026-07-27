@@ -1650,6 +1650,7 @@ export async function HandleTradeBot(tvData, thisLogs) {
     } ) ;
 
 
+    // 用于计时，计算每个任务的执行时间
     const   thisTime            = new DATETIME()    ;
     let     theLongestTime      =  0                ;
     let     theLongestTimeTask  =  ''               ;
