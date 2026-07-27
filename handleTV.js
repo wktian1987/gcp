@@ -1643,20 +1643,21 @@ export const TradeBot = {
  * @returns 
  */
 export async function HandleTradeBot(tvData, thisLogs) {
-    const thisTime          = new DATETIME() ;
-    let theLongestTime      =  0    ;
-    let theLongestTimeTask  =  ''   ;
-
     // 清洗来自TV的数据
     Object.keys(tvData).forEach(key => {
         tvData[key] = ToStrictNumBoolStr(tvData[key], 'notAvailableValueFromTV') ;
         if ( isStrictString(tvData[key]) && tvData[key].includes(CV.HuanHang) ) { tvData[key] = tvData[key].replaceAll(CV.HuanHang, '\n').trim() }
     } ) ;
 
+
+    const   thisTime            = new DATETIME()    ;
+    let     theLongestTime      =  0                ;
+    let     theLongestTimeTask  =  ''               ;
+
     const bot = Object.create(TradeBot);
     thisLogs.AddNewLogLine(`创建机器人成功`)
+    if(thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'CreateTradeBot' ; thisTime.UpdateTime() ;}
 
-    thisTime.UpdateTime() ;
     thisLogs.AddNewLogLine('去执行CreateBasicAttr()') ;
     const r_CreateBasicAttr = await bot.CreateBasicAttr(tvData, thisLogs);
     if (r_CreateBasicAttr === CV.stopSet         ) {return r_CreateBasicAttr}
@@ -1664,67 +1665,60 @@ export async function HandleTradeBot(tvData, thisLogs) {
     if (r_CreateBasicAttr === CV.stillHandleLast ) {return r_CreateBasicAttr}
     if (!r_CreateBasicAttr || isStrictString(r_CreateBasicAttr)) { throw new Error('CreateBasicAttr() 失败: \n' + r_CreateBasicAttr) }
     if (isStrictTrue(r_CreateBasicAttr)) { thisLogs.AddNewLogLine('CreateBasicAttr() success') }
-    if (thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'CreateBasicAttr()' }
+    if (thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'CreateBasicAttr()' ; thisTime.UpdateTime() ;}
 
 
-    thisTime.UpdateTime() ;
     thisLogs.AddNewLogLine('去执行ToCheckInitiate()') ;
     const r_ToCheckInitiate = await bot.ToCheckInitiate();
     if (!r_ToCheckInitiate || isStrictString(r_ToCheckInitiate)) { throw new Error('ToCheckInitiate() 失败: \n' + r_ToCheckInitiate) }
     if (isStrictTrue(r_ToCheckInitiate)) { thisLogs.AddNewLogLine('ToCheckInitiate() success') }
-    if(thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'ToCheckInitiate()' }
+    if(thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'ToCheckInitiate()' ; thisTime.UpdateTime() ;}
 
 
-    thisTime.UpdateTime() ;
     thisLogs.AddNewLogLine('去执行CheckAllPosition_withBroker()') ;
     const r_CheckAllPosition_withBroker = await bot.CheckAllPosition_withBroker();
     if (!r_CheckAllPosition_withBroker || isStrictString(r_CheckAllPosition_withBroker)) { throw new Error('CheckAllPosition_withBroker() 失败: \n' + r_CheckAllPosition_withBroker) }
     if (isStrictTrue(r_CheckAllPosition_withBroker)) { thisLogs.AddNewLogLine('CheckAllPosition_withBroker() success') }
-    if(thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'CheckAllPosition_withBroker()' }
+    if(thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'CheckAllPosition_withBroker()' ; thisTime.UpdateTime() ;}
 
 
     bot.CalcuBuySellLimit();
     thisLogs.AddNewLogLine('CalcuBuySellLimit() success');
+    if(thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'CalcuBuySellLimit()' ; thisTime.UpdateTime() ;}
 
-    thisTime.UpdateTime() ;
     thisLogs.AddNewLogLine('去执行ToCheckFundFee()') ;
     const r_ToCheckFundFee = await bot.ToCheckFundFee();
     if (!r_ToCheckFundFee || isStrictString(r_ToCheckFundFee)) { throw new Error('ToCheckFundFee() 失败: \n' + r_ToCheckFundFee) }
     if (isStrictTrue(r_ToCheckFundFee)) { thisLogs.AddNewLogLine('ToCheckFundFee() success') }
-    if(thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'ToCheckFundFee()' }
+    if(thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'ToCheckFundFee()' ; thisTime.UpdateTime() ;}
 
 
-    thisTime.UpdateTime() ;
     thisLogs.AddNewLogLine('去执行ToSell()') ;
     const r_ToSell = await bot.ToSell();
     if (!r_ToSell || isStrictString(r_ToSell)) { throw new Error('ToSell() 失败: \n' + r_ToSell) }
     if (isStrictTrue(r_ToSell)) { thisLogs.AddNewLogLine('ToSell() success') }
-    if(thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'ToSell()' }
+    if(thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'ToSell()' ; thisTime.UpdateTime() ;}
 
 
-    thisTime.UpdateTime() ;
     thisLogs.AddNewLogLine('去执行ToBuy()') ;
     const r_ToBuy = await bot.ToBuy();
     if (!r_ToBuy || isStrictString(r_ToBuy)) { throw new Error('ToBuy() 失败: \n' + r_ToBuy) }
     if (isStrictTrue(r_ToBuy)) { thisLogs.AddNewLogLine('ToBuy() success') }
-    if(thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'ToBuy()' }
+    if(thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'ToBuy()' ; thisTime.UpdateTime() ;}
 
 
-    thisTime.UpdateTime() ;
     thisLogs.AddNewLogLine('去执行ToCheckWaitingOrder()') ;
     const r_ToCheckWaitingOrder = await bot.ToCheckWaitingOrder();
     if (!r_ToCheckWaitingOrder || isStrictString(r_ToCheckWaitingOrder)) { throw new Error('ToCheckWaitingOrder() 失败: \n' + r_ToCheckWaitingOrder) }
     if (isStrictTrue(r_ToCheckWaitingOrder)) { thisLogs.AddNewLogLine('ToCheckWaitingOrder() success') }
-    if(thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'ToCheckWaitingOrder()' }
+    if(thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'ToCheckWaitingOrder()' ; thisTime.UpdateTime() ;}
 
 
     // WriteToGS_ReleaseLocks() 不需要计时
-    // thisTime.UpdateTime() ;
     thisLogs.AddNewLogLine('去执行WriteToGS_ReleaseLocks()') ;
     const r_WriteToGS_ReleaseLocks = await bot.WriteToGS_ReleaseLocks();
     if (!r_WriteToGS_ReleaseLocks || isStrictString(r_WriteToGS_ReleaseLocks)) { throw new Error('WriteToGS_ReleaseLocks() 失败: \n' + r_WriteToGS_ReleaseLocks) }
     if (isStrictTrue(r_WriteToGS_ReleaseLocks)) { thisLogs.AddNewLogLine('WriteToGS_ReleaseLocks() success') }
-    // if(thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'WriteToGS_ReleaseLocks()' }
 
     // ToSendAlertMessage() 不需要计时
     thisLogs.AddNewLogLine('去执行toSendAlertMessage(), 后台运行，不等待，不报错');
