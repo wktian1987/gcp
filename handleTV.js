@@ -1718,13 +1718,15 @@ export async function HandleTradeBot(tvData, thisLogs) {
     if(thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'ToCheckWaitingOrder()' }
 
 
-    thisTime.UpdateTime() ;
+    // WriteToGS_ReleaseLocks() 不需要计时
+    // thisTime.UpdateTime() ;
     thisLogs.AddNewLogLine('去执行WriteToGS_ReleaseLocks()') ;
     const r_WriteToGS_ReleaseLocks = await bot.WriteToGS_ReleaseLocks();
     if (!r_WriteToGS_ReleaseLocks || isStrictString(r_WriteToGS_ReleaseLocks)) { throw new Error('WriteToGS_ReleaseLocks() 失败: \n' + r_WriteToGS_ReleaseLocks) }
     if (isStrictTrue(r_WriteToGS_ReleaseLocks)) { thisLogs.AddNewLogLine('WriteToGS_ReleaseLocks() success') }
-    if(thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'WriteToGS_ReleaseLocks()' }
+    // if(thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'WriteToGS_ReleaseLocks()' }
 
+    // ToSendAlertMessage() 不需要计时
     thisLogs.AddNewLogLine('去执行toSendAlertMessage(), 后台运行，不等待，不报错');
     bot.ToSendAlertMessage().catch(() => { });
 
