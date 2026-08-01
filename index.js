@@ -199,7 +199,6 @@ const server = http.createServer(async (req, res) => {
             const newMessageLog = { severity: 'INFO', message: '... ... 新信号' };
             newMessageLog.message += '\n' + `url: ${url}`;
             newMessageLog.message += '\n' + `method: ${method}`;
-            newMessageLog.message += '\n' + `body: ${bodyData}`;
             LogInBackground(newMessageLog);
 
             const thisLogs = new LogsWithTime(`GET: ${url}`, 'onlyErr') ;
