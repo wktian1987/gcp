@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时交易状态</title>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>私人交易状态</h2>
+            <div><span class="status-dot"></span><span id="conn-text">连接中...</span></div>
+        </div>
+        <div id="trade-list">
+            <div style="text-align: center; color: #8b949e; padding: 20px;">等待实时成交信号...</div>
+        </div>
+    </div>
+
+    <script>
+        // 前端自动建立 SSE 连接
+        const eventSource = new EventSource('/api/trades/stream');
+
+        eventSource.onopen = () => {
+            document.getElementById('conn-text').innerText = '实时通道就绪';
+        };
+
+        eventSource.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'CONNECTED') return;
+
+            const list = document.getElementById('trade-list');
+            // 清理初始占位文本
+            if (list.children[0]?.style?.textAlign === 'center') list.innerHTML = '';
+
+            // 创建新成交条目
+            const card = document.createElement('div');
+            card.className = `trade-card \${data.side === 'BUY' ? 'buy' : 'sell'}`;
+            card.innerHTML = `
+                <div>
+                    <strong>\${data.symbol || 'BTCUSDT'}</strong> 
+                    <span style="color: \${data.side === 'BUY' ? '#3fb950' : '#f85149'}">\${data.side || 'BUY'}</span>
+                </div>
+                <div>价格: $\${data.price} | 数量: \${data.amount}</div>
+                <div style="color: #8b949e; font-size: 0.85em;">\${data.time || new Date().toLocaleTimeString()}</div>
+            `;
+            
+            list.prepend(card); // 新数据压在最上面
+        };
+
+        eventSource.onerror = () => {
+            document.getElementById('conn-text').innerText = '连接中断，重连中...';
+        };
+    </script>
+</body>
+
+</html>

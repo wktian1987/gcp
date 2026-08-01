@@ -3,7 +3,7 @@ import { DATETIME, LogsWithTime, SendTG, Sleep, LogInBackground } from './utilit
 import { HandleUnreadGmails } from './handleUnreadGmails.js';
 import { HandleTradeBot, HandleAllPrice, CV } from './handleTV.js';
 import { HandleTgBot } from './handleTgBot.js';
-import { checkServerIdentity } from 'node:tls';
+import { Web } from './web.js';
 
 // 最多保留100个队列任务
 const MaxWaitingSignalQty = 100 ;
@@ -196,141 +196,15 @@ const server = http.createServer(async (req, res) => {
             }
         }
         if (method === 'GET') {
-            if (url === '/favicon.ico') {
-                //  204 No Content：明确告诉浏览器这里没有图标，别再要了
-                res.writeHead(204);
-                res.end();
-                return; //  注意：这里一定要 return，防止代码继续往下执行！
-            }
+            const newMessageLog = { severity: 'INFO', message: '... ... 新信号' };
+            newMessageLog.message += '\n' + `url: ${url}`;
+            newMessageLog.message += '\n' + `method: ${method}`;
+            newMessageLog.message += '\n' + `body: ${bodyData}`;
+            LogInBackground(newMessageLog);
 
-            // 下面的代码应该是返回一个网页，请帮我补全代码
-
-            // 2. 处理 SSE 实时推送流接口
-            if (url === '/api/trades/stream') {
-                res.writeHead(200, {
-                    'Content-Type': 'text/event-stream',
-                    'Cache-Control': 'no-cache, no-transform', // 阻止 Cloud Run / CDN 缓存响应流
-                    'Connection': 'keep-alive',
-                    'X-Accel-Buffering': 'no'                    // 防 Nginx/GCP 缓冲
-                });
-
-                // 建立连接时推一个握手信号
-                res.write('data: {"type":"CONNECTED"}\n\n');
-
-                // 将此 res 注入到你的全局 clients 数组中，供策略广播调用
-                if (global.sseClients) {
-                    global.sseClients.push(res);
-                }
-
-                // 客户端断开连接时清除，防止内存泄漏
-                req.on('close', () => {
-                    if (global.sseClients) {
-                        global.sseClients = global.sseClients.filter(client => client !== res);
-                    }
-                });
-                return;
-            }
-
-            // 3. 处理主页请求 (GET / 或带有 url 参数的情况，如 /?key=123)
-            const parsedUrl = new URL(url, `http://${req.headers.host}`);
-            if (parsedUrl.pathname === '/' || parsedUrl.pathname === '/index.html') {
-
-                // 💡 HTML 页面模板
-                const htmlContent = `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚡ 实时交易状态大盘</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #0d1117; color: #c9d1d9; margin: 0; padding: 20px; }
-        .container { max-width: 800px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 10px; margin-bottom: 20px; }
-        .status-dot { display: inline-block; width: 10px; height: 10px; background-color: #238636; border-radius: 50%; margin-right: 8px; }
-        .trade-card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 12px 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; animation: fadeIn 0.3s ease-in-out; }
-        .buy { border-left: 4px solid #238636; }
-        .sell { border-left: 4px solid #da3633; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h2>📈 私人交易状态监控</h2>
-            <div><span class="status-dot"></span><span id="conn-text">连接中...</span></div>
-        </div>
-        <div id="trade-list">
-            <div style="text-align: center; color: #8b949e; padding: 20px;">等待实时成交信号...</div>
-        </div>
-    </div>
-
-    <script>
-        // 前端自动建立 SSE 连接
-        const eventSource = new EventSource('/api/trades/stream');
-
-        eventSource.onopen = () => {
-            document.getElementById('conn-text').innerText = '实时通道就绪';
-        };
-
-        eventSource.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === 'CONNECTED') return;
-
-            const list = document.getElementById('trade-list');
-            // 清理初始占位文本
-            if (list.children[0]?.style?.textAlign === 'center') list.innerHTML = '';
-
-            // 创建新成交条目
-            const card = document.createElement('div');
-            card.className = \`trade-card \${data.side === 'BUY' ? 'buy' : 'sell'}\`;
-            card.innerHTML = \`
-                <div>
-                    <strong>\${data.symbol || 'BTCUSDT'}</strong> 
-                    <span style="color: \${data.side === 'BUY' ? '#3fb950' : '#f85149'}">\${data.side || 'BUY'}</span>
-                </div>
-                <div>价格: $\${data.price} | 数量: \${data.amount}</div>
-                <div style="color: #8b949e; font-size: 0.85em;">\${data.time || new Date().toLocaleTimeString()}</div>
-            \`;
-            
-            list.prepend(card); // 新数据压在最上面
-        };
-
-        eventSource.onerror = () => {
-            document.getElementById('conn-text').innerText = '连接中断，重连中...';
-        };
-    </script>
-</body>
-</html>`;
-
-                // 返回 200 OK 并输出网页
-                res.writeHead(200, {
-                    'Content-Type': 'text/html; charset=utf-8',
-                    'Content-Length': Buffer.byteLength(htmlContent),
-                    'Cache-Control': 'no-cache'
-                });
-                res.end(htmlContent);
-                return; // 👈 必须 return
-            }
-
-            // 4. 未匹配到的其他 GET 路由，返回 404
-            res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-            res.end('404 Not Found');
-            return;
+            const thisLogs = new LogsWithTime(`GET: ${url}`, 'onlyErr') ;
+            Web(thisLogs, url, res).catch(() => { });
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     } catch (e) {
