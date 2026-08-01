@@ -1,8 +1,8 @@
-import { readFile } from "node:fs";
+import { readFileSync } from "node:fs";
 
 let htmlContent = null ;
-async function readIndexHTML() {
-    if (htmlContent === null) { htmlContent = await readFile('./web/index.html', 'utf-8') }
+function readIndexHTML() {
+    if (htmlContent === null) { htmlContent = readFileSync('./web/index.html', 'utf-8') }
     return htmlContent ;
 }
 
@@ -18,7 +18,7 @@ export async function Web(thisLogs, url, res) {
     // 帮我写一段代码，将'./web/index.html'文件的内容读取出来，并返回给客户端
     // 3. 读取并返回 ./web/index.html 内容
     try {
-        const htmlContent = await readIndexHTML();
+        const htmlContent = readIndexHTML();
         // 写入 200 响应头
         res.writeHead(200, {
             'Content-Type': 'text/html; charset=utf-8',
