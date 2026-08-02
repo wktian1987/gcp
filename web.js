@@ -36,11 +36,4 @@ export async function Web(thisLogs, url, res) {
 
     } catch (e) { thisLogs.AddNewErrLogLine(`发送index.html 失败：${e.message}`) }
 
-
-
-
-
-
-
-
 }

@@ -202,7 +202,7 @@ const server = http.createServer(async (req, res) => {
             LogInBackground(newMessageLog);
 
             const thisLogs = new LogsWithTime(`GET: ${url}`, 'onlyErr') ;
-            await Web(thisLogs, url, res).catch(() => { });
+            await Web(thisLogs, url, res);
 
             thisLogs.consoleLogs();
         }
