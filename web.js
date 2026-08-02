@@ -8,7 +8,7 @@ export function readIndexHTML(toReadNew = false) {
     const newHTMLregion     = 'newHTML!A1'          ;
 
     if (htmlContent === null || toReadNew) { 
-        const newHTMLstr = (await GetGS(TradingBot_00_ID, newHTMLregion))[0][0];
+        const newHTMLstr = "" //(await GetGS(TradingBot_00_ID, newHTMLregion))[0][0];
 
         htmlContent = ToStrictString(newHTMLstr) ;
     }
