@@ -1,15 +1,11 @@
-import { readFileSync } from "node:fs";
-import { ToStrictString } from "./utility";
-import { GetGS } from "./getGS.js";
+import { ToStrictString, GetGS } from "./utility";
 
 let htmlContent = null ;
 export async function readIndexHTML(toReadNew = false) {
     const TradingBot_00_ID  = process.env.SHEET_ID  ;
     const newHTMLregion     = 'newHTML!A1'          ;
-
     if (htmlContent === null || toReadNew) { 
         const newHTMLstr = (await GetGS(TradingBot_00_ID, newHTMLregion))[0][0];
-
         htmlContent = ToStrictString(newHTMLstr) ;
     }
     return htmlContent ;
