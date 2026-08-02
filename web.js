@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { ToStrictString } from "./utility";
+import { GetGS } from "./getGS.js";
 
 let htmlContent = null ;
 export function readIndexHTML(toReadNew = false) {
