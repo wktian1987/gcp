@@ -3,12 +3,12 @@ import { ToStrictString } from "./utility";
 import { GetGS } from "./getGS.js";
 
 let htmlContent = null ;
-export function readIndexHTML(toReadNew = false) {
+export async function readIndexHTML(toReadNew = false) {
     const TradingBot_00_ID  = process.env.SHEET_ID  ;
     const newHTMLregion     = 'newHTML!A1'          ;
 
     if (htmlContent === null || toReadNew) { 
-        const newHTMLstr = "" //(await GetGS(TradingBot_00_ID, newHTMLregion))[0][0];
+        const newHTMLstr = (await GetGS(TradingBot_00_ID, newHTMLregion))[0][0];
 
         htmlContent = ToStrictString(newHTMLstr) ;
     }
@@ -27,7 +27,7 @@ export async function Web(thisLogs, url, res) {
     // 帮我写一段代码，将'./web/index.html'文件的内容读取出来，并返回给客户端
     // 3. 读取并返回 ./web/index.html 内容
     try {
-        const htmlContent = readIndexHTML();
+        const htmlContent = await readIndexHTML();
         // 写入 200 响应头
         res.writeHead(200, {
             'Content-Type': 'text/html; charset=utf-8',
