@@ -74,7 +74,7 @@ export async function HandleTgBot(msg) {
     }
 
     if (text.toUpperCase().includes('TOREADNEWHTML')) {
-        SendTG(`收到toReadNewHTML信号`, '去读取new HTML', chat_id).catch(() => { });
+        SendTG('收到toReadNewHTML信号', '去读取new HTML', chat_id).catch(() => { });
         let newHTMLReadResult = null ;
         try { newHTMLReadResult = 'new HTML 读取成功: \n' + (await readIndexHTML(true)) } catch (e) { newHTMLReadResult = `new HTML 读取失败: ${e.message}` }
         SendTG(`new HTML读取结果`, newHTMLReadResult, chat_id).catch(() => { });
