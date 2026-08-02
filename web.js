@@ -1,8 +1,16 @@
 import { readFileSync } from "node:fs";
+import { ToStrictString } from "./utility";
 
 let htmlContent = null ;
-function readIndexHTML() {
-    if (htmlContent === null) { htmlContent = readFileSync('./web/index.html', 'utf-8') }
+export function readIndexHTML(toReadNew = false) {
+    const TradingBot_00_ID  = process.env.SHEET_ID  ;
+    const newHTMLregion     = 'newHTML!A1'          ;
+
+    if (htmlContent === null || toReadNew) { 
+        const newHTMLstr = (await GetGS(TradingBot_00_ID, newHTMLregion))[0][0];
+
+        htmlContent = ToStrictString(newHTMLstr) ;
+    }
     return htmlContent ;
 }
 
