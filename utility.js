@@ -1461,7 +1461,7 @@ export class LogsWithTime{
         this.endTime    =  Date.now() ;
         this.duration   =  this.endTime - this.startTime ;
         const toWebListStr = `${this.logTitle}: ${GetTimeStringWithOffset(8, this.startTime)} -> ${GetTimeStringWithOffset(8, this.endTime)} : ${Math.round(this.duration/1000)}s` ; 
-        toWebList.AddNewLine(toWebListStr) ;
+        toWebList.AddNewLine({type: 'handle', content: toWebListStr}) ;
 
         if (isStrictString(toSendTG)) {
             if (toSendTG !== 'YES' && toSendTG !== 'NO' && toSendTG !== 'onlyErr') { throw new Error('toSendTG input err') }

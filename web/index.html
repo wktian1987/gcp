@@ -9,13 +9,15 @@
 
 <body>
     <header>
-        <h1>实时交易状态</h1>
+        <h1>实时处理状态</h1>
     </header>
     <main>
         <p> <span id="conn-text">连接中...</span> </p>
-        <ol id="theList">
-            <li style="text-align: center;">暂无数据</li>
-        </ol>
+        <p id="waiting"> 等待接收数据... </p>
+        <p id="trade">交易记录</p>
+        <ol id="tradeList"></ol>
+        <p id="handle">信号处理</p>
+        <ol id="handleList"></ol>
     </main>
 
     <script>
@@ -25,10 +27,12 @@
         eventSource.onopen = () => { document.getElementById('conn-text').innerText = '实时通道就绪' };
         eventSource.onerror = () => { document.getElementById('conn-text').innerText = '连接中断，重连中...' };
 
+        // 💡 前端本地维护容量上限为 100 的滚动 Set
+        const MAX_LIMIT = 99;
+
         eventSource.onmessage = (event) => {
-            // 💡 前端本地维护容量上限为 100 的滚动 Set
-            const localSet = new Set();
-            const MAX_LIMIT = 100;
+            document.getElementById('waiting')?.remove();            // 💡 前端自动建立 SSE 连接
+
             // 1. 解析后端推过来的 JSON 数据流
             let data;
             try {
@@ -45,25 +49,22 @@
 
             // 3. 逐条压入 Set，超出 100 条自动弹出最老的队头元素
             items.forEach(item => {
-                // 如果是对象，转为字符串；如果是纯文本，直接使用
-                const lineText = typeof item === 'object' ? JSON.stringify(item) : String(item);
-
-                if (localSet.has(lineText)) { localSet.delete(lineText); }
-                localSet.add(lineText);
-                if (localSet.size > MAX_LIMIT) {
-                    localSet.delete(localSet.keys().next().value);
+                if (Object.hasOwn(item, 'type') && item.type === 'trade') {
+                    const listTrade = document.getElementById('tradeList');
+                    const newLine = document.createElement('li');
+                    newLine.innerText = item.content;
+                    listTrade.prepend(newLine);
+                    if (listTrade.children.length > MAX_LIMIT) { listTrade.removeChild(listTrade.lastChild) }
                 }
-            });
+                if (Object.hasOwn(item, 'type') && item.type === 'handle') {
+                    const listHandle = document.getElementById('handleList');
+                    const newLine = document.createElement('li');
+                    newLine.innerText = item.content;
+                    listHandle.prepend(newLine);
+                    if (listHandle.children.length > MAX_LIMIT) { listHandle.removeChild(listHandle.lastChild) }
+                }
+            } ) ;
 
-            // 4. 渲染到 DOM 中（最新数据置顶排在最上方）
-            const listEl = document.getElementById('theList');
-            // 将 Set 反转，生成 <li> 节点列表
-            const listHtml = Array.from(localSet)
-                .reverse()
-                .map(item => `<li>${item}</li>`)
-                .join('');
-
-            listEl.innerHTML = listHtml;
         };
     </script>
 </body>

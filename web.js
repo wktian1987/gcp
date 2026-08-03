@@ -13,19 +13,25 @@ export async function readIndexHTML(toReadNew = false) {
 
 export const toWebList = {
     sseClients: new Set(),
-    listSet: new Set(),
-    limit: 100,
-    AddNewLine(newLine) {
-        if (this.listSet.has(newLine)) { this.listSet.delete(newLine) }
-        this.listSet.add(newLine);
-        if (this.listSet.size > this.limit) { this.listSet.delete(this.listSet.keys().next().value) }
-        this.HandleSSE();
+    handleList : [] ,
+    tradeList : [] ,
+    listLimit: 99,
+    AddNewLine({ type, content}) {
+        if (type === 'trade') { 
+            this.tradeList.unshift(content);
+            if (this.tradeList.length > this.listLimit) { this.tradeList.length = this.listLimit }
+        }
+        if (type === 'handle') {
+            this.handleList.unshift(newLine);
+            if (this.handleList.length > this.listLimit) { this.handleList.length = this.listLimit }
+        }
+        this.HandleSSE({ type, content });
     },
-    HandleSSE() {
+    HandleSSE({type, content}) {
         if (this.sseClients.size === 0) { return }
         for (const client of this.sseClients) {
             try {
-                client.write(`data: ${JSON.stringify(Array.from(this.listSet))}\n\n`);
+                client.write(`data: ${JSON.stringify({ type, content})}\n\n`)
             } catch (e) {
                 this.sseClients.delete(client);
             }
@@ -35,6 +41,7 @@ export const toWebList = {
 
 export async function Web(thisLogs, url, req, res) {
     thisLogs.AddNewLogLine('开始处理');
+
     if (url === '/favicon.ico') {
         res.writeHead(204);
         res.end();
@@ -57,19 +64,15 @@ export async function Web(thisLogs, url, req, res) {
 
         // 3. 将 theWebList 中的数据转换为数组，一次性全量打包发送
         // 💡 物理原理：Array.from() 解析 Set，序列化为 JSON 数组一次性吐给前端
-        const currentList = Array.from(toWebList.listSet); // 当我的theWebList发生变化的时候，这里会自动更新，并通过SSE发给客户端吗
-        res.write(`data: ${JSON.stringify(currentList)}\n\n`);
-        thisLogs.AddNewLogLine(`已通过 SSE 推送当前 ${currentList.length} 条历史数据`);
+        res.write(`data: ${JSON.stringify(toWebList.handleList)}\n\n`);
+        res.write(`data: ${JSON.stringify(toWebList.tradeList )}\n\n`);
+        thisLogs.AddNewLogLine(`已通过SSE推送当前历史数据`);
 
         // 4. 将当前客户端加入 SSE 客户端列表
         toWebList.sseClients.add(res);
 
         // 5. 监听客户端断开连接事件（防内存泄漏 & 句柄挂起）
-        // 🛡️ 修复：保证 req 已正确作为参数传入
-        req.on('close', () => {
-            toWebList.sseClients.delete(res);
-            thisLogs.AddNewLogLine('客户端断开 SSE 连接，已安全移出');
-        });
+        req.on('close', () => { toWebList.sseClients.delete(res) });
 
         return; // 阻止代码继续向下走到普通 res.end()
 
