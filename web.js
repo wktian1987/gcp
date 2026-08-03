@@ -18,11 +18,11 @@ export const toWebList = {
     listLimit: 99,
     AddNewLine({ type, content}) {
         if (type === 'trade') { 
-            this.tradeList.unshift(content);
+            this.tradeList.unshift({ type, content });
             if (this.tradeList.length > this.listLimit) { this.tradeList.length = this.listLimit }
         }
         if (type === 'handle') {
-            this.handleList.unshift(newLine);
+            this.handleList.unshift({ type, content });
             if (this.handleList.length > this.listLimit) { this.handleList.length = this.listLimit }
         }
         this.HandleSSE({ type, content });
