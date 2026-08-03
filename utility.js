@@ -1,7 +1,7 @@
 import { google } from 'googleapis';
 import https from 'node:https';
 import { createTransport } from 'nodemailer';
-import { theWebList } from './web';
+import { theWebList } from './web.js';
 
 //  1. 注入长效物理套接字蓄水池（全局只初始化一次，焊死长链接）
 const sheetsAgent = new https.Agent({
