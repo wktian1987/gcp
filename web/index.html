@@ -8,49 +8,64 @@
 </head>
 
 <body>
-    <div class="container">
-        <div class="header">
-            <h2>私人交易状态</h2>
-            <div><span class="status-dot"></span><span id="conn-text">连接中...</span></div>
-        </div>
-        <div id="trade-list">
-            <div style="text-align: center; color: #8b949e; padding: 20px;">等待实时成交信号...</div>
-        </div>
-    </div>
+    <header>
+        <h1>实时交易状态</h1>
+    </header>
+    <main>
+        <p> <span id="conn-text">连接中...</span> </p>
+        <ul id="theList">
+            <li style="text-align: center;">暂无数据</li>
+        </ul>
+    </main>
 
     <script>
         // 前端自动建立 SSE 连接
-        const eventSource = new EventSource('/api/trades/stream');
+        const eventSource = new EventSource('/stream');
 
-        eventSource.onopen = () => {
-            document.getElementById('conn-text').innerText = '实时通道就绪';
-        };
+        eventSource.onopen = () => { document.getElementById('conn-text').innerText = '实时通道就绪' };
+        eventSource.onerror = () => { document.getElementById('conn-text').innerText = '连接中断，重连中...' };
+
+        // 💡 前端本地维护容量上限为 100 的滚动 Set
+        const localSet = new Set();
+        const MAX_LIMIT = 100;
 
         eventSource.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === 'CONNECTED') return;
+            // 1. 解析后端推过来的 JSON 数据流
+            let data;
+            try {
+                data = JSON.parse(event.data);
+            } catch (e) {
+                data = event.data;
+            }
 
-            const list = document.getElementById('trade-list');
-            // 清理初始占位文本
-            if (list.children[0]?.style?.textAlign === 'center') list.innerHTML = '';
+            // 💡 过滤后端第一发发过来的 { message: 'SSE 连接成功！' } 提示帧
+            if (data && data.message === 'SSE 连接成功！') return;
 
-            // 创建新成交条目
-            const card = document.createElement('div');
-            card.className = `trade-card \${data.side === 'BUY' ? 'buy' : 'sell'}`;
-            card.innerHTML = `
-                <div>
-                    <strong>\${data.symbol || 'BTCUSDT'}</strong> 
-                    <span style="color: \${data.side === 'BUY' ? '#3fb950' : '#f85149'}">\${data.side || 'BUY'}</span>
-                </div>
-                <div>价格: $\${data.price} | 数量: \${data.amount}</div>
-                <div style="color: #8b949e; font-size: 0.85em;">\${data.time || new Date().toLocaleTimeString()}</div>
-            `;
-            
-            list.prepend(card); // 新数据压在最上面
-        };
+            // 2. 统一转换为数组处理（兼容单条推送和批量数组推送）
+            const items = Array.isArray(data) ? data : [data];
 
-        eventSource.onerror = () => {
-            document.getElementById('conn-text').innerText = '连接中断，重连中...';
+            // 3. 逐条压入 Set，超出 100 条自动弹出最老的队头元素
+            items.forEach(item => {
+                // 如果是对象，转为字符串；如果是纯文本，直接使用
+                const lineText = typeof item === 'object' ? JSON.stringify(item) : String(item);
+
+                if (localSet.has(lineText)) { localSet.delete(lineText); }
+                localSet.add(lineText);
+                if (localSet.size > MAX_LIMIT) {
+                    localSet.delete(localSet.keys().next().value);
+                }
+            });
+
+            // 4. 渲染到 DOM 中（最新数据置顶排在最上方）
+            const listEl = document.getElementById('theList');
+
+            // 将 Set 反转，生成 <li> 节点列表
+            const listHtml = Array.from(localSet)
+                .reverse()
+                .map(item => `<li>${item}</li>`)
+                .join('');
+
+            listEl.innerHTML = listHtml;
         };
     </script>
 </body>

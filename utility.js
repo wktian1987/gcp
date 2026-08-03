@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
 import https from 'node:https';
 import { createTransport } from 'nodemailer';
+import { theWebList } from './web';
 
 //  1. 注入长效物理套接字蓄水池（全局只初始化一次，焊死长链接）
 const sheetsAgent = new https.Agent({
@@ -1424,6 +1425,7 @@ export class LogsWithTime{
 
         this.logTitle       =  logTitle         ; 
         this.startTime      =  Date.now()       ;
+        this.endTime        =  this.startTime   ;
         this.logsA          =  []               ;
         this.toSendTG       =  toSendTG         ;
         this.toChatID       =  toChatID         ;
@@ -1456,12 +1458,17 @@ export class LogsWithTime{
     AddNewErrLogLine(newErrLog) { this.AddNewLogLine(newErrLog, true) }
 
     consoleLogs(toSendTG) {
+        this.endTime    =  Date.now() ;
+        this.duration   =  this.endTime - this.startTime ;
+        const toWebListStr = `${this.logTitle}: ${GetTimeStringWithOffset(8, this.startTime)} -> ${GetTimeStringWithOffset(8, this.endTime)} : ${Math.round(this.duration/1000)}s` ; 
+        theWebList.AddNewLine(toWebListStr) ;
+
         if (isStrictString(toSendTG)) {
             if (toSendTG !== 'YES' && toSendTG !== 'NO' && toSendTG !== 'onlyErr') { throw new Error('toSendTG input err') }
             this.toSendTG = toSendTG ;
         }
 
-        this.AddNewLogLine(`此任务共运行${Math.round((Date.now()-this.startTime)/1000)}秒`)
+        this.AddNewLogLine(`此任务共运行${Math.round(this.duration/1000)}秒`)
 
         for (const log of this.logsA) {
             log.message = `${this.logTitle}: ${log.message}` ;
