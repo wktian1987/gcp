@@ -13,9 +13,9 @@
     </header>
     <main>
         <p> <span id="conn-text">连接中...</span> </p>
-        <ul id="theList">
+        <ol id="theList">
             <li style="text-align: center;">暂无数据</li>
-        </ul>
+        </ol>
     </main>
 
     <script>
@@ -25,11 +25,10 @@
         eventSource.onopen = () => { document.getElementById('conn-text').innerText = '实时通道就绪' };
         eventSource.onerror = () => { document.getElementById('conn-text').innerText = '连接中断，重连中...' };
 
-        // 💡 前端本地维护容量上限为 100 的滚动 Set
-        const localSet = new Set();
-        const MAX_LIMIT = 100;
-
         eventSource.onmessage = (event) => {
+            // 💡 前端本地维护容量上限为 100 的滚动 Set
+            const localSet = new Set();
+            const MAX_LIMIT = 100;
             // 1. 解析后端推过来的 JSON 数据流
             let data;
             try {
@@ -58,7 +57,6 @@
 
             // 4. 渲染到 DOM 中（最新数据置顶排在最上方）
             const listEl = document.getElementById('theList');
-
             // 将 Set 反转，生成 <li> 节点列表
             const listHtml = Array.from(localSet)
                 .reverse()
