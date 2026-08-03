@@ -1205,7 +1205,7 @@ export const TradeBot = {
             AddSetMessage(this.alertMessageSet, `sellReason: ${S.ing_reason}`);
             this.toSendEmail = true ;
 
-            const newWebLine = `${this.tvData.botNumber} -> new sell, orderPrice: ${S.ing_orderPrice}, qty: ${S.ing_qty}, sellReason: ${S.ing_reason}, id: ${S.ing_orderID}` ;
+            const newWebLine = `${this.tvData.botNumber} ${S.ing_orderDate} -> new sell, orderPrice: ${S.ing_orderPrice}, qty: ${S.ing_qty}, sellReason: ${S.ing_reason}, id: ${S.ing_orderID}` ;
             toWebList.AddNewLine({type: 'trade', content: newWebLine});
 
             this.canBuy = false;
@@ -1327,7 +1327,7 @@ export const TradeBot = {
             AddSetMessage(this.alertMessageSet, `buyReason: ${S.ing_reason}`);
             this.toSendEmail = true ;
 
-            const newWebLine = `${this.tvData.botNumber} -> new buy , orderPrice: ${S.ing_orderPrice}, qty: ${S.ing_qty}, buyReason: ${S.ing_reason}, id: ${S.ing_orderID}` ;
+            const newWebLine = `${this.tvData.botNumber} ${S.ing_orderDate} -> new buy , orderPrice: ${S.ing_orderPrice}, qty: ${S.ing_qty}, buyReason: ${S.ing_reason}, id: ${S.ing_orderID}` ;
             toWebList.AddNewLine({type: 'trade', content: newWebLine});
 
             this.canSell = false;
@@ -1464,7 +1464,7 @@ export const TradeBot = {
                 AddSetMessage(this.alertMessageSet, thisMessage) ;
                 this.toSendEmail = true ;
 
-                const newWebLine = `${this.tvData.botNumber} -> order confirmed, id: ${ingOrderData.ing_orderID}`;
+                const newWebLine = `${this.tvData.botNumber} ${ingOrderData.ing_confirmDate} -> order confirmed, id: ${ingOrderData.ing_orderID}`;
                 toWebList.AddNewLine({ type: 'trade', content: newWebLine });
             }
 
