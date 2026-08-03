@@ -18,12 +18,17 @@ export const toWebList = {
     listLimit: 99,
     AddNewLine({ type, content}) {
         if (type === 'trade') { 
-            this.tradeList.unshift({ type, content });
-            if (this.tradeList.length > this.listLimit) { this.tradeList.length = this.listLimit }
+            this.tradeList.push({ type, content });
+            while (this.tradeList.length > this.listLimit) { this.tradeList.shift()}
+            if (this.tradeList.length > this.listLimit) {
+                this.tradeList.splice(0, this.tradeList.length - this.listLimit); // 从索引 0 开始，一次性删除 overCount 个元素
+            }
         }
         if (type === 'handle') {
-            this.handleList.unshift({ type, content });
-            if (this.handleList.length > this.listLimit) { this.handleList.length = this.listLimit }
+            this.handleList.push({ type, content });
+            if (this.handleList.length > this.listLimit) { 
+                this.handleList.splice(0, this.handleList.length - this.listLimit); // 从索引 0 开始，一次性删除 overCount 个元素
+            }
         }
         this.HandleSSE({ type, content });
     },
