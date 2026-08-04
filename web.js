@@ -100,7 +100,7 @@ export async function Web(thisLogs, url, req, res) {
     }
 
     try {
-        const toReadNew = url === '/index.html';
+        const toReadNew = url === '/index.html' || htmlContent === null;
         const htmlContent = await readIndexHTML(toReadNew);
         if (toReadNew) {thisLogs.AddNewLogLine('成功读取新HTML文件newHTML!A1')} 
         else {thisLogs.AddNewLogLine('成功从缓存中读取HTML')}
