@@ -62,7 +62,7 @@ const toWebList = {
                 this.globalWebHeartBeat = null;
             }
         } 
-        
+
         for (const client of this.sseClients) {
             // 💡 1. 检查底层 Socket 状态：如果连接已销毁或不具备可写性，立刻删除
             if (client.destroyed || client.writableEnded || !client.writable) {
@@ -83,7 +83,7 @@ const toWebList = {
     }
 };
 
-export function ToWebListAddNewLine(type, content) {toWebList.AddNewLine({ type, content })}
+export function ToWebListAddNewLine({type, content}) {toWebList.AddNewLine({ type, content })}
 
 export async function Web(thisLogs, url, req, res) {
     thisLogs.AddNewLogLine('开始处理');
