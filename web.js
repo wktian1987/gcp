@@ -46,7 +46,7 @@ export const toWebList = {
     HandleSSE({ type, content }) {
         if (this.sseClients.size === 0) { 
             LogInBackground('没有客户端连接, 不推送SSE事件') ;
-            this.globalWebHeartBeat = null; // 清除心跳
+            if (this.globalWebHeartBeat) { this.globalWebHeartBeat = null } // 清除心跳
             return ;
         }
         for (const client of this.sseClients) {
