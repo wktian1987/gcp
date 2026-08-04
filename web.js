@@ -40,7 +40,7 @@ export const toWebList = {
         if (this.globalWebHeartBeat) { return }
         this.globalWebHeartBeat = setInterval(() => {
             this.HandleSSE({ type: 'ping', content: 'ping' });
-        }, 15000);
+        }, 10000);
     },
 
     HandleSSE({ type, content }) {
