@@ -1501,22 +1501,20 @@ export class LogsWithTime{
 export function LogInBackground(log) {
     // 定义标准的日志严重程度白名单 (符合 GCP/RFC5424 标准)
     const VALID_SEVERITIES = ['DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY'];
+    let logObj = null;
 
     setImmediate(() => {
         if (!log) return;
 
-        // 1. 字符串直接输出
-        if (isStrictString(log)) { 
-            console.log(log); 
-            return; 
-        }
+        // 1. 字符串 转换为object
+        if (isStrictString(log)) { logObj = { message: log } }
 
         // 2. 结构化日志处理
-        if (isObjectOfKeyValue(log) && Object.hasOwn(log, 'message')) {
+        if (isObjectOfKeyValue(logObj) && Object.hasOwn(logObj, 'message')) {
             // 提取并确权 severity
             let severity = 'INFO'; // 默认值
-            if (Object.hasOwn(log, 'severity')) {
-                const upperSeverity = String(log.severity).toUpperCase();
+            if (Object.hasOwn(logObj, 'severity')) {
+                const upperSeverity = String(logObj.severity).toUpperCase();
                 // 核心校验：如果传入的级别不在白名单内，强制修正为 INFO
                 if (VALID_SEVERITIES.includes(upperSeverity)) {
                     severity = upperSeverity;
@@ -1524,7 +1522,7 @@ export function LogInBackground(log) {
             }
 
             // 构造最终输出对象，确保字段顺序和合规性
-            const finalLog = { ...log, severity };
+            const finalLog = { ...logObj, severity };
 
             // 3. 刚性分流：ERROR 级别及以上走标准错误流，其余走标准输出流
             const isErrorLevel = ['ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY'].includes(severity);
@@ -1538,6 +1536,6 @@ export function LogInBackground(log) {
         }
 
         // 3. 非标准对象或其它类型，兜底串化输出
-        console.log(typeof log === 'object' ? JSON.stringify(log) : String(log));
+        console.log(typeof logObj === 'object' ? JSON.stringify(logObj) : String(logObj));
     });
 }
