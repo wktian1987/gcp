@@ -89,13 +89,31 @@ export async function Web(thisLogs, url, req, res) {
             }
         }, 15000); // 15 秒间隔
 
+
         // 监听客户端断开连接事件（防内存泄漏 & 句柄挂起）
         // 监听客户端断开/刷新/关闭事件
-        req.on('close', () => {
-            toWebList.sseClients.delete(res);
+        // 统一清理函数（防止重复清理
+        let isCleaned = false;
+        function cleanup() {
+            if (isCleaned) return;
+            isCleaned = true;
+
             clearInterval(heartbeatTimer);
-            LogInBackground('客户端 断开/刷新/关闭 SSE 连接')
-        });
+            toWebList.sseClients.delete(res);
+
+            // 尝试安全关闭底层响应流
+            if (!res.writableEnded) { res.destroy() }
+
+            LogInBackground('客户端 断开/刷新/关闭 SSE 连接');
+        }
+
+        // 双重保障：同时监听 req 和 res 的 close/finish 事件
+        req.on('close', cleanup);
+        res.on('close', cleanup);
+        res.on('finish', cleanup);
+        req.on('error', cleanup);
+        res.on('error', cleanup);
+
 
         return; // 阻止代码继续向下走到普通 res.end()
     }
