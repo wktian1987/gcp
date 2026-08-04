@@ -46,11 +46,20 @@ export const toWebList = {
     HandleSSE({ type, content }) {
         if (this.sseClients.size === 0) { return }
         for (const client of this.sseClients) {
-            try {
-                client.write(`data: ${JSON.stringify({ type, content })}\n\n`);
-            } catch (e) {
+            // 💡 1. 检查底层 Socket 状态：如果连接已销毁或不具备可写性，立刻删除
+            if (client.destroyed || client.writableEnded || !client.writable) {
                 this.sseClients.delete(client);
+                continue;
             }
+            client.write(`data: ${JSON.stringify({ type, content })}\n\n`, (e) => {
+                if (e) {
+                    this.sseClients.delete(client);
+                    if (!client.destroyed) {
+                        client.destroy();
+                    }
+                }
+            });
+
         }
         LogInBackground(`已通过SSE广播 ${type} 事件给 ${this.sseClients.size} 个客户端`);
     }
