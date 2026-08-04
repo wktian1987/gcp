@@ -1,4 +1,4 @@
-import { ToStrictString, GetGS } from "./utility.js";
+import { ToStrictString, GetGS, LogInBackground } from "./utility.js";
 
 let htmlContent = null;
 export async function readIndexHTML(toReadNew = false) {
@@ -13,33 +13,34 @@ export async function readIndexHTML(toReadNew = false) {
 
 export const toWebList = {
     sseClients: new Set(),
-    handleList : [] ,
-    tradeList : [] ,
+    handleList: [],
+    tradeList: [],
     listLimit: 99,
-    AddNewLine({ type, content}) {
-        if (type === 'trade') { 
+    AddNewLine({ type, content }) {
+        if (type === 'trade') {
             this.tradeList.push({ type, content });
-            while (this.tradeList.length > this.listLimit) { this.tradeList.shift()}
+            while (this.tradeList.length > this.listLimit) { this.tradeList.shift() }
             if (this.tradeList.length > this.listLimit) {
                 this.tradeList.splice(0, this.tradeList.length - this.listLimit); // 从索引 0 开始，一次性删除 overCount 个元素
             }
         }
         if (type === 'handle') {
             this.handleList.push({ type, content });
-            if (this.handleList.length > this.listLimit) { 
+            if (this.handleList.length > this.listLimit) {
                 this.handleList.splice(0, this.handleList.length - this.listLimit); // 从索引 0 开始，一次性删除 overCount 个元素
             }
         }
         this.HandleSSE({ type, content });
     },
-    HandleSSE({type, content}) {
+    HandleSSE({ type, content }) {
         if (this.sseClients.size === 0) { return }
         for (const client of this.sseClients) {
             try {
-                client.write(`data: ${JSON.stringify({ type, content})}\n\n`)
+                client.write(`data: ${JSON.stringify({ type, content })}\n\n`)
             } catch (e) {
                 this.sseClients.delete(client);
             }
+            LogInBackground(`已通过SSE推送${type}事件`) ;
         }
     }
 };
@@ -50,49 +51,69 @@ export async function Web(thisLogs, url, req, res) {
     if (url === '/favicon.ico') {
         res.writeHead(204);
         res.end();
-        thisLogs.AddNewLogLine('处理 favicon：忽略并返回 204');
+        thisLogs.AddNewLogLine('处理 favicon, 忽略并返回 204');
         return;
     }
 
     if (url === '/stream') {
-        // 1. 设置 SSE 核心 HTTP 响应头（刚性防线）
+        // 设置 SSE 核心 HTTP 响应头（刚性防线）
         res.writeHead(200, {
             'Content-Type': 'text/event-stream', // 必须：指定为事件流格式
             'Cache-Control': 'no-cache, no-transform',          // 必须：禁止客户端/代理缓存
             'Connection': 'keep-alive',           // 必须：保持 HTTP 长连接不关闭
-            'Access-Control-Allow-Origin': '*' ,   // 选填：按需跨域支持
-            'X-Accel-Buffering' : 'no'
+            'Access-Control-Allow-Origin': '*',   // 选填：按需跨域支持
+            'X-Accel-Buffering': 'no'
         });
 
-        // 2. 发送初始连接成功事件（符合 SSE 标准格式 "data: xxx\n\n"）
-        res.write(`data: ${JSON.stringify({ message: 'SSE 连接成功！' })}\n\n`);
+        // 发送初始连接成功事件（符合 SSE 标准格式 "data: xxx\n\n"）
+        res.write(`data: ${JSON.stringify({ message: 'SSE' })}\n\n`);
+        thisLogs.AddNewLogLine('已通过SSE推送初始连接成功事件');
 
-        // 3. 将 theWebList 中的数据转换为数组，一次性全量打包发送
-        // 💡 物理原理：Array.from() 解析 Set，序列化为 JSON 数组一次性吐给前端
+        // 将 theWebList 中的数据转换为数组，一次性全量打包发送
         res.write(`data: ${JSON.stringify(toWebList.handleList)}\n\n`);
-        res.write(`data: ${JSON.stringify(toWebList.tradeList )}\n\n`);
+        res.write(`data: ${JSON.stringify(toWebList.tradeList)}\n\n`);
         thisLogs.AddNewLogLine(`已通过SSE推送当前历史数据`);
 
-        // 4. 将当前客户端加入 SSE 客户端列表
+        // 将当前客户端加入 SSE 客户端列表
         toWebList.sseClients.add(res);
 
-        // 5. 监听客户端断开连接事件（防内存泄漏 & 句柄挂起）
-        req.on('close', () => { toWebList.sseClients.delete(res) });
+        // 设置服务端心跳定时器（每 15 秒发送一次心跳注释帧）
+        // SSE 规范规定以冒号 `:` 开头的行是注释，浏览器 EventSource 不会触发 onmessage，但能维持 TCP 活性
+        const heartbeatTimer = setInterval(() => {
+            try {
+                res.write(`data: ${JSON.stringify({ type: 'ping' })}\n\n`);
+            } catch (e) {
+                console.error('心跳发送失败，清理定时器:', e);
+                clearInterval(heartbeatTimer);
+            }
+        }, 15000); // 15 秒间隔
+
+        // 监听客户端断开连接事件（防内存泄漏 & 句柄挂起）
+        // 监听客户端断开/刷新/关闭事件
+        req.on('close', () => {
+            toWebList.sseClients.delete(res);
+            clearInterval(heartbeatTimer);
+            LogInBackground('客户端 断开/刷新/关闭 SSE 连接')
+        });
 
         return; // 阻止代码继续向下走到普通 res.end()
-
     }
 
     try {
         const toReadNew = url === '/index.html';
         const htmlContent = await readIndexHTML(toReadNew);
+        if (toReadNew) {thisLogs.AddNewLogLine('成功读取新HTML文件newHTML!A1')} 
+        else {thisLogs.AddNewLogLine('成功从缓存中读取HTML')}
+
         // 写入 200 响应头
         res.writeHead(200, {
             'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'no-cache' // 确保你修改 HTML 后浏览器能实时刷出来
         });
         res.end(htmlContent);
-        thisLogs.AddNewLogLine('成功读取并返回 newHTML!A1');
-    } catch (e) { thisLogs.AddNewErrLogLine(`发送newHTML!A1 失败：${e.message}`) }
+
+        thisLogs.AddNewLogLine('成功发送HTML到客户端');
+
+    } catch (e) { thisLogs.AddNewErrLogLine(`发送HTML到客户端失败, ${e.message}`) }
 
 }

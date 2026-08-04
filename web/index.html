@@ -21,51 +21,91 @@
     </main>
 
     <script>
+        const MAX_LIMIT = 99; // 前端本地维护容量上限为 99 的滚动 Set
+        const dom_tradeList = document.getElementById('tradeList');
+        const dom_handleList = document.getElementById('handleList');
+        const dom_connText = document.getElementById('conn-text');
         // 前端自动建立 SSE 连接
-        const eventSource = new EventSource('/stream');
+        let eventSource = null;
+        let watchdogTimer = null; // 心跳看门狗定时器
 
-        eventSource.onopen = () => { document.getElementById('conn-text').innerText = '实时通道就绪' };
-        eventSource.onerror = () => { document.getElementById('conn-text').innerText = '连接中断，重连中...' };
+        // 提取公共渲染函数：统一处理节点创建、挂载与裁剪
+        function appendLogItem(targetDom, content) {
+            const newLine = document.createElement('li');
+            newLine.textContent = content; // 优先使用 textContent，性能略高于 innerText
+            targetDom.prepend(newLine);
+            if (targetDom.children.length > MAX_LIMIT) { targetDom.removeChild(targetDom.lastChild) }
+        }
 
-        // 💡 前端本地维护容量上限为 100 的滚动 Set
-        const MAX_LIMIT = 99;
+        // 重置/刷新心跳看门狗
+        function resetWatchdog() {
+            clearTimeout(watchdogTimer);
+            // 如果 30 秒内没有收到任何数据（服务端设定的是 15 秒发一次心跳），说明网络已假死
+            watchdogTimer = setTimeout(() => {
+                console.warn('⚠️ 超过 30 秒未收到服务器任何消息，判定为静默断连，正在强制重连...');
+                dom_connText.textContent = '连接超时，正在重连...';
 
-        eventSource.onmessage = (event) => {
-            document.getElementById('waiting')?.remove();            // 💡 前端自动建立 SSE 连接
-
-            // 1. 解析后端推过来的 JSON 数据流
-            let data;
-            try {
-                data = JSON.parse(event.data);
-            } catch (e) {
-                data = event.data;
-            }
-
-            // 💡 过滤后端第一发发过来的 { message: 'SSE 连接成功！' } 提示帧
-            if (data && data.message === 'SSE 连接成功！') return;
-
-            // 2. 统一转换为数组处理（兼容单条推送和批量数组推送）
-            const items = Array.isArray(data) ? data : [data];
-
-            // 3. 逐条压入 Set，超出 100 条自动弹出最老的队头元素
-            items.forEach(item => {
-                if (Object.hasOwn(item, 'type') && item.type === 'trade') {
-                    const listTrade = document.getElementById('tradeList');
-                    const newLine = document.createElement('li');
-                    newLine.innerText = item.content;
-                    listTrade.prepend(newLine);
-                    if (listTrade.children.length > MAX_LIMIT) { listTrade.removeChild(listTrade.lastChild) }
+                // 主动关闭旧的 EventSource 实例
+                if (eventSource) {
+                    eventSource.onopen = null;
+                    eventSource.onerror = null;
+                    eventSource.onmessage = null;
+                    eventSource.close();
+                    eventSource = null;
                 }
-                if (Object.hasOwn(item, 'type') && item.type === 'handle') {
-                    const listHandle = document.getElementById('handleList');
-                    const newLine = document.createElement('li');
-                    newLine.innerText = item.content;
-                    listHandle.prepend(newLine);
-                    if (listHandle.children.length > MAX_LIMIT) { listHandle.removeChild(listHandle.lastChild) }
-                }
-            } ) ;
+                // 重新建立连接
+                connectSSE();
+            }, 30000); // 30 秒超时时间
+        }
 
-        };
+        function connectSSE() {
+            if (eventSource) { eventSource.close() } // 先关闭旧的 EventSource 实例
+            eventSource = new EventSource('/stream');
+
+            eventSource.onopen = () => {
+                dom_connText.textContent = '实时通道就绪';
+                resetWatchdog();
+            };
+            eventSource.onerror = () => { dom_connText.textContent = '连接中断，重连中...' };
+
+            eventSource.onmessage = (event) => {
+                resetWatchdog();
+
+                document.getElementById('waiting')?.remove();
+
+                // 解析后端推过来的 JSON 数据流
+                let data;
+                try {
+                    // 安全解析 JSON
+                    data = JSON.parse(event.data);
+                } catch (e) {
+                    // 如果发过来的是心跳包或纯文本，说明不是 JSON，直接忽略或记录
+                    return;
+                }
+
+                //  拦截服务端的 ping 心跳帧：更新了看门狗之后，直接 return，不向页面渲染！
+                if (data && Object.hasOwn(data, 'type') && data.type === 'ping') { return }
+
+                // 过滤后端第一发发过来的 { message: 'SSE' } 提示帧
+                // 避免浏览器不刷新导致数据重复，先清空
+                if (data && data.message === 'SSE') {
+                    dom_tradeList.innerHTML = '';
+                    dom_handleList.innerHTML = '';
+                    return;
+                }
+
+                // 统一转换为数组处理（兼容单条推送和批量数组推送）
+                const items = Array.isArray(data) ? data : [data];
+                items.forEach(item => {
+                    if (!item || typeof item !== 'object') { return }
+                    if (Object.hasOwn(item, 'type') && item.type === 'trade') { appendLogItem(dom_tradeList, item.content) }
+                    if (Object.hasOwn(item, 'type') && item.type === 'handle') { appendLogItem(dom_handleList, item.content) }
+                });
+
+            };
+        }
+
+        connectSSE();
     </script>
 </body>
 
