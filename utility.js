@@ -1,7 +1,7 @@
 import { google } from 'googleapis';
 import https from 'node:https';
 import { createTransport } from 'nodemailer';
-import { toWebList } from './web.js';
+import {ToWebListAddNewLine} from './web.js';
 
 //  1. 注入长效物理套接字蓄水池（全局只初始化一次，焊死长链接）
 const sheetsAgent = new https.Agent({
@@ -1461,7 +1461,7 @@ export class LogsWithTime{
         this.endTime    =  Date.now() ;
         this.duration   =  this.endTime - this.startTime ;
         const toWebListStr = `${this.logTitle}: ${GetTimeStringWithOffset(8, this.startTime)} -> ${GetTimeStringWithOffset(8, this.endTime)} : ${Math.round(this.duration/1000)}s` ; 
-        toWebList.AddNewLine({type: 'handle', content: toWebListStr}) ;
+        ToWebListAddNewLine({type: 'handle', content: toWebListStr}) ;
 
         if (isStrictString(toSendTG)) {
             if (toSendTG !== 'YES' && toSendTG !== 'NO' && toSendTG !== 'onlyErr') { throw new Error('toSendTG input err') }

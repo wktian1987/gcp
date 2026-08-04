@@ -11,7 +11,7 @@ export async function readIndexHTML(toReadNew = false) {
     return htmlContentCache;
 }
 
-export const toWebList = {
+const toWebList = {
     sseClients: new Set(),
     handleList: [],
     tradeList: [],
@@ -21,7 +21,6 @@ export const toWebList = {
     AddNewLine({ type, content }) {
         if (type === 'trade') {
             this.tradeList.push({ type, content });
-            while (this.tradeList.length > this.listLimit) { this.tradeList.shift() }
             if (this.tradeList.length > this.listLimit) {
                 this.tradeList.splice(0, this.tradeList.length - this.listLimit); // 从索引 0 开始，一次性删除 overCount 个元素
             }
@@ -32,23 +31,38 @@ export const toWebList = {
                 this.handleList.splice(0, this.handleList.length - this.listLimit); // 从索引 0 开始，一次性删除 overCount 个元素
             }
         }
-        this.HandleSSE({ type, content });
-        this.triggerHeartBeat();
+
+        if (this.sseClients.size === 0) {
+            LogInBackground('没有客户端连接, 不推送SSE事件' + '\n' + `type: ${type}, content: ${content}`);
+            if (this.globalWebHeartBeat) {
+                clearInterval(this.globalWebHeartBeat);
+                this.globalWebHeartBeat = null;
+            }
+        } else {
+            this.HandleSSE({ type, content });
+            this.triggerHeartBeat();
+        }
     },
 
     triggerHeartBeat() {
-        if (this.globalWebHeartBeat) { return }
+        if (this.globalWebHeartBeat) {
+            clearInterval(this.globalWebHeartBeat);
+            this.globalWebHeartBeat = null;
+        }
         this.globalWebHeartBeat = setInterval(() => {
             this.HandleSSE({ type: 'ping', content: 'ping' });
         }, 10000);
     },
 
     HandleSSE({ type, content }) {
-        if (this.sseClients.size === 0) { 
-            LogInBackground('没有客户端连接, 不推送SSE事件' + '\n' + `type: ${type}, content: ${content}`) ;
-            if (this.globalWebHeartBeat) { this.globalWebHeartBeat = null } // 清除心跳
-            return ;
-        }
+        if (this.sseClients.size === 0) {
+            LogInBackground('没有客户端连接, 不推送SSE事件' + '\n' + `type: ${type}, content: ${content}`);
+            if (this.globalWebHeartBeat) {
+                clearInterval(this.globalWebHeartBeat);
+                this.globalWebHeartBeat = null;
+            }
+        } 
+        
         for (const client of this.sseClients) {
             // 💡 1. 检查底层 Socket 状态：如果连接已销毁或不具备可写性，立刻删除
             if (client.destroyed || client.writableEnded || !client.writable) {
@@ -68,6 +82,8 @@ export const toWebList = {
         LogInBackground(`已通过SSE广播 ${type} 事件给 ${this.sseClients.size} 个客户端`);
     }
 };
+
+export function ToWebListAddNewLine(type, content) {toWebList.AddNewLine({ type, content })}
 
 export async function Web(thisLogs, url, req, res) {
     thisLogs.AddNewLogLine('开始处理');
