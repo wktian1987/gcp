@@ -16,6 +16,7 @@ export const toWebList = {
     handleList: [],
     tradeList: [],
     listLimit: 99,
+    globalWebHeartBeat : null,
     AddNewLine({ type, content }) {
         if (type === 'trade') {
             this.tradeList.push({ type, content });
@@ -31,17 +32,25 @@ export const toWebList = {
             }
         }
         this.HandleSSE({ type, content });
+        this.triggerHeartBeat() ;
     },
+    triggerHeartBeat() {
+        if (this.globalWebHeartBeat) { return }
+        this.globalWebHeartBeat = setInterval(() => {
+            this.HandleSSE({ type: 'ping', content: 'ping' });
+        }, 15000 );
+    },
+
     HandleSSE({ type, content }) {
         if (this.sseClients.size === 0) { return }
         for (const client of this.sseClients) {
             try {
-                client.write(`data: ${JSON.stringify({ type, content })}\n\n`)
+                client.write(`data: ${JSON.stringify({ type, content })}\n\n`) ;
             } catch (e) {
                 this.sseClients.delete(client);
             }
-            LogInBackground(`已通过SSE推送${type}事件`) ;
         }
+        LogInBackground(`已通过SSE广播 ${type} 事件给 ${this.sseClients.size} 个客户端`) ;
     }
 };
 
@@ -77,17 +86,19 @@ export async function Web(thisLogs, url, req, res) {
         // 将当前客户端加入 SSE 客户端列表
         toWebList.sseClients.add(res);
 
-        // 设置服务端心跳定时器（每 15 秒发送一次心跳注释帧）
-        // SSE 规范规定以冒号 `:` 开头的行是注释，浏览器 EventSource 不会触发 onmessage，但能维持 TCP 活性
-        const heartbeatTimer = setInterval(() => {
-            try {
-                res.write(`data: ${JSON.stringify({ type: 'ping' })}\n\n`);
-                LogInBackground('已通过SSE推送心跳')
-            } catch (e) {
-                LogInBackground(`心跳发送失败, ${e.message}` + '\n' + `清理定时器`);
-                clearInterval(heartbeatTimer);
-            }
-        }, 15000); // 15 秒间隔
+        // // 设置服务端心跳定时器（每 15 秒发送一次心跳注释帧）
+        // // SSE 规范规定以冒号 `:` 开头的行是注释，浏览器 EventSource 不会触发 onmessage，但能维持 TCP 活性
+        // const heartbeatTimer = setInterval(() => {
+        //     try {
+        //         res.write(`data: ${JSON.stringify({ type: 'ping' })}\n\n`);
+        //         LogInBackground('已通过SSE推送心跳')
+        //     } catch (e) {
+        //         LogInBackground(`心跳发送失败, ${e.message}` + '\n' + `清理定时器`);
+        //         clearInterval(heartbeatTimer);
+        //     }
+        // }, 15000); // 15 秒间隔
+
+        toWebList.triggerHeartBeat() ;
 
 
         // 监听客户端断开连接事件（防内存泄漏 & 句柄挂起）
@@ -98,7 +109,6 @@ export async function Web(thisLogs, url, req, res) {
             if (isCleaned) return;
             isCleaned = true;
 
-            clearInterval(heartbeatTimer);
             toWebList.sseClients.delete(res);
 
             // 尝试安全关闭底层响应流
