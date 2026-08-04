@@ -40,9 +40,9 @@
         // 重置/刷新心跳看门狗
         function resetWatchdog() {
             clearTimeout(watchdogTimer);
-            // 如果 30 秒内没有收到任何数据（服务端设定的是 15 秒发一次心跳），说明网络已假死
+            // 如果 20 秒内没有收到任何数据（服务端设定的是 10 秒发一次心跳），说明网络已假死
             watchdogTimer = setTimeout(() => {
-                console.warn('⚠️ 超过 30 秒未收到服务器任何消息，判定为静默断连，正在强制重连...');
+                console.warn('⚠️ 超过 20 秒未收到服务器任何消息，判定为静默断连，正在强制重连...');
                 dom_connText.textContent = '连接超时，正在重连...';
 
                 // 主动关闭旧的 EventSource 实例
