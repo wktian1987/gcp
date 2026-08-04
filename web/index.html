@@ -84,7 +84,12 @@
                 }
 
                 //  拦截服务端的 ping 心跳帧：更新了看门狗之后，直接 return，不向页面渲染！
-                if (data && Object.hasOwn(data, 'type') && data.type === 'ping') { return }
+                if (data && Object.hasOwn(data, 'type') && data.type === 'ping') { 
+                    console.log('收到心跳包');
+                    return ;
+                } else {
+                    console.log('收到数据：', data);
+                }
 
                 // 过滤后端第一发发过来的 { message: 'SSE' } 提示帧
                 // 避免浏览器不刷新导致数据重复，先清空

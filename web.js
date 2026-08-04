@@ -82,8 +82,9 @@ export async function Web(thisLogs, url, req, res) {
         const heartbeatTimer = setInterval(() => {
             try {
                 res.write(`data: ${JSON.stringify({ type: 'ping' })}\n\n`);
+                LogInBackground('已通过SSE推送心跳')
             } catch (e) {
-                console.error('心跳发送失败，清理定时器:', e);
+                LogInBackground(`心跳发送失败, ${e.message}` + '\n' + `清理定时器`);
                 clearInterval(heartbeatTimer);
             }
         }, 15000); // 15 秒间隔
