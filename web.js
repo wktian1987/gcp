@@ -44,7 +44,10 @@ export const toWebList = {
     },
 
     HandleSSE({ type, content }) {
-        if (this.sseClients.size === 0) { return }
+        if (this.sseClients.size === 0) { 
+            LogInBackground('没有客户端连接, 不推送SSE事件')
+            return ;
+        }
         for (const client of this.sseClients) {
             // 💡 1. 检查底层 Socket 状态：如果连接已销毁或不具备可写性，立刻删除
             if (client.destroyed || client.writableEnded || !client.writable) {
