@@ -1508,9 +1508,9 @@ export function LogInBackground(log) {
 
         // 1. 字符串 转换为object
         if (isStrictString(log)) { logObj = { message: log } }
-
         // 2. 结构化日志处理
-        if (isObjectOfKeyValue(logObj) && Object.hasOwn(logObj, 'message')) {
+        if (isObjectOfKeyValue(log) && Object.hasOwn(log, 'message')) {
+            logObj = log;
             // 提取并确权 severity
             let severity = 'INFO'; // 默认值
             if (Object.hasOwn(logObj, 'severity')) {

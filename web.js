@@ -83,7 +83,7 @@ const toWebList = {
     }
 };
 
-export function ToWebListAddNewLine({type, content}) {toWebList.AddNewLine({ type, content })}
+export function ToWebListAddNewLine({ type, content }) { toWebList.AddNewLine({ type, content }) }
 
 export async function Web(thisLogs, url, req, res) {
     thisLogs.AddNewLogLine('开始处理');
