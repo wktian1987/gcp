@@ -1,14 +1,14 @@
 import { ToStrictString, GetGS, LogInBackground } from "./utility.js";
 
-let htmlContent = null;
+let htmlContentCache = null;
 export async function readIndexHTML(toReadNew = false) {
     const TradingBot_00_ID = process.env.SHEET_ID;
     const newHTMLregion = 'newHTML!A1';
-    if (htmlContent === null || toReadNew) {
+    if (htmlContentCache === null || toReadNew) {
         const newHTMLstr = (await GetGS(TradingBot_00_ID, newHTMLregion))[0][0];
-        htmlContent = ToStrictString(newHTMLstr);
+        htmlContentCache = ToStrictString(newHTMLstr);
     }
-    return htmlContent;
+    return htmlContentCache;
 }
 
 export const toWebList = {
@@ -101,7 +101,7 @@ export async function Web(thisLogs, url, req, res) {
     }
 
     try {
-        const toReadNew = url === '/index.html' || htmlContent === null;
+        const toReadNew = url === '/index.html' || htmlContentCache === null;
         const htmlContent = await readIndexHTML(toReadNew);
         if (toReadNew) {thisLogs.AddNewLogLine('成功读取新HTML文件newHTML!A1')} 
         else {thisLogs.AddNewLogLine('成功从缓存中读取HTML')}
