@@ -337,8 +337,8 @@ export async function HandleUnreadGmails(checkUnreadEmailsLogs, toChatID = proce
                 if (result.status === "fulfilled") { 
                     thisRunningMessage = AddMessage(thisRunningMessage, task_name + '执行成功') ;
                 } else {
-                    task_thereErr           =  true  ;
-                    thisRunningErr          =  true  ;
+                    task_thereErr           =  task_name === 'task_SendEmail' ? task_thereErr  : true  ;
+                    thisRunningErr          =  task_name === 'task_SendEmail' ? thisRunningErr : true  ;
                     thisRunningMessage      =  AddMessage(thisRunningMessage, task_name + '执行失败')  ;
                 }
             });
