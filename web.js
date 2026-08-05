@@ -130,7 +130,7 @@ const toWeb = {
         LogInBackground(`已通过SSE广播 ${type} 事件给 ${this.sseClients.size} 个客户端`);
     }
 };
-await toWeb.readHistoryFromGS().catch(() => { });
+// await toWeb.readHistoryFromGS().catch(() => { });
 
 export async function ToWebListAddNewLine({ type, content }) { await toWeb.AddNewLine({ type, content }) }
 export async function readIndexHTML(toReadNew) { await toWeb.readIndexHTML(toReadNew) }
