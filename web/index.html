@@ -18,12 +18,15 @@
         <ol id="tradeList"></ol>
         <p id="handle">信号处理</p>
         <ol id="handleList"></ol>
+        <p id="error">出错记录</p>
+        <ol id="errorList"></ol>
     </main>
 
     <script>
         const MAX_LIMIT = 99; // 前端本地维护容量上限为 99 的滚动 Set
         const dom_tradeList = document.getElementById('tradeList');
         const dom_handleList = document.getElementById('handleList');
+        const dom_errorList = document.getElementById('errorList');
         const dom_connText = document.getElementById('conn-text');
         // 前端自动建立 SSE 连接
         let eventSource = null;
@@ -84,9 +87,9 @@
                 }
 
                 //  拦截服务端的 ping 心跳帧：更新了看门狗之后，直接 return，不向页面渲染！
-                if (data && Object.hasOwn(data, 'type') && data.type === 'ping') { 
+                if (data && Object.hasOwn(data, 'type') && data.type === 'ping') {
                     console.log('收到心跳包');
-                    return ;
+                    return;
                 } else {
                     console.log('收到数据');
                 }
@@ -96,6 +99,7 @@
                 if (data && data.message === 'SSE') {
                     dom_tradeList.innerHTML = '';
                     dom_handleList.innerHTML = '';
+                    dom_errorList.innerHTML = '';
                     return;
                 }
 
@@ -105,6 +109,7 @@
                     if (!item || typeof item !== 'object') { return }
                     if (Object.hasOwn(item, 'type') && item.type === 'trade') { appendLogItem(dom_tradeList, item.content) }
                     if (Object.hasOwn(item, 'type') && item.type === 'handle') { appendLogItem(dom_handleList, item.content) }
+                    if (Object.hasOwn(item, 'type') && item.type === 'error') { appendLogItem(dom_errorList, item.content) }
                 });
 
             };

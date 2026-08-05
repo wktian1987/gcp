@@ -5,11 +5,13 @@ const toWeb = {
     newHTMLregion: 'web!A1',
     tradeListRegion: 'web!B2:B',
     handleListRegion: 'web!C2:C',
+    errorListRegion: 'web!D2:D',
     htmlContentCache : null ,
     sseClients: new Set(),
     alreadyReadHistory : false , 
     handleList: [],
     tradeList: [],
+    errorList: [],
     listLimit: 99,
     globalWebHeartBeat: null,
 
@@ -33,6 +35,10 @@ const toWeb = {
                 writeRegion = this.handleListRegion;
                 writeA2d  = this.handleList.map((item) => [item]);
                 break;
+            case 'error':
+                writeRegion = this.errorListRegion;
+                writeA2d  = this.errorList.map((item) => [item]);
+                break;
             default:
                 throw new Error('listWriteToGS: listName not found');
         }
@@ -51,8 +57,10 @@ const toWeb = {
         try {
             const tradeList = (await GetGS(this.spreadsheetID, this.tradeListRegion)).map((item) => item[0]);
             const handleList = (await GetGS(this.spreadsheetID, this.handleListRegion)).map((item) => item[0]);
+            const errorList = (await GetGS(this.spreadsheetID, this.errorListRegion)).map((item) => item[0]);
             this.tradeList = tradeList;
             this.handleList = handleList;
+            this.errorList = errorList;
             this.alreadyReadHistory = true;
             LogInBackground('readHistoryFromGS success') ;
             return true ;
@@ -79,6 +87,15 @@ const toWeb = {
             }
             this.listWriteToGS('handle').catch(() => { });
         }
+        if (type === 'error') {
+            this.errorList.push(content);
+            if (this.errorList.length > this.listLimit) {
+                this.errorList.splice(0, this.errorList.length - this.listLimit); // 从索引 0 开始，一次性删除 overCount 个元素
+            }
+            this.listWriteToGS('error').catch(() => { });
+            }
+
+
 
         if (this.sseClients.size === 0) {
             LogInBackground('没有客户端连接, 不推送SSE事件' + '\n' + `type: ${type}, content: ${content}`);
@@ -167,6 +184,7 @@ export async function Web(thisLogs, url, req, res) {
         }
         res.write(`data: ${JSON.stringify(toWeb.tradeList .map((item) => ({ type: 'trade' , content: item })))}\n\n`);
         res.write(`data: ${JSON.stringify(toWeb.handleList.map((item) => ({ type: 'handle', content: item })))}\n\n`);
+        res.write(`data: ${JSON.stringify(toWeb.errorList .map((item) => ({ type: 'error' , content: item })))}\n\n`);
         thisLogs.AddNewLogLine(`已通过SSE推送当前历史数据`);
 
         // 将当前客户端加入 SSE 客户端列表
