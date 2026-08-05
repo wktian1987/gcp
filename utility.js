@@ -1445,14 +1445,23 @@ export class LogsWithTime{
      * @param {boolean} [thereErr=false] 
      */
     AddNewLogLine(newLine, thereErr = false) {
+        const thisLogTimeStr = GetTimeStringWithOffset(8) ;
+        let severity, message ;
+
         if (!isStrictString(newLine)) {throw new Error('newLine must be string')}
         if (!isStrictBoolean(thereErr)) { throw new Error('thereErr must be boolean or undefined') }
         let joinStr = '✓' ;
-        if (isStrictTrue(thereErr)) { this.thereErr = true; this.ChangeLogTitle(); joinStr = '✕'; }
-        this.logsA.push({
-            severity: thereErr ? 'ERROR' : 'INFO',
-            message: `${GetTimeStringWithOffset(8)} ${joinStr} ${newLine.trim()}`
-        });
+        if (isStrictTrue(thereErr)) { 
+            this.thereErr = true; 
+            this.ChangeLogTitle(); 
+            joinStr = '✕'; 
+        }
+
+        severity = thereErr ? 'ERROR' : 'INFO';
+        message = `${thisLogTimeStr} ${joinStr} ${newLine.trim()}`;
+        this.logsA.push({ severity, message });
+
+        if (isStrictTrue(thereErr)) { ToWebListAddNewLine({ type: 'error', content: this.logTitle + ': ' + message }) }
     }
 
     AddNewErrLogLine(newErrLog) { this.AddNewLogLine(newErrLog, true) }
@@ -1529,6 +1538,7 @@ export function LogInBackground(log) {
             
             if (isErrorLevel) {
                 console.error(JSON.stringify(finalLog));
+                ToWebListAddNewLine({type: 'error', content: finalLog.message}) ;
             } else {
                 console.log(JSON.stringify(finalLog));
             }
