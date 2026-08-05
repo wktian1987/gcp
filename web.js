@@ -7,7 +7,7 @@ const toWeb = {
     handleListRegion: 'web!C2:C',
     htmlContentCache : null ,
     sseClients: new Set(),
-    alreadyReadHistory = false , 
+    alreadyReadHistory : false , 
     handleList: [],
     tradeList: [],
     listLimit: 99,
