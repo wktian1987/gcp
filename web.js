@@ -105,9 +105,9 @@ export async function Web(thisLogs, req, res) {
     const pathName = parsedURL.pathname; // 如果URL 是 /favicon.ico, 则返回 /favicon.ico
     const searchParams = parsedURL.searchParams;
 
-
-
     if (pathName === '/favicon.ico') {
+        thisLogs.toWeb = false ;
+        
         res.writeHead(204);
         res.end();
         thisLogs.AddNewLogLine('处理 favicon, 忽略并返回 204');
@@ -115,6 +115,8 @@ export async function Web(thisLogs, req, res) {
     }
 
     if (pathName === '/api/get-latest-data') {
+        thisLogs.toWeb = false ;
+
         try {
             const last_timeID_trade  = ToStrictNumber( searchParams.get('last_timeID_trade' ) , -1 ) ; // 如果字段是数字形式，它是字符串还是数字
             const last_timeID_handle = ToStrictNumber( searchParams.get('last_timeID_handle') , -1 ) ;

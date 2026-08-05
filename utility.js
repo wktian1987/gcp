@@ -1429,6 +1429,7 @@ export class LogsWithTime{
         this.logsA          =  []               ;
         this.toSendTG       =  toSendTG         ;
         this.toChatID       =  toChatID         ;
+        this.toWeb          =  true             ;
     }
 
     ChangeLogTitle(newLogTitle) {
@@ -1469,8 +1470,10 @@ export class LogsWithTime{
     consoleLogs(toSendTG) {
         this.endTime    =  Date.now() ;
         this.duration   =  this.endTime - this.startTime ;
-        const toWebListStr = `${this.logTitle}: ${GetTimeStringWithOffset(8, this.startTime)} -> ${GetTimeStringWithOffset(8, this.endTime)} : ${Math.round(this.duration/1000)}s` ; 
-        ToWeb_AddNewLine({type: 'handle', message: toWebListStr}) ;
+        if (this.toWeb) {
+            const toWebListStr = `${this.logTitle}: ${GetTimeStringWithOffset(8, this.startTime)} -> ${GetTimeStringWithOffset(8, this.endTime)} : ${Math.round(this.duration / 1000)}s`;
+            ToWeb_AddNewLine({ type: 'handle', message: toWebListStr });
+        }
 
         if (isStrictString(toSendTG)) {
             if (toSendTG !== 'YES' && toSendTG !== 'NO' && toSendTG !== 'onlyErr') { throw new Error('toSendTG input err') }
