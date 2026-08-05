@@ -54,7 +54,7 @@ const toWeb = {
             this.tradeList = tradeList;
             this.handleList = handleList;
             this.alreadyReadHistory = true;
-            LogInBackgroundk('readHistoryFromGS success') ;
+            LogInBackground('readHistoryFromGS success') ;
             return true ;
         } catch (err) {
             LogInBackground({ severity: 'ERROR', message: 'readHistoryFromGS Err: ' + err.message });
