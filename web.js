@@ -62,7 +62,7 @@ const toWeb = {
         }
     },
 
-    AddNewLine({ type, content }) {
+    async AddNewLine({ type, content }) {
         await this.readHistoryFromGS().catch(() => { });
 
         if (type === 'trade') {
@@ -132,7 +132,7 @@ const toWeb = {
 };
 await toWeb.readHistoryFromGS().catch(() => { });
 
-export function ToWebListAddNewLine({ type, content }) { toWeb.AddNewLine({ type, content }) }
+export async function ToWebListAddNewLine({ type, content }) { await toWeb.AddNewLine({ type, content }) }
 
 export async function Web(thisLogs, url, req, res) {
     thisLogs.AddNewLogLine('开始处理');
