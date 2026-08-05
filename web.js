@@ -133,6 +133,7 @@ const toWeb = {
 await toWeb.readHistoryFromGS().catch(() => { });
 
 export async function ToWebListAddNewLine({ type, content }) { await toWeb.AddNewLine({ type, content }) }
+export async function readIndexHTML(toReadNew) { await toWeb.readIndexHTML(toReadNew) }
 
 export async function Web(thisLogs, url, req, res) {
     thisLogs.AddNewLogLine('开始处理');
