@@ -70,25 +70,27 @@ const toWeb = {
         }
     },
 
-    async AddNewLine({ type, content }) {
+    async AddNewLine({ type, content}) {
+        const contentLine = ToStrictString(content).trim().replaceAll('\n', ' ;; ');
+
         await this.readHistoryFromGS().catch(() => { });
 
         if (type === 'trade') {
-            this.tradeList.push(content);
+            this.tradeList.push(contentLine);
             if (this.tradeList.length > this.listLimit) {
                 this.tradeList.splice(0, this.tradeList.length - this.listLimit); // 从索引 0 开始，一次性删除 overCount 个元素
             }
             this.listWriteToGS('trade').catch(() => { });
         }
         if (type === 'handle') {
-            this.handleList.push(content);
+            this.handleList.push(contentLine);
             if (this.handleList.length > this.listLimit) {
                 this.handleList.splice(0, this.handleList.length - this.listLimit); // 从索引 0 开始，一次性删除 overCount 个元素
             }
             this.listWriteToGS('handle').catch(() => { });
         }
         if (type === 'error') {
-            this.errorList.push(content);
+            this.errorList.push(contentLine);
             if (this.errorList.length > this.listLimit) {
                 this.errorList.splice(0, this.errorList.length - this.listLimit); // 从索引 0 开始，一次性删除 overCount 个元素
             }
@@ -98,13 +100,13 @@ const toWeb = {
 
 
         if (this.sseClients.size === 0) {
-            LogInBackground('没有客户端连接, 不推送SSE事件' + '\n' + `type: ${type}, content: ${content}`);
+            LogInBackground('没有客户端连接, 不推送SSE事件' + '\n' + `type: ${type}, content: ${contentLine}`);
             if (this.globalWebHeartBeat) {
                 clearInterval(this.globalWebHeartBeat);
                 this.globalWebHeartBeat = null;
             }
         } else {
-            this.HandleSSE({ type, content });
+            this.HandleSSE({ type, contentLine });
             this.triggerHeartBeat();
         }
     },
@@ -119,9 +121,9 @@ const toWeb = {
         }, 10000);
     },
 
-    HandleSSE({ type, content }) {
+    HandleSSE({ type, contentLine }) {
         if (this.sseClients.size === 0) {
-            LogInBackground('没有客户端连接, 不推送SSE事件' + '\n' + `type: ${type}, content: ${content}`);
+            LogInBackground('没有客户端连接, 不推送SSE事件' + '\n' + `type: ${type}, content: ${contentLine}`);
             if (this.globalWebHeartBeat) {
                 clearInterval(this.globalWebHeartBeat);
                 this.globalWebHeartBeat = null;
@@ -134,7 +136,7 @@ const toWeb = {
                 this.sseClients.delete(client);
                 continue;
             }
-            client.write(`data: ${JSON.stringify({ type, content })}\n\n`, (e) => {
+            client.write(`data: ${JSON.stringify({ type, content: contentLine })}\n\n`, (e) => {
                 if (e) {
                     this.sseClients.delete(client);
                     if (!client.destroyed) {

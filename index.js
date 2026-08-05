@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { DATETIME, LogsWithTime, SendTG, Sleep, LogInBackground } from './utility.js';
+import { DATETIME, LogsWithTime, SendTG, Sleep, LogInBackground, isObjectOfKeyValue } from './utility.js';
 import { HandleUnreadGmails } from './handleUnreadGmails.js';
 import { HandleTradeBot, HandleAllPrice, CV } from './handleTV.js';
 import { HandleTgBot } from './handleTgBot.js';
@@ -80,11 +80,9 @@ async function HandleSignal(toHandleSignal) {
 
             try {
                 const r_HandleTradeBot = await HandleTradeBot(body, thisLogs);
-                if      (r_HandleTradeBot === CV.stopSet         ) {thisLogs.AddNewLogLine(`||| ${body.botNumber}: stopSet, 本信号丢弃`) }
-                else if (r_HandleTradeBot === CV.newerHandled    ) {thisLogs.AddNewLogLine(`||| ${body.botNumber}: 已处理更新的信号, 本信号丢弃`)}
-                else if (r_HandleTradeBot === CV.stillHandleLast ) {thisLogs.AddNewLogLine(`||| ${body.botNumber}: 仍在处理上一个信号, 但是本信号已经超时, 本信号丢弃`)}
-                else if (r_HandleTradeBot === true               ) {thisLogs.AddNewLogLine(`HandleTradeBot()处理成功`)}
-                else {throw new Error(`内部逻辑错误`)}
+                if (isObjectOfKeyValue(r_HandleTradeBot) && Object.hasOwn(r_HandleTradeBot, 'NotError')) { thisLogs.AddNewLogLine(`本信号丢弃: ${r_HandleTradeBot.NotError}`) }
+                else if (r_HandleTradeBot === true) { thisLogs.AddNewLogLine(`HandleTradeBot()处理成功`) }
+                else { throw new Error(`内部逻辑错误`) }
             } catch (e) {thisLogs.AddNewErrLogLine(`HandleTradeBot()处理失败\n` + e.message) }
         }
 

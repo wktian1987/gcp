@@ -49,9 +49,6 @@ import { CheckAllPosition, SendOrderToBroker, CheckOrderConfirm, CheckFundFee } 
 import { ToWebListAddNewLine} from "./web.js";
 
 export const CV = {
-    stillHandleLast : 'stillHandleLast' ,
-    newerHandled    : 'newerHandled'    ,
-    stopSet         : 'stopSet'         ,
     noLOCK          : "noLOCK"          ,
     NA              : "NA"              ,
     toGCPRanges     : "toGCP!A:B"       ,
@@ -159,20 +156,20 @@ export const TradeBot = {
                 SendTG(`${tvData.botNumber} STOP命令已收到`, 'STOP已设置,  停止继续处理本信号', TradeBot[this.tbName_TGID]).catch(() => { });
                 TradeBot[this.tbName_tgSTOP_resp] = true;
             }
-            return CV.stopSet ;
+            return {NotError: 'STOP已设置, 停止继续处理本信号'} ;
         }
 
 
         // 在全局中有报错的话, 直接退出
-        if (!this.isRunningWell()) {return '发现之前的运行中有错误, 本次信号没必要再处理, 提前退出, 以前的错误为: \n' + StrFromSetMessage(TradeBot[this.tbName_runningWell]) }
+        if (!this.isRunningWell()) { return { NotError: '发现之前的运行中有错误, 本次信号没必要再处理, 提前退出, 以前的错误为: \n' + StrFromSetMessage(TradeBot[this.tbName_runningWell]) } }
 
-        if (TradeBot[this.tbName_lastLockTime] > this.LockTime) {return CV.newerHandled}
+        if (TradeBot[this.tbName_lastLockTime] > this.LockTime) { return { NotError: '已处理更新的信号, 本信号没必要在处理' } }
         // 正常情况下一个信号运行绝对不会超过5分钟; 一旦发生这种情况, 肯定是发生了不可挽回的错误, 直接抛错退出当前信号处理就可以了
-        if (isStrictTrue(TradeBot[this.tbName_isLocked]) && Date.now() - TradeBot[this.tbName_lastLockTime] > 5 * 60 * 1000) {return '上一个信号长时间未解锁, 肯定遇到了无法挽回的错误, 但错误未被记录, 本信号不再处理, 需手动检查' }
+        if (isStrictTrue(TradeBot[this.tbName_isLocked]) && Date.now() - TradeBot[this.tbName_lastLockTime] > 5 * 60 * 1000) { return { NotError: '上一个信号长时间未解锁, 肯定遇到了无法挽回的错误, 但错误未被记录, 本信号不再处理, 需手动检查' } }
         // 如果现在有锁的话, 等待当前正在处理的信号完成, 当信号已经过去60s后, 不再处理
         while (isStrictTrue(TradeBot[this.tbName_isLocked]) && Date.now() - this.LockTime < 60 * 1000) { await Sleep(1000) }
         // 已经超过60s, 或者大锁被释放
-        if (isStrictTrue(TradeBot[this.tbName_isLocked])) {return CV.stillHandleLast}
+        if (isStrictTrue(TradeBot[this.tbName_isLocked])) { return { NotError: '上一个信号仍在运行, 本信号已等待60s, 丢弃本信号' } }
         // 大锁被清空后, 马上抢大锁
         if (isStrictFalse(TradeBot[this.tbName_isLocked])) {
             TradeBot[this.tbName_isLocked] = true;
@@ -266,7 +263,7 @@ export const TradeBot = {
         }
 
         let currentLock = this.getThisTvMainData('LOCK') ;
-        if (this.mainData.timestamp > this.LockTime) { this.releaseTradeBotLOCK(); return CV.newerHandled ; }
+        if (this.mainData.timestamp > this.LockTime) { this.releaseTradeBotLOCK(); return { NotError: '经检查GS,已处理更新的信号, 本信号丢弃' }; }
         if (TradeBot[this.tbName_lastLockTime] !== this.LockTime) { this.releaseTradeBotLOCK(); return this.returnRunningWellErrMessage('检查gsLOCK失败','临上GS锁前, 再次检查大锁, 发现大锁已被别的信号抢去'); }
         if (currentLock !== CV.noLOCK && !toResetGSLOCK) {
             this.releaseTradeBotLOCK() ;
@@ -1671,9 +1668,7 @@ export async function HandleTradeBot(tvData, thisLogs) {
 
     thisLogs.AddNewLogLine('去执行CreateBasicAttr()') ;
     const r_CreateBasicAttr = await bot.CreateBasicAttr(tvData, thisLogs);
-    if (r_CreateBasicAttr === CV.stopSet         ) {return r_CreateBasicAttr}
-    if (r_CreateBasicAttr === CV.newerHandled    ) {return r_CreateBasicAttr}
-    if (r_CreateBasicAttr === CV.stillHandleLast ) {return r_CreateBasicAttr}
+    if (isObjectOfKeyValue(r_CreateBasicAttr) && Object.hasOwn(r_CreateBasicAttr, 'NotError')) { return r_CreateBasicAttr }
     if (!r_CreateBasicAttr || isStrictString(r_CreateBasicAttr)) { throw new Error('CreateBasicAttr() 失败: \n' + r_CreateBasicAttr) }
     if (isStrictTrue(r_CreateBasicAttr)) { thisLogs.AddNewLogLine('CreateBasicAttr() success') }
     if (thisTime.HowLongToNOW() > theLongestTime) { theLongestTime = thisTime.HowLongToNOW() ; theLongestTimeTask = 'CreateBasicAttr()' ; thisTime.UpdateTime() ;}
