@@ -1,35 +1,83 @@
-import { ToStrictString, GetGS, LogInBackground } from "./utility.js";
+import { ToStrictString, GetGS, LogInBackground, UpdateGS } from "./utility.js";
 
-let htmlContentCache = null;
-export async function readIndexHTML(toReadNew = false) {
-    const TradingBot_00_ID = process.env.SHEET_ID;
-    const newHTMLregion = 'newHTML!A1';
-    if (htmlContentCache === null || toReadNew) {
-        const newHTMLstr = (await GetGS(TradingBot_00_ID, newHTMLregion))[0][0];
-        htmlContentCache = ToStrictString(newHTMLstr);
-    }
-    return htmlContentCache;
-}
-
-const toWebList = {
+const toWeb = {
+    spreadsheetID : process.env.SHEET_ID,
+    newHTMLregion: 'web!A1',
+    tradeListRegion: 'web!B2:B',
+    handleListRegion: 'web!C2:C',
+    htmlContentCache : null ,
     sseClients: new Set(),
+    alreadyReadHistory = false , 
     handleList: [],
     tradeList: [],
     listLimit: 99,
     globalWebHeartBeat: null,
 
+    async readIndexHTML(toReadNew = false) {
+        if (this.htmlContentCache === null || toReadNew) {
+            const newHTMLstr = (await GetGS(this.spreadsheetID, this.newHTMLregion))[0][0];
+            this.htmlContentCache = ToStrictString(newHTMLstr);
+        }
+        return this.htmlContentCache;
+    } ,
+
+    async listWriteToGS(listName) {
+        let writeRegion ;
+        let writeA2d  ;
+        switch(listName) {
+            case 'trade':
+                writeRegion = this.tradeListRegion;
+                writeA2d = this.tradeList.map((item) => [item]);
+                break;
+            case 'handle':
+                writeRegion = this.handleListRegion;
+                writeA2d  = this.handleList.map((item) => [item]);
+                break;
+            default:
+                throw new Error('listWriteToGS: listName not found');
+        }
+
+        try {
+            await UpdateGS(this.spreadsheetID, writeRegion, writeA2d) ;
+            LogInBackground('listWriteToGS: ' + listName + ' write to GS success');
+        } catch (err) {
+            LogInBackground({ severity: 'ERROR', message: 'listWriteToGS UpdateGS Err: ' + err.message });
+        }
+
+    } ,
+
+    async readHistoryFromGS() {
+        if (this.alreadyReadHistory) { return true }
+        try {
+            const tradeList = (await GetGS(this.spreadsheetID, this.tradeListRegion)).map((item) => item[0]);
+            const handleList = (await GetGS(this.spreadsheetID, this.handleListRegion)).map((item) => item[0]);
+            this.tradeList = tradeList;
+            this.handleList = handleList;
+            this.alreadyReadHistory = true;
+            LogInBackgroundk('readHistoryFromGS success') ;
+            return true ;
+        } catch (err) {
+            LogInBackground({ severity: 'ERROR', message: 'readHistoryFromGS Err: ' + err.message });
+            return false ;
+        }
+    },
+
     AddNewLine({ type, content }) {
+        await this.readHistoryFromGS().catch(() => { });
+
         if (type === 'trade') {
-            this.tradeList.push({ type, content });
+            this.tradeList.push(content);
             if (this.tradeList.length > this.listLimit) {
                 this.tradeList.splice(0, this.tradeList.length - this.listLimit); // 从索引 0 开始，一次性删除 overCount 个元素
             }
+            this.listWriteToGS('trade').catch(() => { });
         }
         if (type === 'handle') {
-            this.handleList.push({ type, content });
+            this.handleList.push(content);
             if (this.handleList.length > this.listLimit) {
                 this.handleList.splice(0, this.handleList.length - this.listLimit); // 从索引 0 开始，一次性删除 overCount 个元素
             }
+            this.listWriteToGS('handle').catch(() => { });
         }
 
         if (this.sseClients.size === 0) {
@@ -82,8 +130,9 @@ const toWebList = {
         LogInBackground(`已通过SSE广播 ${type} 事件给 ${this.sseClients.size} 个客户端`);
     }
 };
+await toWeb.readHistoryFromGS().catch(() => { });
 
-export function ToWebListAddNewLine({ type, content }) { toWebList.AddNewLine({ type, content }) }
+export function ToWebListAddNewLine({ type, content }) { toWeb.AddNewLine({ type, content }) }
 
 export async function Web(thisLogs, url, req, res) {
     thisLogs.AddNewLogLine('开始处理');
@@ -110,14 +159,19 @@ export async function Web(thisLogs, url, req, res) {
         thisLogs.AddNewLogLine('已通过SSE推送初始连接成功事件');
 
         // 将 theWebList 中的数据转换为数组，一次性全量打包发送
-        res.write(`data: ${JSON.stringify(toWebList.handleList)}\n\n`);
-        res.write(`data: ${JSON.stringify(toWebList.tradeList)}\n\n`);
+        const readHistoryListResult = await toWeb.readHistoryFromGS();
+        if (!readHistoryListResult) { 
+            thisLogs.AddNewErrLogLine(`readHistoryFromGS failed`) ;
+            return ;
+        }
+        res.write(`data: ${JSON.stringify(toWeb.tradeList .map((item) => ({ type: 'trade' , content: item })))}\n\n`);
+        res.write(`data: ${JSON.stringify(toWeb.handleList.map((item) => ({ type: 'handle', content: item })))}\n\n`);
         thisLogs.AddNewLogLine(`已通过SSE推送当前历史数据`);
 
         // 将当前客户端加入 SSE 客户端列表
-        toWebList.sseClients.add(res);
+        toWeb.sseClients.add(res);
 
-        toWebList.triggerHeartBeat() ;
+        toWeb.triggerHeartBeat() ;
 
         // 监听客户端断开连接事件（防内存泄漏 & 句柄挂起）
         // 监听客户端断开/刷新/关闭事件
@@ -127,7 +181,7 @@ export async function Web(thisLogs, url, req, res) {
             if (isCleaned) return;
             isCleaned = true;
 
-            toWebList.sseClients.delete(res);
+            toWeb.sseClients.delete(res);
 
             // 尝试安全关闭底层响应流
             if (!res.writableEnded) { res.destroy() }
@@ -147,8 +201,8 @@ export async function Web(thisLogs, url, req, res) {
     }
 
     try {
-        const toReadNew = url === '/index.html' || htmlContentCache === null;
-        const htmlContent = await readIndexHTML(toReadNew);
+        const toReadNew = url === '/index.html' || toWeb.htmlContentCache === null;
+        const htmlContent = await toWeb.readIndexHTML(toReadNew);
         if (toReadNew) {thisLogs.AddNewLogLine('成功读取新HTML文件newHTML!A1')} 
         else {thisLogs.AddNewLogLine('成功从缓存中读取HTML')}
 

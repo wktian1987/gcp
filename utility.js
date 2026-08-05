@@ -1494,7 +1494,7 @@ export class LogsWithTime{
  * 100% 物理隔绝日志处理对主业务链路的性能干扰，确保核心业务秒级出港。
  * 
  * @param {string|object} log - 待投递的日志载荷。
- *   - 若为 string: 直接 console.log 投递。
+ *   - 若为 string: 转换为 severity: INFO投递。
  *   - 若为带有 {severity: 'ERROR', message: '...'} 的对象: 自动分流至 console.error 或 console.log 并串化。
  *   - 若为其他对象: 自动 JSON 串化后投递。
  */
