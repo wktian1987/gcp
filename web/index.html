@@ -28,9 +28,12 @@
         const dom_handleList = document.getElementById('handleList');
         const dom_errorList = document.getElementById('errorList');
         const dom_connText = document.getElementById('conn-text');
-        // 前端自动建立 SSE 连接
-        let eventSource = null;
-        let watchdogTimer = null; // 心跳看门狗定时器
+
+        let last_timeID_trade = -1;
+        let last_timeID_handle = -1;
+        let last_timeID_error = -1;
+
+        let toReNew = true;
 
         // 提取公共渲染函数：统一处理节点创建、挂载与裁剪
         function appendLogItem(targetDom, content) {
@@ -40,82 +43,71 @@
             if (targetDom.children.length > MAX_LIMIT) { targetDom.removeChild(targetDom.lastChild) }
         }
 
-        // 重置/刷新心跳看门狗
-        function resetWatchdog() {
-            clearTimeout(watchdogTimer);
-            // 如果 20 秒内没有收到任何数据（服务端设定的是 10 秒发一次心跳），说明网络已假死
-            watchdogTimer = setTimeout(() => {
-                console.warn('⚠️ 超过 20 秒未收到服务器任何消息，判定为静默断连，正在强制重连...');
-                dom_connText.textContent = '连接超时，正在重连...';
+        async function getNewData() {
+            if (toReNew) {
+                last_timeID_trade = -1;
+                last_timeID_handle = -1;
+                last_timeID_error = -1;
+            }
 
-                // 主动关闭旧的 EventSource 实例
-                if (eventSource) {
-                    eventSource.onopen = null;
-                    eventSource.onerror = null;
-                    eventSource.onmessage = null;
-                    eventSource.close();
-                    eventSource = null;
-                }
-                // 重新建立连接
-                connectSSE();
-            }, 20000); // 20 秒超时时间
+            // 1. 构建 URLSearchParams 动态参数
+            const params = new URLSearchParams({ last_timeID_trade, last_timeID_handle, last_timeID_error });
+            // 2. 发起请求
+            const response = await fetch(`/api/get-latest-data?${params.toString()}`);
+            if (!response.ok) { dom_connText.textContent = '连接中断，重连中...'; toReNew = true; return; }
+            dom_connText.textContent = '实时通道就绪';
+            // 成功接收一次数据后, 删除waiting
+            document.getElementById('waiting')?.remove();
+
+            // 3. 解析 JSON 数据
+            const data = await response.json();
+            const { res_tradeList, res_handleList, res_errorList } = data;
+
+            // 4. 更新 UI
+            if (res_tradeList.res_messageLines.length > 0) {
+                if (toReNew) { dom_tradeList.innerHTML = '' }
+                last_timeID_trade = res_tradeList.res_last_timeID;
+                res_tradeList.res_messageLines.forEach(item => { appendLogItem(dom_tradeList, item) });
+            }
+            if (res_handleList.res_messageLines.length > 0) {
+                if (toReNew) { dom_handleList.innerHTML = '' }
+                last_timeID_handle = res_handleList.res_last_timeID;
+                res_handleList.res_messageLines.forEach(item => { appendLogItem(dom_handleList, item) });
+            }
+            if (res_errorList.res_messageLines.length > 0) {
+                if (toReNew) { dom_errorList.innerHTML = '' }
+                last_timeID_error = res_errorList.res_last_timeID;
+                res_errorList.res_messageLines.forEach(item => { appendLogItem(dom_errorList, item) });
+            }
+
+            if (toReNew) { toReNew = false }
         }
 
-        function connectSSE() {
-            if (eventSource) { eventSource.close() } // 先关闭旧的 EventSource 实例
-            eventSource = new EventSource('/stream');
-
-            eventSource.onopen = () => {
-                dom_connText.textContent = '实时通道就绪';
-                resetWatchdog();
-            };
-            eventSource.onerror = () => { dom_connText.textContent = '连接中断，重连中...' };
-
-            eventSource.onmessage = (event) => {
-                resetWatchdog();
-
-                document.getElementById('waiting')?.remove();
-
-                // 解析后端推过来的 JSON 数据流
-                let data;
-                try {
-                    // 安全解析 JSON
-                    data = JSON.parse(event.data);
-                } catch (e) {
-                    // 如果发过来的是心跳包或纯文本，说明不是 JSON，直接忽略或记录
-                    return;
-                }
-
-                //  拦截服务端的 ping 心跳帧：更新了看门狗之后，直接 return，不向页面渲染！
-                if (data && Object.hasOwn(data, 'type') && data.type === 'ping') {
-                    console.log('收到心跳包');
-                    return;
-                } else {
-                    console.log('收到数据');
-                }
-
-                // 过滤后端第一发发过来的 { message: 'SSE' } 提示帧
-                // 避免浏览器不刷新导致数据重复，先清空
-                if (data && data.message === 'SSE') {
-                    dom_tradeList.innerHTML = '';
-                    dom_handleList.innerHTML = '';
-                    dom_errorList.innerHTML = '';
-                    return;
-                }
-
-                // 统一转换为数组处理（兼容单条推送和批量数组推送）
-                const items = Array.isArray(data) ? data : [data];
-                items.forEach(item => {
-                    if (!item || typeof item !== 'object') { return }
-                    if (Object.hasOwn(item, 'type') && item.type === 'trade') { appendLogItem(dom_tradeList, item.content) }
-                    if (Object.hasOwn(item, 'type') && item.type === 'handle') { appendLogItem(dom_handleList, item.content) }
-                    if (Object.hasOwn(item, 'type') && item.type === 'error') { appendLogItem(dom_errorList, item.content) }
-                });
-
-            };
+        let loop = null ;
+    async function LoopGetNewData(loopTime = 10000) {
+        // 1. 如果之前有还在等待中的定时器，先清除（防止重复打断时出现多个定时器）
+        if (loop) {
+            clearTimeout(loop);
+            loop = null;
         }
 
-        connectSSE();
+        // 2. 统一在这里发起请求（无论是第一次启动，还是后续递归调用）
+        try {
+            await getNewData();
+        } catch (error) {
+            console.error("数据拉取失败:", error);
+        } finally {
+            // 3. 无论成功还是失败，等待请求完成后，再过 loopTime 毫秒递归调用下一次
+            loop = setTimeout(() => {
+                LoopGetNewData(loopTime);
+            }, loopTime);
+        }
+    }
+        
+        LoopGetNewData(10000) ;
+
+        // 这样能起到每执行完getNewData后，再过loopTime毫秒再执行getNewData的效果吗?
+
     </script>
 </body>
 

@@ -46,7 +46,7 @@ import {
 } from "./utility.js";
 
 import { CheckAllPosition, SendOrderToBroker, CheckOrderConfirm, CheckFundFee } from "./broker.js";
-import { ToWebListAddNewLine} from "./web.js";
+import { ToWeb_AddNewLine} from "./web.js";
 
 export const CV = {
     noLOCK          : "noLOCK"          ,
@@ -1203,7 +1203,7 @@ export const TradeBot = {
             this.toSendEmail = true ;
 
             const newWebLine = `${this.tvData.botNumber} ${S.ing_orderDate} -> new sell, orderPrice: ${S.ing_orderPrice}, qty: ${S.ing_qty}, sellReason: ${S.ing_reason}, id: ${S.ing_orderID}` ;
-            ToWebListAddNewLine({type: 'trade', content: newWebLine});
+            ToWeb_AddNewLine({type: 'trade', message: newWebLine});
 
             this.canBuy = false;
             AddSetMessage(this.alertMessageSet, 'cant buy: just a new sellOrder sent');
@@ -1325,7 +1325,7 @@ export const TradeBot = {
             this.toSendEmail = true ;
 
             const newWebLine = `${this.tvData.botNumber} ${S.ing_orderDate} -> new buy , orderPrice: ${S.ing_orderPrice}, qty: ${S.ing_qty}, buyReason: ${S.ing_reason}, id: ${S.ing_orderID}` ;
-            ToWebListAddNewLine({type: 'trade', content: newWebLine});
+            ToWeb_AddNewLine({type: 'trade', message: newWebLine});
 
             this.canSell = false;
             AddSetMessage(this.alertMessageSet, 'cant sell: just a new buyOrder sent');
@@ -1462,7 +1462,7 @@ export const TradeBot = {
                 this.toSendEmail = true ;
 
                 const newWebLine = `${this.tvData.botNumber} ${ingOrderData.ing_confirmDate} -> order confirmed, id: ${ingOrderData.ing_orderID}`;
-                ToWebListAddNewLine({ type: 'trade', content: newWebLine });
+                ToWeb_AddNewLine({ type: 'trade', message: newWebLine });
             }
 
             if (ingOrderData.ing_orderStatus === CV.order_partial && ingOrderData.ing_partial - ingOrderData.lst_partial> 0.1 ) {

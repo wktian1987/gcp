@@ -1,4 +1,4 @@
-import { ToStrictString, GetGS, LogInBackground, UpdateGS } from "./utility.js";
+import { ToStrictString, GetGS, LogInBackground, UpdateGS, ToStrictNumber, LogInBackground_error } from "./utility.js";
 
 const toWeb = {
     spreadsheetID : process.env.SHEET_ID,
@@ -7,13 +7,11 @@ const toWeb = {
     handleListRegion: 'web!C2:C',
     errorListRegion: 'web!D2:D',
     htmlContentCache : null ,
-    sseClients: new Set(),
     alreadyReadHistory : false , 
     handleList: [],
     tradeList: [],
     errorList: [],
     listLimit: 99,
-    globalWebHeartBeat: null,
 
     async readIndexHTML(toReadNew = false) {
         if (this.htmlContentCache === null || toReadNew) {
@@ -29,15 +27,15 @@ const toWeb = {
         switch(listName) {
             case 'trade':
                 writeRegion = this.tradeListRegion;
-                writeA2d = this.tradeList.map((item) => [item]);
+                writeA2d = this.tradeList.map((item) => [item.messageLine]);
                 break;
             case 'handle':
                 writeRegion = this.handleListRegion;
-                writeA2d  = this.handleList.map((item) => [item]);
+                writeA2d  = this.handleList.map((item) => [item.messageLine]);
                 break;
             case 'error':
                 writeRegion = this.errorListRegion;
-                writeA2d  = this.errorList.map((item) => [item]);
+                writeA2d  = this.errorList.map((item) => [item.messageLine]);
                 break;
             default:
                 throw new Error('listWriteToGS: listName not found');
@@ -46,183 +44,107 @@ const toWeb = {
         try {
             await UpdateGS(this.spreadsheetID, writeRegion, writeA2d) ;
             LogInBackground('listWriteToGS: ' + listName + ' write to GS success');
-        } catch (err) {
-            LogInBackground({ severity: 'ERROR', message: 'listWriteToGS UpdateGS Err: ' + err.message });
-        }
+        } catch (err) { LogInBackground_error('listWriteToGS UpdateGS Err: ' + err.message) }
 
     } ,
 
     async readHistoryFromGS() {
         if (this.alreadyReadHistory) { return true }
         try {
-            const tradeList = (await GetGS(this.spreadsheetID, this.tradeListRegion)).map((item) => item[0]);
-            const handleList = (await GetGS(this.spreadsheetID, this.handleListRegion)).map((item) => item[0]);
-            const errorList = (await GetGS(this.spreadsheetID, this.errorListRegion)).map((item) => item[0]);
-            this.tradeList = tradeList;
-            this.handleList = handleList;
-            this.errorList = errorList;
+            this.tradeList  = (await GetGS(this.spreadsheetID, this.tradeListRegion )).map( (item) => ({ timeID: 0, messageLine: item[0] }) ) ;
+            this.handleList = (await GetGS(this.spreadsheetID, this.handleListRegion)).map( (item) => ({ timeID: 0, messageLine: item[0] }) ) ;
+            this.errorList  = (await GetGS(this.spreadsheetID, this.errorListRegion )).map( (item) => ({ timeID: 0, messageLine: item[0] }) ) ;
             this.alreadyReadHistory = true;
             LogInBackground('readHistoryFromGS success') ;
             return true ;
-        } catch (err) {
-            LogInBackground({ severity: 'ERROR', message: 'readHistoryFromGS Err: ' + err.message });
-            return false ;
-        }
+        } catch (err) { LogInBackground_error('readHistoryFromGS Err: ' + err.message); return false; }
     },
 
-    async AddNewLine({ type, content}) {
-        const contentLine = ToStrictString(content).trim().replaceAll('\n', ' ;; ');
+    async AddNewLine({ type, message }) {
+        const timeID = Date.now();
+        const messageLine = ToStrictString(message).trim().replaceAll('\n', ' ;; ');
 
-        await this.readHistoryFromGS().catch(() => { });
+        const r_readHistoryFromGS = await this.readHistoryFromGS();
+        if (!r_readHistoryFromGS) {LogInBackground_error('readHistoryFromGS failed'); return; }
 
-        if (type === 'trade') {
-            this.tradeList.push(contentLine);
-            if (this.tradeList.length > this.listLimit) {
-                this.tradeList.splice(0, this.tradeList.length - this.listLimit); // 从索引 0 开始，一次性删除 overCount 个元素
+        // 1. 使用集合（Set）快速校验 type
+        const VALID_TYPES = new Set(['trade', 'handle', 'error']);
+
+        if (VALID_TYPES.has(type)) {
+            // 2. 直接获取对应数组引用，并做防空兜底（如果没定义则默认为空数组）
+            const targetList = this[`${type}List`] ||= [];
+
+            // 3. 压入新消息
+            targetList.push({ timeID, messageLine });
+
+            // 4. 超长修剪（由于每次 push 1 条，通常超出 1 条，用 shift 效率更高）
+            if (targetList.length > this.listLimit) {
+                // targetList.shift(); // 直接弹出最早入队的那一条
+                // 如果每次可能一次性 push 多条，保留 splice：
+                targetList.splice(0, targetList.length - this.listLimit);
             }
-            this.listWriteToGS('trade').catch(() => { });
+
+            // 5. 异步写入持久化（捕捉错误防止未捕获异常）
+            this.listWriteToGS(type).catch(() => { });
         }
-        if (type === 'handle') {
-            this.handleList.push(contentLine);
-            if (this.handleList.length > this.listLimit) {
-                this.handleList.splice(0, this.handleList.length - this.listLimit); // 从索引 0 开始，一次性删除 overCount 个元素
-            }
-            this.listWriteToGS('handle').catch(() => { });
-        }
-        if (type === 'error') {
-            this.errorList.push(contentLine);
-            if (this.errorList.length > this.listLimit) {
-                this.errorList.splice(0, this.errorList.length - this.listLimit); // 从索引 0 开始，一次性删除 overCount 个元素
-            }
-            this.listWriteToGS('error').catch(() => { });
-            }
 
-
-
-        if (this.sseClients.size === 0) {
-            LogInBackground('没有客户端连接, 不推送SSE事件' + '\n' + `type: ${type}, content: ${contentLine}`);
-            if (this.globalWebHeartBeat) {
-                clearInterval(this.globalWebHeartBeat);
-                this.globalWebHeartBeat = null;
-            }
-        } else {
-            this.HandleSSE({ type, contentLine });
-            this.triggerHeartBeat();
-        }
-    },
-
-    triggerHeartBeat() {
-        if (this.globalWebHeartBeat) {
-            clearInterval(this.globalWebHeartBeat);
-            this.globalWebHeartBeat = null;
-        }
-        this.globalWebHeartBeat = setInterval(() => {
-            this.HandleSSE({ type: 'ping', content: 'ping' });
-        }, 10000);
-    },
-
-    HandleSSE({ type, contentLine }) {
-        if (this.sseClients.size === 0) {
-            LogInBackground('没有客户端连接, 不推送SSE事件' + '\n' + `type: ${type}, content: ${contentLine}`);
-            if (this.globalWebHeartBeat) {
-                clearInterval(this.globalWebHeartBeat);
-                this.globalWebHeartBeat = null;
-            }
-        } 
-
-        for (const client of this.sseClients) {
-            // 💡 1. 检查底层 Socket 状态：如果连接已销毁或不具备可写性，立刻删除
-            if (client.destroyed || client.writableEnded || !client.writable) {
-                this.sseClients.delete(client);
-                continue;
-            }
-            client.write(`data: ${JSON.stringify({ type, content: contentLine })}\n\n`, (e) => {
-                if (e) {
-                    this.sseClients.delete(client);
-                    if (!client.destroyed) {
-                        client.destroy();
-                    }
-                }
-            });
-
-        }
-        LogInBackground(`已通过SSE广播 ${type} 事件给 ${this.sseClients.size} 个客户端`);
     }
 };
-// await toWeb.readHistoryFromGS().catch(() => { });
+export async function ToWeb_AddNewLine({ type, message }) { await toWeb.AddNewLine({ type, message }) }
+export async function ToWeb_readIndexHTML(toReadNew) { await toWeb.readIndexHTML(toReadNew) }
 
-export async function ToWebListAddNewLine({ type, content }) { await toWeb.AddNewLine({ type, content }) }
-export async function readIndexHTML(toReadNew) { await toWeb.readIndexHTML(toReadNew) }
+export async function Web(thisLogs, req, res) {
+    if (req.method !== 'GET') { thisLogs.AddNewErrLogLine('Web: only GET method allowed'); return; }
 
-export async function Web(thisLogs, url, req, res) {
     thisLogs.AddNewLogLine('开始处理');
 
-    if (url === '/favicon.ico') {
+    const r_readHistoryFromGS = await toWeb.readHistoryFromGS();
+    if (!r_readHistoryFromGS) { thisLogs.AddNewErrLogLine('readHistoryFromGS failed'); return; }
+
+    const parsedURL = new URL(req.url, `http://${req.headers.host}`);
+    const pathName = parsedURL.pathname; // 如果URL 是 /favicon.ico, 则返回 /favicon.ico
+    const searchParams = parsedURL.searchParams;
+
+
+
+    if (pathName === '/favicon.ico') {
         res.writeHead(204);
         res.end();
         thisLogs.AddNewLogLine('处理 favicon, 忽略并返回 204');
         return;
     }
 
-    if (url === '/stream') {
-        // 设置 SSE 核心 HTTP 响应头（刚性防线）
-        res.writeHead(200, {
-            'Content-Type': 'text/event-stream', // 必须：指定为事件流格式
-            'Cache-Control': 'no-cache, no-transform',          // 必须：禁止客户端/代理缓存
-            'Connection': 'keep-alive',           // 必须：保持 HTTP 长连接不关闭
-            'Access-Control-Allow-Origin': '*',   // 选填：按需跨域支持
-            'X-Accel-Buffering': 'no'
-        });
+    if (pathName === '/api/get-latest-data') {
+        try {
+            const last_timeID_trade  = ToStrictNumber( searchParams.get('last_timeID_trade' ) , -1 ) ; // 如果字段是数字形式，它是字符串还是数字
+            const last_timeID_handle = ToStrictNumber( searchParams.get('last_timeID_handle') , -1 ) ;
+            const last_timeID_error  = ToStrictNumber( searchParams.get('last_timeID_error' ) , -1 ) ;
 
-        // 发送初始连接成功事件（符合 SSE 标准格式 "data: xxx\n\n"）
-        res.write(`data: ${JSON.stringify({ message: 'SSE' })}\n\n`);
-        thisLogs.AddNewLogLine('已通过SSE推送初始连接成功事件');
+            const res_messageLines_trade  = toWeb.tradeList .filter((item) => item.timeID > last_timeID_trade ).map((item) => item.messageLine) ;
+            const res_messageLines_handle = toWeb.handleList.filter((item) => item.timeID > last_timeID_handle).map((item) => item.messageLine) ;
+            const res_messageLines_error  = toWeb.errorList .filter((item) => item.timeID > last_timeID_error ).map((item) => item.messageLine) ;
 
-        // 将 theWebList 中的数据转换为数组，一次性全量打包发送
-        const readHistoryListResult = await toWeb.readHistoryFromGS();
-        if (!readHistoryListResult) { 
-            thisLogs.AddNewErrLogLine(`readHistoryFromGS failed`) ;
-            return ;
+            const res_last_timeID_trade  = res_messageLines_trade .length  > 0 ? toWeb.tradeList [toWeb.tradeList .length - 1].timeID  : last_timeID_trade  ;
+            const res_last_timeID_handle = res_messageLines_handle.length  > 0 ? toWeb.handleList[toWeb.handleList.length - 1].timeID  : last_timeID_handle ;
+            const res_last_timeID_error  = res_messageLines_error .length  > 0 ? toWeb.errorList [toWeb.errorList .length - 1].timeID  : last_timeID_error  ;
+
+            const res_tradeList  = {res_last_timeID: res_last_timeID_trade  , res_messageLines: res_messageLines_trade } ;
+            const res_handleList = {res_last_timeID: res_last_timeID_handle , res_messageLines: res_messageLines_handle} ;
+            const res_errorList  = {res_last_timeID: res_last_timeID_error  , res_messageLines: res_messageLines_error } ;
+
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            return res.end(JSON.stringify({ res_tradeList, res_handleList, res_errorList }));
+
+        } catch (error) {
+            LogInBackground_error(`Web服务端内部错误: ${error.message}`) ;
+            res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+            return res.end(JSON.stringify({ error: "Internal Server Error" }));
         }
-        res.write(`data: ${JSON.stringify(toWeb.tradeList .map((item) => ({ type: 'trade' , content: item })))}\n\n`);
-        res.write(`data: ${JSON.stringify(toWeb.handleList.map((item) => ({ type: 'handle', content: item })))}\n\n`);
-        res.write(`data: ${JSON.stringify(toWeb.errorList .map((item) => ({ type: 'error' , content: item })))}\n\n`);
-        thisLogs.AddNewLogLine(`已通过SSE推送当前历史数据`);
-
-        // 将当前客户端加入 SSE 客户端列表
-        toWeb.sseClients.add(res);
-
-        toWeb.triggerHeartBeat() ;
-
-        // 监听客户端断开连接事件（防内存泄漏 & 句柄挂起）
-        // 监听客户端断开/刷新/关闭事件
-        // 统一清理函数（防止重复清理
-        let isCleaned = false;
-        function cleanup() {
-            if (isCleaned) return;
-            isCleaned = true;
-
-            toWeb.sseClients.delete(res);
-
-            // 尝试安全关闭底层响应流
-            if (!res.writableEnded) { res.destroy() }
-
-            LogInBackground('客户端 断开/刷新/关闭 SSE 连接');
-        }
-
-        // 双重保障：同时监听 req 和 res 的 close/finish 事件
-        req.on('close', cleanup);
-        res.on('close', cleanup);
-        res.on('finish', cleanup);
-        req.on('error', cleanup);
-        res.on('error', cleanup);
-
-
-        return; // 阻止代码继续向下走到普通 res.end()
     }
 
+
     try {
-        const toReadNew = url === '/index.html' || toWeb.htmlContentCache === null;
+        const toReadNew = pathName === '/index.html' || toWeb.htmlContentCache === null;
         const htmlContent = await toWeb.readIndexHTML(toReadNew);
         if (toReadNew) {thisLogs.AddNewLogLine('成功读取新HTML文件newHTML!A1')} 
         else {thisLogs.AddNewLogLine('成功从缓存中读取HTML')}

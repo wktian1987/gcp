@@ -1,7 +1,7 @@
 import { google } from 'googleapis';
 import https from 'node:https';
 import { createTransport } from 'nodemailer';
-import {ToWebListAddNewLine} from './web.js';
+import {ToWeb_AddNewLine} from './web.js';
 
 //  1. 注入长效物理套接字蓄水池（全局只初始化一次，焊死长链接）
 const sheetsAgent = new https.Agent({
@@ -1461,7 +1461,7 @@ export class LogsWithTime{
         message = `${thisLogTimeStr} ${joinStr} ${newLine.trim()}`;
         this.logsA.push({ severity, message });
 
-        if (isStrictTrue(thereErr)) { ToWebListAddNewLine({ type: 'error', content: this.logTitle + ': ' + message }) }
+        if (isStrictTrue(thereErr)) { ToWeb_AddNewLine({ type: 'error', message: this.logTitle + ': ' + message }) }
     }
 
     AddNewErrLogLine(newErrLog) { this.AddNewLogLine(newErrLog, true) }
@@ -1470,7 +1470,7 @@ export class LogsWithTime{
         this.endTime    =  Date.now() ;
         this.duration   =  this.endTime - this.startTime ;
         const toWebListStr = `${this.logTitle}: ${GetTimeStringWithOffset(8, this.startTime)} -> ${GetTimeStringWithOffset(8, this.endTime)} : ${Math.round(this.duration/1000)}s` ; 
-        ToWebListAddNewLine({type: 'handle', content: toWebListStr}) ;
+        ToWeb_AddNewLine({type: 'handle', message: toWebListStr}) ;
 
         if (isStrictString(toSendTG)) {
             if (toSendTG !== 'YES' && toSendTG !== 'NO' && toSendTG !== 'onlyErr') { throw new Error('toSendTG input err') }
@@ -1538,7 +1538,7 @@ export function LogInBackground(log) {
             
             if (isErrorLevel) {
                 console.error(JSON.stringify(finalLog));
-                ToWebListAddNewLine({type: 'error', content: finalLog.message}) ;
+                ToWeb_AddNewLine({type: 'error', message: finalLog.message}) ;
             } else {
                 console.log(JSON.stringify(finalLog));
             }
@@ -1549,3 +1549,5 @@ export function LogInBackground(log) {
         console.log(typeof logObj === 'object' ? JSON.stringify(logObj) : String(logObj));
     });
 }
+
+export function LogInBackground_error(errLogMessage) { LogInBackground({ severity: 'ERROR', message: errLogMessage }) }
