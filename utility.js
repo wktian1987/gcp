@@ -188,6 +188,31 @@ export function ToStrictNumber(val, NA0) {
 }
 
 /**
+ * 将数值 num1 的小数位数，物理对齐至参考数值 num0 的精度，并确保 100% 运行安全。
+ * 
+ * @description
+ * 1. 自动容错：无论输入是数字、字符串还是非法值，均通过 ToStrictNumber 降级为 0 处理，绝不报错。
+ * 2. 物理校准：通过 ToStrictString 探测参考值的精度指纹。
+ * 3. 碎屑清理：最终结果再次洗回 StrictNumber，彻底抹平浮点数计算产生的微小余数（如 0.000000001）。
+ * 
+ * @param {number|string} num1 - 待处理的目标数值（支持各种脏数据输入）。
+ * @param {number|string} [num0=0] - 精度参考源，默认为 0（即取整）。
+ * @returns {number} 返回严格符合精度要求的纯数字。
+ */
+export function NumberToSameDecimals(num1, num0 = 0) {
+    // 1. 精度确权：先将参考值洗成纯数字，再转为标准字符串，探测小数点后的“资产位数”
+    const num0_str = ToStrictString(ToStrictNumber(num0, 0));
+    const dotIndex0 = num0_str.indexOf('.');
+    const decimals0 = dotIndex0 === -1 ? 0 : num0_str.split('.')[1].length;
+
+    // 2. 物理交割：
+    // - 将目标值 num1 强制确权为数字（默认为 0）
+    // - 调用 toFixed 实施四舍五入交割
+    // - 最后再次用 ToStrictNumber 将结果洗回纯数字，确保没有字符串残留和浮点数碎屑
+    return ToStrictNumber(ToStrictNumber(num1, 0).toFixed(decimals0));
+}
+
+/**
  * 从两个数字变量中找出绝对值最小的一个
  * @param {string} n1 
  * @param {string} n2 

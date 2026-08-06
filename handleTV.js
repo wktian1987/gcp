@@ -42,7 +42,8 @@ import {
     BatchUpdateGS,
     try3times,
     LogsWithTime,
-    DATETIME
+    DATETIME,
+    NumberToSameDecimals
 } from "./utility.js";
 
 import { CheckAllPosition, SendOrderToBroker, CheckOrderConfirm, CheckFundFee } from "./broker.js";
@@ -1080,6 +1081,7 @@ export const TradeBot = {
             const TradingSymbol         =  this.getThisTvMainData('TradingSymbol')         ;
             const isReal                =  this.getThisTvMainData('isReal')                ;
             const tradeFeeRate          =  this.getThisTvMainData('tradeFeeRate')          ;
+            const minEnExPosition       =  this.getThisTvMainData('minEnExPosition')       ;
             const mustSellProfitStep    =  this.getThisTvMainData('mustSellProfitStep')    ;
             const lowBuyPriceUnclose    =  this.getThisTvMainData('lowBuyPriceUnclose')    ;
             const avgBuyPriceUnclose    =  this.getThisTvMainData('avgBuyPriceUnclose')    ;
@@ -1168,18 +1170,20 @@ export const TradeBot = {
             const r_gslock = await this.gslock_waitOK() ;
             if (!isStrictTrue(r_gslock)) { throw new Error(ToStrictString(r_gslock)) }
 
-            S.ing_orderID           = 'S-' + GetTimeStringWithOffset(8, timestamp)      ;
-            S.ing_orderTimestamp    = Date.now()                                        ;
-            S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp)  ;
-            S.ing_serial            = -1 * toSellOrderA[idx_serial]                     ;
-            S.ing_buysell           = CV.order_SELL                                     ;
-            S.ing_triggerPrice      = TradingSymbolPrice                                ;
-            S.ing_boughtPrice       = toSellOrderA[idx_confirmPrice]                    ;
-            S.ing_qty               = -1 * toSellOrderA[idx_qty]                        ;
-            S.ing_orderStatus       = CV.order_pending                                  ;
-            S.isReal                = isReal                                            ;
-            S.TradingSymbol         = TradingSymbol                                     ;
-            S.spreadsheetID         = this.spreadsheetID                                ;
+            S.ing_orderID           = 'S-' + GetTimeStringWithOffset(8, timestamp)                  ;
+            S.ing_orderTimestamp    = Date.now()                                                    ;
+            S.ing_orderDate         = GetTimeStringWithOffset(8, S.ing_orderTimestamp)              ;
+            S.ing_serial            = -1 * toSellOrderA[idx_serial]                                 ;
+            S.ing_buysell           = CV.order_SELL                                                 ;
+            S.ing_triggerPrice      = TradingSymbolPrice                                            ;
+            S.ing_boughtPrice       = toSellOrderA[idx_confirmPrice]                                ;
+            S.ing_qty               = -1 * toSellOrderA[idx_qty]                                    ;
+            S.ing_orderStatus       = CV.order_pending                                              ;
+            S.isReal                = isReal                                                        ;
+            S.TradingSymbol         = TradingSymbol                                                 ;
+            S.spreadsheetID         = this.spreadsheetID                                            ;
+            S.ing_orderPrice        = (S.ing_orderType === CV.order_T_MKT || !isStrictNumber(S.ing_orderPrice) ) ? S.ing_orderPrice : NumberToSameDecimals(S.ing_orderPrice, TradingSymbolPrice) ;
+            S.ing_qty               = NumberToSameDecimals(S.ing_qty, minEnExPosition)              ;
 
             this.thisLogs.AddNewLogLine('ToBuy()') ;
             S.thisLogs = this.thisLogs ;
@@ -1302,6 +1306,8 @@ export const TradeBot = {
             S.spreadsheetID         = this.spreadsheetID                                    ;
             S.calcuQtyPrice = (S.ing_orderType === CV.order_T_MKT || !isStrictNumber(S.ing_orderPrice) ) ? TradingSymbolPrice : S.ing_orderPrice ;
             S.ing_qty               = minEnExPosition * Math.max(1, Math.floor(this.freeMargin * leverage / S.calcuQtyPrice / minEnExPosition / (MaxGrid - gridNum)))     ;
+            S.ing_orderPrice        = (S.ing_orderType === CV.order_T_MKT || !isStrictNumber(S.ing_orderPrice) ) ? S.ing_orderPrice : NumberToSameDecimals(S.ing_orderPrice, TradingSymbolPrice) ;
+            S.ing_qty               = NumberToSameDecimals(S.ing_qty, minEnExPosition) ;
 
             this.thisLogs.AddNewLogLine('ToBuy()') ;
             S.thisLogs = this.thisLogs ;

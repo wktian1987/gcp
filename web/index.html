@@ -53,7 +53,7 @@
             // 1. 构建 URLSearchParams 动态参数
             const params = new URLSearchParams({ last_timeID_trade, last_timeID_handle, last_timeID_error });
             // 2. 发起请求
-            console.log(`发起请求: ${params.toString()}`);
+            // console.log(`发起请求: ${params.toString()}`);
             const response = await fetch(`/api/get-latest-data?${params.toString()}`);
             if (!response.ok) { 
                 dom_connText.textContent = '连接中断，重连中...'; 
@@ -61,7 +61,7 @@
                 console.error('请求失败:', response.statusText); 
                 return; 
             }
-            console.log(`请求成功: ${response.status}`)
+            // console.log(`请求成功: ${response.status}`)
             dom_connText.textContent = '实时通道就绪';
             // 成功接收一次数据后, 删除waiting
             document.getElementById('waiting')?.remove();
