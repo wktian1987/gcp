@@ -904,6 +904,7 @@ export const TradeBot = {
         const basicLowToSell            = this.getThisTvMainData('basicLowToSell')              ;
         const notBuyCloseToRndHghStep   = this.getThisTvMainData('notBuyCloseToRndHghStep')     ;
         const notBuyCloseToRndLowStep   = this.getThisTvMainData('notBuyCloseToRndLowStep')     ;
+        const cutTooHghPower            = this.getThisTvMainData('cutTooHghPower')              ;
         const mustSellToPreventLiq      = this.getThisTvMainData('mustSellToPreventLiq')        ;
         const ordersInterval            = this.getThisTvMainData('ordersInterval')              ;
         const MaxGrid                   = this.getThisTvMainData('MaxGrid')                     ;
@@ -938,7 +939,7 @@ export const TradeBot = {
         if (therePosition) {
             this.cutTooHighBuyPrice = Math.min(
                 hghBuyPriceUnclose / (roundHgh / roundLow) ,
-                hghBuyPriceUnclose / (1 + waveUpChg)
+                hghBuyPriceUnclose / Math.pow(1 + waveUpChg, cutTooHghPower)
             ) ;
         }
 
@@ -1242,6 +1243,7 @@ export const TradeBot = {
             const waveUpChg             =  this.getThisTvMainData('waveUpChg')            ;
             const roundHgh              =  this.getThisTvMainData('roundHgh')             ;
             const roundLow              =  this.getThisTvMainData('roundLow')             ;
+            const inLong                =  this.getThisTvMainData('inLong')               ;
 
             const TradingSymbol         =  this.getThisTvMainData('TradingSymbol')        ;
             const isReal                =  this.getThisTvMainData('isReal')               ;
@@ -1269,7 +1271,7 @@ export const TradeBot = {
             let toBuy = false;
             const S = {};
 
-            const inNormalBuyRegion = TradingSymbolPrice > this.lowToBuy && TradingSymbolPrice < this.hghToBuy ? true : false ; 
+            const inNormalBuyRegion = inLong && TradingSymbolPrice > this.lowToBuy && TradingSymbolPrice < this.hghToBuy ? true : false ; 
             AddSetMessage(this.alertMessageSet, inNormalBuyRegion ? 'inNormalBuyRegion' : 'not inNormalBuyRegion') ;
 
             if (inNormalBuyRegion && isStrictTrue(this.markTouchTargetLow)) {
