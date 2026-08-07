@@ -20,7 +20,8 @@ import {
     UpdateGS,
     AppendGS,
     try3times,
-    LogsWithTime
+    LogsWithTime,
+    NumberToSameDecimals
 } from "./utility.js";
 
 import { CV } from "./handleTV.js";
@@ -409,6 +410,9 @@ async function GATE_SendOrderToBroker(S) {
     S.ing_qty   =  S.ing_buysell === CV.order_BUY ? size * quanto_multiplier : S.ing_qty ;
     const price_mul =  ToStrictNumber(S.ing_orderPrice, 0) / order_price_round ;
     S.ing_orderPrice = S.ing_buysell === CV.order_BUY ? order_price_round * Math.floor(price_mul) : order_price_round * Math.ceil(price_mul) ;
+    S.ing_orderPrice = NumberToSameDecimals(S.ing_orderPrice, order_price_round) ;
+    S.ing_qty        = NumberToSameDecimals(S.ing_qty, quanto_multiplier) ;
+
     const price = S.ing_orderPrice ;
     const priceFixed = ToStrictNumber(price.toFixed(priceDecimals)) ;
     if ( Math.abs(priceFixed - price) / price > 0.001 ) {throw new Error('价格计算错误')}

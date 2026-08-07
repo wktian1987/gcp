@@ -91,27 +91,28 @@
         }
 
         let loop = null ;
-    async function LoopGetNewData(loopTime = 10000) {
-        // 1. 如果之前有还在等待中的定时器，先清除（防止重复打断时出现多个定时器）
-        if (loop) {
-            clearTimeout(loop);
-            loop = null;
-        }
+        async function LoopGetNewData(loopTime = 10000) {
+            // 1. 如果之前有还在等待中的定时器，先清除（防止重复打断时出现多个定时器）
+            if (loop) {
+                clearTimeout(loop);
+                loop = null;
+            }
 
-        // 2. 统一在这里发起请求（无论是第一次启动，还是后续递归调用）
-        try {
-            await getNewData();
-        } catch (error) {
-            console.error("数据拉取失败:", error);
-        } finally {
-            // 3. 无论成功还是失败，等待请求完成后，再过 loopTime 毫秒递归调用下一次
-            loop = setTimeout(() => {
-                LoopGetNewData(loopTime);
-            }, loopTime);
+            // 2. 统一在这里发起请求（无论是第一次启动，还是后续递归调用）
+            try {
+                await getNewData();
+            } catch (error) {
+                console.error("数据拉取失败:", error);
+            } finally {
+                // 3. 无论成功还是失败，等待请求完成后，再过 loopTime 毫秒递归调用下一次
+                loop = setTimeout(() => {
+                    LoopGetNewData(loopTime);
+                }, loopTime);
+            }
         }
-    }
         
         LoopGetNewData(10000) ;
+
 
         // 这样能起到每执行完getNewData后，再过loopTime毫秒再执行getNewData的效果吗?
 
