@@ -296,7 +296,6 @@ export const TradeBot = {
     } , // 执行完此后, 已获得 大TradeBot锁, 设GS锁执行中, 等真正需要的时候，检查是否执行成功 
 
     getThisTvMainData(key) {
-        if (!isStrictTrue(this.alReadyGotGS)) { throw new Error('未获得GS数据') }
         return this[key] ?? this.tvData?.[key] ?? this.mainData?.[key];
     } ,
 
