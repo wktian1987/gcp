@@ -296,15 +296,8 @@ export const TradeBot = {
     } , // 执行完此后, 已获得 大TradeBot锁, 设GS锁执行中, 等真正需要的时候，检查是否执行成功 
 
     getThisTvMainData(key) {
-        if      (key === 'tvData'             ) { return this.tvData             }
-        else if (key === 'toGCPData'          ) { return this.toGCPData          }
-        else if (key === 'mainData'           ) { return this.mainData           }
-        else if (key === 'ingOrderData'       ) { return this.ingOrderData       }
-        else if (key === 'ingOrderTitleA'     ) { return this.ingOrderTitleA     }
-        else if (key === 'uncloseOrdersA2d'   ) { return this.uncloseOrdersA2d   }
-        else if (key === 'uncloseOrdersTitleA') { return this.uncloseOrdersTitleA}
-        else if (key === 'tradeHistoryTitleA' ) { return this.tradeHistoryTitleA }
-        else {return this[key] ?? this.tvData[key] ?? this.mainData[key] ?? undefined}
+        if (!isStrictTrue(this.alReadyGotGS)) { throw new Error('未获得GS数据') }
+        return this[key] ?? this.tvData?.[key] ?? this.mainData?.[key];
     } ,
 
     /**
@@ -436,6 +429,7 @@ export const TradeBot = {
             this.uncloseOrdersA2d       =  TradeBot[this.tbName_gsData].uncloseOrdersA2d     ;
             this.tradeHistoryTitleA     =  TradeBot[this.tbName_gsData].tradeHistoryTitleA   ;
 
+            this.alReadyGotGS = true ;
             return true ;
 
         } catch (e) { return e.message.trim() }

@@ -80,7 +80,7 @@ async function HandleSignal(toHandleSignal) {
 
             try {
                 const r_HandleTradeBot = await HandleTradeBot(body, thisLogs);
-                if (isObjectOfKeyValue(r_HandleTradeBot) && Object.hasOwn(r_HandleTradeBot, 'NotError')) { thisLogs.AddNewLogLine(`本信号丢弃: ${r_HandleTradeBot.NotError}`) }
+                if (isObjectOfKeyValue(r_HandleTradeBot) && Object.hasOwn(r_HandleTradeBot, 'NotError')) { thisLogs.AddNewLogLine(`本信号丢弃: ${r_HandleTradeBot.NotError}`); thisLogs.toSendTG = 'YES'; }
                 else if (r_HandleTradeBot === true) { thisLogs.AddNewLogLine(`HandleTradeBot()处理成功`) }
                 else { throw new Error(`内部逻辑错误`) }
             } catch (e) {thisLogs.AddNewErrLogLine(`HandleTradeBot()处理失败\n` + e.message) }
