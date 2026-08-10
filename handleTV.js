@@ -774,8 +774,8 @@ export const TradeBot = {
         const hghestFund         = this.getThisTvMainData('hghestFund')            ;
         const hghestCoin         = this.getThisTvMainData('hghestCoin')            ;
 
-        const pct_stopF_stopF    = this.chgPctIfVALUEFchg(hghestFund * (1+stopRate4F/100), 0 , -1) ;
-        const pct_stopF_notStopC = this.chgPctIfVALUECchg(hghestCoin * (1+notStop4C /100), 0 , -1) ;
+        const pct_stopF_stopF    = this.chgPctIfVALUEFchg(hghestFund * (1+stopRate4F), 0 , -1) ;
+        const pct_stopF_notStopC = this.chgPctIfVALUECchg(hghestCoin * (1+notStop4C ), 0 , -1) ;
         if (!isStrictNumber(pct_stopF_stopF) || !isStrictNumber(pct_stopF_notStopC)) {return CV.NA}
         return TradingSymbolPrice * (1 + Math.min(pct_stopF_stopF, pct_stopF_notStopC)) ;
     } ,
@@ -792,8 +792,8 @@ export const TradeBot = {
         const hghestFund            = this.getThisTvMainData('hghestFund')             ;
         const hghestCoin            = this.getThisTvMainData('hghestCoin')             ;
 
-        const pct_stopC_stopC    = this.chgPctIfVALUECchg(hghestCoin * (1+stopRate4C /100) , 0 , -1) ;
-        const pct_stopC_notStopF = this.chgPctIfVALUEFchg(hghestFund * (1+notStop4F  /100) , 0 , -1) ;
+        const pct_stopC_stopC    = this.chgPctIfVALUECchg(hghestCoin * (1+stopRate4C) , 0 , -1) ;
+        const pct_stopC_notStopF = this.chgPctIfVALUEFchg(hghestFund * (1+notStop4F ) , 0 , -1) ;
         if (!isStrictNumber(pct_stopC_stopC) || !isStrictNumber(pct_stopC_notStopF)) {return CV.NA}
         return TradingSymbolPrice * (1 + Math.min(pct_stopC_stopC, pct_stopC_notStopF)) ;
     } ,
@@ -898,7 +898,7 @@ export const TradeBot = {
         const notBuyCloseToRndHghStep   = this.getThisTvMainData('notBuyCloseToRndHghStep')     ;
         const notBuyCloseToRndLowStep   = this.getThisTvMainData('notBuyCloseToRndLowStep')     ;
         const cutTooHghPower            = this.getThisTvMainData('cutTooHghPower')              ;
-        const mustSellToPreventLiq      = this.getThisTvMainData('mustSellToPreventLiq')        ;
+        const closeToLiquid             = this.getThisTvMainData('closeToLiquid')               ;
         const ordersInterval            = this.getThisTvMainData('ordersInterval')              ;
         const MaxGrid                   = this.getThisTvMainData('MaxGrid')                     ;
         const ifOrderWaiting            = this.getThisTvMainData('ifOrderWaiting')              ;
@@ -936,7 +936,7 @@ export const TradeBot = {
             ) ;
         }
 
-        this.cutToPreventLiqPrice = isStrictNumber(this.liquidatePrice) && this.liquidatePrice > 0 ? this.liquidatePrice / (1 + mustSellToPreventLiq/100) : CV.NA ;
+        this.cutToPreventLiqPrice = isStrictNumber(this.liquidatePrice) && this.liquidatePrice > 0 ? this.liquidatePrice / (1 + closeToLiquid) : CV.NA ;
 
         this.inTradingTime = timestamp > realTradeTime && timestamp < realTradeTimeTo;
 
@@ -1243,7 +1243,6 @@ export const TradeBot = {
             const minEnExPosition       =  this.getThisTvMainData('minEnExPosition')      ;
             const tradeFeeRate          =  this.getThisTvMainData('tradeFeeRate')         ;
             const leverage              =  this.getThisTvMainData('leverage')             ;
-            const mustSellToPreventLiq  =  this.getThisTvMainData('mustSellToPreventLiq') ;
             const mustSellProfitStep    =  this.getThisTvMainData('mustSellProfitStep')   ;
             const MaxGrid               =  this.getThisTvMainData('MaxGrid')              ;
             const gridNum               =  this.getThisTvMainData('gridNum')              ;
