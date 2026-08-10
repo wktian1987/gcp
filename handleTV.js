@@ -208,6 +208,12 @@ export const TradeBot = {
             if (TradeBot[this.tbName_lastLockTime] !== this.mainData.timestamp) { return this.returnRunningWellErrMessage('直接从缓存获取gsData失败','lastLockTime !== this.mainData.timestamp') }
         }
 
+        if (this.mainData.TradingSymbol !== tvData.TradingSymbol) { return this.returnRunningWellErrMessage('GS和TV中的TradingSymbol不符')  }
+        if (this.mainData.leverage      !== tvData.leverage     ) { return this.returnRunningWellErrMessage('GS和TV中的leverage不符')       }
+        if (this.mainData.MaxGrid       !== tvData.MaxGrid      ) { return this.returnRunningWellErrMessage('GS和TV中的MaxGrid不符')        }
+
+
+
         TradeBot[this.tbName_lastLockTime] = this.LockTime;
 
         if (TradeBot[this.tbName_tgToReadGSCMD]) {
@@ -442,8 +448,6 @@ export const TradeBot = {
      */
     async ToCheckInitiate() {
         try {
-            if (this.mainData.TradingSymbol !== this.tvData.TradingSymbol ) { throw new Error ('GS和TV中的TradingSymbol不符')}
-                
             if (isStrictTrue(this.mainData.initiated)) {return true}
 
             const r_gslock = await this.gslock_waitOK() ;
