@@ -39,15 +39,15 @@ const toWeb = {
         switch(type) {
             case 'trade':
                 updateLinesOnTheTopObj.range = this.tradeListRegion;
-                updateLinesOnTheTopObj.vaules = [[messageLine]] ;
+                updateLinesOnTheTopObj.values = [[messageLine]] ;
                 break;
             case 'handle':
                 updateLinesOnTheTopObj.range = this.handleListRegion;
-                updateLinesOnTheTopObj.vaules  =  [[messageLine]] ;
+                updateLinesOnTheTopObj.values  =  [[messageLine]] ;
                 break;
             case 'error':
                 updateLinesOnTheTopObj.range = this.errorListRegion;
-                updateLinesOnTheTopObj.vaules  =  [[messageLine]] ;
+                updateLinesOnTheTopObj.values  =  [[messageLine]] ;
                 break;
             default:
                 throw new Error('listWriteToGS: type not found');
