@@ -1254,6 +1254,137 @@ export function makeRequestBodyArrayofBatchUpdate_deleteLines(deleteObj) {
 }
 
 /**
+ * 生成用于 Google Sheets batchUpdate 的请求对象数组：在指定固定区域（如 Sheet1!A$1:B$10）内插入新数据。
+ * 旧数据平移下移，超过固定区域末尾的数据直接丢弃；若新数据超过区域总容量，新数据也自动裁切以严格保留在区域内。
+ *
+ * @param {Object} updateLinesOnTheTopObj - 配置参数对象
+ * @param {number} updateLinesOnTheTopObj.sheetID - Google Sheets 的工作表 ID (sheetId，例如: 0)
+ * @param {string} updateLinesOnTheTopObj.range - 目标固定区域 Range (例如: "Sheet1!A$1:B$10" 或 "'Sheet 1'!$A$1:$B$10")
+ * @param {Array<Array<any>>} updateLinesOnTheTopObj.values - 需要写入起始位置的数据二维数组
+ * 
+ * @returns {Array<Object>} 返回用于 batchUpdate 的 request 数组
+ */
+export function makeRequestBodyArrayofBatchUpdate_updateLinesOnTheTop(updateLinesOnTheTopObj) {
+    const { sheetID, range, values } = updateLinesOnTheTopObj;
+
+    if (!values || !Array.isArray(values) || values.length === 0) {
+        throw new Error("values 参数必须是非空的二维数组！");
+    }
+
+    // ==================== 1. 内部辅助函数定义 ====================
+
+    /**
+     * 将列字母转换为 0-based 数字索引 (例如: 'A' -> 0, 'B' -> 1, 'Z' -> 25)
+     */
+    const letterToColumnIndex = (letter) => {
+        let column = 0;
+        const length = letter.length;
+        for (let i = 0; i < length; i++) {
+            column += (letter.charCodeAt(i) - 64) * Math.pow(26, length - i - 1);
+        }
+        return column - 1;
+    };
+
+    /**
+     * 解析 Range 字符串，兼容 A1, A$1, $A$1 等各种含 $ 符号的形式
+     */
+    const parseFullRange = (rangeStr) => {
+        const cellRange = rangeStr.includes('!') ? rangeStr.split('!')[1] : rangeStr;
+        const parts = cellRange.split(':');
+
+        const startMatch = parts[0].match(/\$?([A-Za-z]+)\$?(\d+)/);
+        if (!startMatch) throw new Error(`无法解析 Range 字符串: ${rangeStr}`);
+
+        const startColLetter = startMatch[1].toUpperCase();
+        const startRowNumber = parseInt(startMatch[2], 10); // 1-based 行号
+
+        let endColLetter = startColLetter;
+        let endRowNumber = startRowNumber;
+
+        if (parts[1]) {
+            const endMatch = parts[1].match(/\$?([A-Za-z]+)?\$?(\d+)?/);
+            if (endMatch) {
+                if (endMatch[1]) endColLetter = endMatch[1].toUpperCase();
+                if (endMatch[2]) endRowNumber = parseInt(endMatch[2], 10);
+            }
+        }
+
+        return {
+            startRowNumber,
+            startRowIndex: startRowNumber - 1,             // 0-based 索引 (例如 0)
+            targetEndRowIndex: endRowNumber,               // 0-based 结束索引 (例如 10)
+            startColLetter,
+            endColLetter,
+            startColumnIndex: letterToColumnIndex(startColLetter),
+            endColumnIndex: letterToColumnIndex(endColLetter) + 1 // 0-based 开区间
+        };
+    };
+
+    // ==================== 2. 主逻辑执行 ====================
+
+    // 解析 targetRange 区域边界
+    const { 
+        startRowIndex,      
+        targetEndRowIndex,  
+        startColLetter, 
+        endColLetter, 
+        startColumnIndex, 
+        endColumnIndex, 
+        startRowNumber 
+    } = parseFullRange(range);
+
+    // 计算区域的总容量（行数）
+    const totalCapacity = targetEndRowIndex - startRowIndex;
+
+    // 💡 1. 防护裁切：如果传入的 values 超过了 targetRange 区域的总容量，多余的新数据行直接截断丢弃
+    const validValues = values.slice(0, totalCapacity);
+    const rowCount = validValues.length; // 实际可写入的新行数
+
+    // 2. 计算允许被下移的旧数据结束行号
+    const sourceEndRowIndex = targetEndRowIndex - rowCount;
+
+    const requests = [];
+
+    // 💡 3. 情况 A：还有空间可以下移保留部分旧数据
+    if (sourceEndRowIndex > startRowIndex) {
+        requests.push({
+            cutPaste: {
+                source: {
+                    sheetId: sheetID,
+                    startRowIndex: startRowIndex,        
+                    endRowIndex: sourceEndRowIndex, // 只平移能放得下的前几行旧数据
+                    startColumnIndex: startColumnIndex,  
+                    endColumnIndex: endColumnIndex       
+                },
+                destination: {
+                    sheetId: sheetID,
+                    rowIndex: startRowIndex + rowCount,  
+                    columnIndex: startColumnIndex
+                },
+                pasteType: "PASTE_NORMAL"
+            }
+        });
+    } 
+    // 💡 4. 情况 B：新数据行数把区域填满（或超过），旧数据全部丢弃！
+    // 此时不需要执行 cutPaste（直接被新数据覆盖清空即可），但如果新数据行数小于容量，后续会自动清空/覆写
+
+    // 5. 构造新数据的写入 Range 并追加写入请求
+    const sheetNamePrefix = range.includes('!') ? range.split('!')[0] + '!' : '';
+    const writeEndRowNumber = startRowNumber + rowCount - 1;
+    const writeRange = `${sheetNamePrefix}${startColLetter}${startRowNumber}:${endColLetter}${writeEndRowNumber}`;
+
+    requests.push(
+        makeRequestBodyArrayofBatchUpdate_update({
+            sheetID,
+            range: writeRange,
+            values: validValues
+        })
+    );
+
+    return requests;
+}
+
+/**
  * 顶级全原子执行官：一枪流闪击云端事务总大闸
  * * 将底座积木拼装好的所有 requests 动作队列（如清空、覆盖、尾部追加、删行等），
  * * 打包成单次 HTTPS 原子请求轰向谷歌服务器。云端强力保证 ACID 事务完整性。
@@ -1261,7 +1392,7 @@ export function makeRequestBodyArrayofBatchUpdate_deleteLines(deleteObj) {
  * const partA = makeRequestBodyArrayofBatchUpdate_clearUpdate(task);
  * const partB = makeRequestBodyArrayofBatchUpdate_append(0, [["BTC", 65000]]);
  * await BatchUpdateGS(spreadsheetID, [...partA, partB]);
- * * @param {string} spreadsheetID - 整个大表的身份证 ID (从浏览器 URL 中截取)
+ * @param {string} spreadsheetID - 整个大表的身份证 ID (从浏览器 URL 中截取)
  * @param {Array<Object>} requests - 已经通过工具积木平铺好的 Google Sheets API 动作请求队列
  * @returns {Promise<Object>} 返回谷歌云端执行成功的元数据回执 (Data Response)
  */

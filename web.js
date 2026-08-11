@@ -1,7 +1,9 @@
-import { ToStrictString, GetGS, LogInBackground, UpdateGS, ToStrictNumber, LogInBackground_error } from "./utility.js";
+import { ToStrictString, GetGS, LogInBackground, UpdateGS, ToStrictNumber, LogInBackground_error, BatchUpdateGS, makeRequestBodyArrayofBatchUpdate_updateLinesOnTheTop, GetSheetsIDfromSheet } from "./utility.js";
 
 const toWeb = {
+    sheetName : 'web' ,
     spreadsheetID : process.env.SHEET_ID,
+    sheetID : null ,
     newHTMLregion: 'web!A1',
     tradeListRegion: 'web!B2:B',
     handleListRegion: 'web!C2:C',
@@ -13,6 +15,14 @@ const toWeb = {
     errorList: [],
     listLimit: 99,
 
+    async GetWebSheetID() {
+        if (this.sheetID === null) {
+            const sheetIDs = await GetSheetsIDfromSheet(this.spreadsheetID);
+            this.sheetID = sheetIDs[sheetName] ;
+        }
+        return this.sheetID;    
+    } ,
+
     async readIndexHTML(toReadNew = false) {
         if (this.htmlContentCache === null || toReadNew) {
             const newHTMLstr = (await GetGS(this.spreadsheetID, this.newHTMLregion))[0][0];
@@ -22,27 +32,30 @@ const toWeb = {
     } ,
 
     async listWriteToGS(listName) {
-        let writeRegion ;
-        let writeA2d  ;
+        // listName: 'trade', 'handle', 'error'
+        const sheetID = await this.GetWebSheetID();
+        const updateLinesOnTheTopObj = {sheetID} ;
+
         switch(listName) {
             case 'trade':
-                writeRegion = this.tradeListRegion;
-                writeA2d = this.tradeList.map((item) => [item.messageLine]);
+                updateLinesOnTheTopObj.range = this.tradeListRegion;
+                updateLinesOnTheTopObj.vaules = this.tradeList.map((item) => [item.messageLine]);
                 break;
             case 'handle':
-                writeRegion = this.handleListRegion;
-                writeA2d  = this.handleList.map((item) => [item.messageLine]);
+                updateLinesOnTheTopObj.range = this.handleListRegion;
+                updateLinesOnTheTopObj.vaules  = this.handleList.map((item) => [item.messageLine]);
                 break;
             case 'error':
-                writeRegion = this.errorListRegion;
-                writeA2d  = this.errorList.map((item) => [item.messageLine]);
+                updateLinesOnTheTopObj.range = this.errorListRegion;
+                updateLinesOnTheTopObj.vaules  = this.errorList.map((item) => [item.messageLine]);
                 break;
             default:
                 throw new Error('listWriteToGS: listName not found');
         }
 
         try {
-            await UpdateGS(this.spreadsheetID, writeRegion, writeA2d) ;
+            const requestBody = makeRequestBodyArrayofBatchUpdate_updateLinesOnTheTop(updateLinesOnTheTopObj) ;
+            await BatchUpdateGS(this.spreadsheetID, requestBody) ;
             LogInBackground('listWriteToGS: ' + listName + ' write to GS success');
         } catch (err) { LogInBackground_error('listWriteToGS UpdateGS Err: ' + err.message) }
 
@@ -54,6 +67,9 @@ const toWeb = {
             this.tradeList  = (await GetGS(this.spreadsheetID, this.tradeListRegion )).map( (item) => ({ timeID: 0, messageLine: item[0] }) ) ;
             this.handleList = (await GetGS(this.spreadsheetID, this.handleListRegion)).map( (item) => ({ timeID: 0, messageLine: item[0] }) ) ;
             this.errorList  = (await GetGS(this.spreadsheetID, this.errorListRegion )).map( (item) => ({ timeID: 0, messageLine: item[0] }) ) ;
+            this.tradeList.reverse() ;
+            this.handleList.reverse() ;
+            this.errorList.reverse() ;
             this.alreadyReadHistory = true;
             LogInBackground('readHistoryFromGS success') ;
             return true ;
