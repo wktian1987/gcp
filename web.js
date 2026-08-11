@@ -18,7 +18,7 @@ const toWeb = {
     async GetWebSheetID() {
         if (this.sheetID === null) {
             const sheetIDs = await GetSheetsIDfromSheet(this.spreadsheetID);
-            this.sheetID = sheetIDs[sheetName] ;
+            this.sheetID = sheetIDs[this.sheetName] ;
         }
         return this.sheetID;    
     } ,
