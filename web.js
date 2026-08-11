@@ -31,32 +31,32 @@ const toWeb = {
         return this.htmlContentCache;
     } ,
 
-    async listWriteToGS(listName) {
+    async listWriteToGS(type, messageLine) {
         // listName: 'trade', 'handle', 'error'
         const sheetID = await this.GetWebSheetID();
         const updateLinesOnTheTopObj = {sheetID} ;
 
-        switch(listName) {
+        switch(type) {
             case 'trade':
                 updateLinesOnTheTopObj.range = this.tradeListRegion;
-                updateLinesOnTheTopObj.vaules = this.tradeList.map((item) => [item.messageLine]);
+                updateLinesOnTheTopObj.vaules = [[messageLine]] ;
                 break;
             case 'handle':
                 updateLinesOnTheTopObj.range = this.handleListRegion;
-                updateLinesOnTheTopObj.vaules  = this.handleList.map((item) => [item.messageLine]);
+                updateLinesOnTheTopObj.vaules  =  [[messageLine]] ;
                 break;
             case 'error':
                 updateLinesOnTheTopObj.range = this.errorListRegion;
-                updateLinesOnTheTopObj.vaules  = this.errorList.map((item) => [item.messageLine]);
+                updateLinesOnTheTopObj.vaules  =  [[messageLine]] ;
                 break;
             default:
-                throw new Error('listWriteToGS: listName not found');
+                throw new Error('listWriteToGS: type not found');
         }
 
         try {
             const requestBody = makeRequestBodyArrayofBatchUpdate_updateLinesOnTheTop(updateLinesOnTheTopObj) ;
             await BatchUpdateGS(this.spreadsheetID, requestBody) ;
-            LogInBackground('listWriteToGS: ' + listName + ' write to GS success');
+            LogInBackground('listWriteToGS: ' + type + ' write to GS success');
         } catch (err) { LogInBackground_error('listWriteToGS UpdateGS Err: ' + err.message) }
 
     } ,
@@ -101,7 +101,7 @@ const toWeb = {
             }
 
             // 5. 异步写入持久化（捕捉错误防止未捕获异常）
-            this.listWriteToGS(type).catch(() => { });
+            this.listWriteToGS(type, messageLine).catch(() => { });
         }
 
     }
