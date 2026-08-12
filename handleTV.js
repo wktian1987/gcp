@@ -1629,7 +1629,8 @@ export const TradeBot = {
      */
     async sendToTG(toReadA2d) {
         const messageString = FormatMatrixToString(toReadA2d);
-        const subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime);
+        const subject = (isStrictTrue(this.getThisTvMainData('isReal')) ? "Real_" : "") +
+            this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime);
         await SendTG(subject, messageString);
     } ,
 
@@ -1640,7 +1641,8 @@ export const TradeBot = {
     async sendToEmail(toEmailA2d) {
         if (this.toSendEmail) {
             const messageHTML = ConvertRowsToHtmlTable(toEmailA2d);
-            const mail_subject = this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime);
+            const mail_subject = (isStrictTrue(this.getThisTvMainData('isReal')) ? "Real_" : "") +
+                this.botNumber + '_' + GetTimeStringWithOffset(8, this.timestamp) + '_' + this.TradingSymbol + '_' + GetTimeStringWithOffset(8, this.realTradeTime);
             await SendEmail(mail_subject, messageHTML);
         }
     } ,

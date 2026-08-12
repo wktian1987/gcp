@@ -1528,7 +1528,6 @@ export async function SendEmail(mail_subject, mail_content, mailReceiver = proce
  */
 export function Sleep(ms) { return new Promise(resolve => setTimeout(resolve, isStrictNumber(ms) ? ms : 1000)) }
 
-
 export class ResultWithErrMessage {
     constructor({result, errMessage}={}) {
         this.result     = result        ;
@@ -1656,7 +1655,6 @@ export class LogsWithTime{
     }
 }
 
-
 /**
  * 离位异步日志交割官：在当前事件循环末端（setImmediate）非阻塞地投递日志。
  * 100% 物理隔绝日志处理对主业务链路的性能干扰，确保核心业务秒级出港。
@@ -1708,5 +1706,4 @@ export function LogInBackground(log) {
         console.log(typeof logObj === 'object' ? JSON.stringify(logObj) : String(logObj));
     });
 }
-
 export function LogInBackground_error(errLogMessage) { LogInBackground({ severity: 'ERROR', message: errLogMessage }) }
