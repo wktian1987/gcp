@@ -1481,7 +1481,7 @@ export const TradeBot = {
                 AddSetMessage(this.alertMessageSet, (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + "Order canceled");
                 this.toSendEmail = true ;
 
-                const newWebLine = `${this.tvData.botNumber} ${ingOrderData.ing_confirmDate} -> order canceled, id: ${ingOrderData.ing_orderID}`;
+                const newWebLine = `${this.tvData.botNumber} ${GetTimeStringWithOffset(8, this.tvData.timestamp)} -> order canceled, id: ${ingOrderData.ing_orderID}`;
                 ToWeb_AddNewLine({ type: 'trade', message: newWebLine });
             }
 
