@@ -1,10 +1,11 @@
-import { ToStrictString, GetGS, LogInBackground, UpdateGS, ToStrictNumber, LogInBackground_error, BatchUpdateGS, makeRequestBodyArrayofBatchUpdate_updateLinesOnTheTop, GetSheetsIDfromSheet } from "./utility.js";
+import { ToStrictString, GetGS, LogInBackground, UpdateGS, ToStrictNumber, LogInBackground_error, BatchUpdateGS, makeRequestBodyArrayofBatchUpdate_updateLinesOnTheTop, GetSheetsIDfromSheet, isStrictFalse, isStrictTrue, Sleep } from "./utility.js";
 
 const toWeb = {
     sheetName : 'web' ,
     spreadsheetID : process.env.SHEET_ID,
     sheetID : null ,
     newHTMLregion: 'web!A1',
+    isWritingToGS: false ,
     tradeListRegion: 'web!B2:B100',
     handleListRegion: 'web!C2:C100',
     errorListRegion: 'web!D2:D100',
@@ -55,8 +56,20 @@ const toWeb = {
 
         try {
             const requestBody = makeRequestBodyArrayofBatchUpdate_updateLinesOnTheTop(updateLinesOnTheTopObj) ;
-            await BatchUpdateGS(this.spreadsheetID, requestBody) ;
-            LogInBackground('listWriteToGS: ' + type + ' write to GS success');
+            if (isStrictTrue(this.isWritingToGS)) {
+                const waitStartTime = Date.now();
+                while (isStrictTrue(this.isWritingToGS)) {
+                    await Sleep(1000) ;
+                    if (Date.now() - waitStartTime > 10000) {
+                        LogInBackground_error('listWriteToGS: ' + type + ' write to GS timeout, 强行写入'); 
+                    }
+                }
+            } else {
+                await BatchUpdateGS(this.spreadsheetID, requestBody);
+                this.isWritingToGS = false;
+                LogInBackground('listWriteToGS: ' + type + ' write to GS success');
+            }
+
         } catch (err) { LogInBackground_error('listWriteToGS UpdateGS Err: ' + err.message) }
 
     } ,
@@ -106,8 +119,8 @@ const toWeb = {
 
     }
 };
-export async function ToWeb_AddNewLine({ type, message }) { await toWeb.AddNewLine({ type, message }) }
 export async function ToWeb_readIndexHTML(toReadNew) { await toWeb.readIndexHTML(toReadNew) }
+export async function ToWeb_AddNewLine({ type, message }) { await toWeb.AddNewLine({ type, message }) }
 
 export async function Web(thisLogs, req, res) {
     if (req.method !== 'GET') { thisLogs.AddNewErrLogLine('Web: only GET method allowed'); return; }

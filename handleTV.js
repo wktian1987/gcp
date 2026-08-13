@@ -1480,6 +1480,9 @@ export const TradeBot = {
                 w_toClearRangeSet.add(toGCPData.ingOrderLine);
                 AddSetMessage(this.alertMessageSet, (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + "Order canceled");
                 this.toSendEmail = true ;
+
+                const newWebLine = `${this.tvData.botNumber} ${ingOrderData.ing_confirmDate} -> order canceled, id: ${ingOrderData.ing_orderID}`;
+                ToWeb_AddNewLine({ type: 'trade', message: newWebLine });
             }
 
 
