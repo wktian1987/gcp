@@ -65,6 +65,7 @@ const toWeb = {
                     }
                 }
             } else {
+                this.isWritingToGS = true;
                 await BatchUpdateGS(this.spreadsheetID, requestBody);
                 this.isWritingToGS = false;
                 LogInBackground('listWriteToGS success: \n' + `type: ${type}\n` + `messageLine: ${messageLine}`);
