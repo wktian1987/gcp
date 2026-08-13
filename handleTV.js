@@ -233,15 +233,15 @@ export const TradeBot = {
         }
 
 
-        const lstTargetHgh      = this.getThisTvMainData('lstTargetHgh')          ;
-        const lstTargetLow      = this.getThisTvMainData('lstTargetLow')          ;
-        const lstTouchHghTime   = this.getThisTvMainData('lstTouchHghTime')       ;
-        const lstTouchLowTime   = this.getThisTvMainData('lstTouchLowTime')       ;
+        const lstTargetHgh      = this.getThisTvMainData('lstTargetHgh')          ; // TV中
+        const lstTargetLow      = this.getThisTvMainData('lstTargetLow')          ; // TV中
+        const lstTouchHghTime   = this.getThisTvMainData('lstTouchHghTime')       ; // TV中
+        const lstTouchLowTime   = this.getThisTvMainData('lstTouchLowTime')       ; // TV中
 
-        this.lstRcdTargetHgh    = this.getThisTvMainData('lstRcdTargetHgh')     ;
-        this.lstRcdTargetLow    = this.getThisTvMainData('lstRcdTargetLow')     ;
-        this.lstRcdTouchHghTime = this.getThisTvMainData('lstRcdTouchHghTime')  ;
-        this.lstRcdTouchLowTime = this.getThisTvMainData('lstRcdTouchLowTime')  ;
+        this.lstRcdTargetHgh    = this.getThisTvMainData('lstRcdTargetHgh')     ; // GS中
+        this.lstRcdTargetLow    = this.getThisTvMainData('lstRcdTargetLow')     ; // GS中
+        this.lstRcdTouchHghTime = this.getThisTvMainData('lstRcdTouchHghTime')  ; // GS中
+        this.lstRcdTouchLowTime = this.getThisTvMainData('lstRcdTouchLowTime')  ; // GS中
 
         this.markTouchTargetHgh = false ;
         this.markTouchTargetLow = false ;
@@ -1108,7 +1108,7 @@ export const TradeBot = {
             if (inNormalSellRegion && (TradingSymbolPrice > (1 + tradeFeeRate) * lowBuyPriceUnclose) && this.markTouchTargetHgh) {
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(lowBuySerialUnclose));
-                S.ing_orderPrice = this.lstRcdTargetHgh;
+                S.ing_orderPrice = Math.max(this.lstRcdTargetHgh, TradingSymbolPrice);
                 S.ing_orderType  = CV.order_T_LMT ;
                 S.ing_reason = 'touchTargetHgh';
             }
@@ -1272,7 +1272,7 @@ export const TradeBot = {
 
             if (inNormalBuyRegion && isStrictTrue(this.markTouchTargetLow)) {
                 toBuy = true;
-                S.ing_orderPrice = this.lstRcdTargetLow;
+                S.ing_orderPrice = Math.min(this.lstRcdTargetLow, TradingSymbolPrice) ;
                 S.ing_orderType = CV.order_T_LMT;
                 S.ing_reason = 'touchTargetLow';
             }
