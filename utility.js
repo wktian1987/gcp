@@ -1689,7 +1689,7 @@ export function LogInBackground(log) {
             }
 
             // 构造最终输出对象，确保字段顺序和合规性
-            const finalLog = { ...logObj, severity: logObj.severity };
+            const finalLog = {severity: logObj.severity, message: logObj.message };
 
             // 3. 刚性分流：ERROR 级别及以上走标准错误流，其余走标准输出流
             const isErrorLevel = ['ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY'].includes(logObj.severity);
