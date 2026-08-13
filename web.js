@@ -61,13 +61,13 @@ const toWeb = {
                 while (isStrictTrue(this.isWritingToGS)) {
                     await Sleep(1000) ;
                     if (Date.now() - waitStartTime > 10000) {
-                        LogInBackground_error('listWriteToGS: ' + type + ' write to GS timeout, 强行写入'); 
+                        LogInBackground_error('listWriteToGS timeout, 强行写入'); 
                     }
                 }
             } else {
                 await BatchUpdateGS(this.spreadsheetID, requestBody);
                 this.isWritingToGS = false;
-                LogInBackground('listWriteToGS: ' + type + ' write to GS success');
+                LogInBackground('listWriteToGS success: \n' + `type: ${type}\n` + `messageLine: ${messageLine}`);
             }
 
         } catch (err) { LogInBackground_error('listWriteToGS UpdateGS Err: ' + err.message) }
