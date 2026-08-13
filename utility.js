@@ -1665,46 +1665,23 @@ export class LogsWithTime{
  *   - 若为其他对象: 自动 JSON 串化后投递。
  */
 export function LogInBackground(log) {
+    if (!log) return;
+
     // 定义标准的日志严重程度白名单 (符合 GCP/RFC5424 标准)
     const VALID_SEVERITIES = ['DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY'];
-    let logObj = null;
+    let severity = isObjectOfKeyValue(log) && Object.hasOwn(log, 'severity') ? ToStrictString(logObj.severity).toUpperCase() : 'INFO';
+    let message  = isObjectOfKeyValue(log) && Object.hasOwn(log, 'message') ? ToStrictString(log.message) : ToStrictString(log);
+    if (!VALID_SEVERITIES.includes(severity)) { severity = 'INFO' }
+    const isErrorLevel = ['ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY'].includes(severity);
+    const finalLog = { severity, message };
 
     setImmediate(() => {
-        if (!log) return;
-
-        // 1. 字符串 转换为object
-        if (isStrictString(log)) { logObj = { message: log } }
-        // 2. 结构化日志处理
-        if (isObjectOfKeyValue(log) && Object.hasOwn(log, 'message')) {
-            logObj = log;
-            // 提取并确权 severity
-            if (Object.hasOwn(logObj, 'severity')) {
-                const upperSeverity = String(logObj.severity).toUpperCase();
-                // 核心校验：如果传入的级别不在白名单内，强制修正为 INFO
-                if (VALID_SEVERITIES.includes(upperSeverity)) {
-                    logObj.severity = upperSeverity;
-                } else {
-                    logObj.severity = 'INFO';
-                }
-            }
-
-            // 构造最终输出对象，确保字段顺序和合规性
-            const finalLog = {severity: logObj.severity, message: logObj.message };
-
-            // 3. 刚性分流：ERROR 级别及以上走标准错误流，其余走标准输出流
-            const isErrorLevel = ['ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY'].includes(logObj.severity);
-            
-            if (isErrorLevel) {
-                console.error(JSON.stringify(finalLog));
-                ToWeb_AddNewLine({type: 'error', message: finalLog.message}) ;
-            } else {
-                console.log(JSON.stringify(finalLog));
-            }
-            return;
+        if (isErrorLevel) {
+            console.error(JSON.stringify(finalLog));
+            ToWeb_AddNewLine({ type: 'error', message: finalLog.message });
+        } else {
+            console.log(JSON.stringify(finalLog));
         }
-
-        // 3. 非标准对象或其它类型，兜底串化输出
-        console.log(typeof logObj === 'object' ? JSON.stringify(logObj) : String(logObj));
     });
 }
 export function LogInBackground_error(errLogMessage) { LogInBackground({ severity: 'ERROR', message: errLogMessage }) }
