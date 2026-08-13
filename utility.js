@@ -1669,7 +1669,7 @@ export function LogInBackground(log) {
 
     // 定义标准的日志严重程度白名单 (符合 GCP/RFC5424 标准)
     const VALID_SEVERITIES = ['DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY'];
-    let severity = isObjectOfKeyValue(log) && Object.hasOwn(log, 'severity') ? ToStrictString(logObj.severity).toUpperCase() : 'INFO';
+    let severity = isObjectOfKeyValue(log) && Object.hasOwn(log, 'severity') ? ToStrictString(log.severity).toUpperCase() : 'INFO';
     let message  = isObjectOfKeyValue(log) && Object.hasOwn(log, 'message') ? ToStrictString(log.message) : ToStrictString(log);
     if (!VALID_SEVERITIES.includes(severity)) { severity = 'INFO' }
     const isErrorLevel = ['ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY'].includes(severity);
