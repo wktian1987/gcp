@@ -584,7 +584,7 @@ export const TradeBot = {
             return 'incoming newData must be a valid plain object';
         }
         Object.keys(newData).forEach(key => {
-            if (this.isCanWriteAtt(key)) {this[key] = newData[key]}
+            if (this.isCanWriteAtt(key)) {this[key] = this.getThisTvMainData(key)}
         }) ;
         return true ;
     } ,
