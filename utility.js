@@ -1678,7 +1678,7 @@ export function LogInBackground(log) {
     setImmediate(() => {
         if (isErrorLevel) {
             console.error(JSON.stringify(finalLog));
-            ToWeb_AddNewLine({ type: 'error', message: finalLog.message });
+            ToWeb_AddNewLine({ type: 'error', message: GetTimeStringWithOffset(8) + ': ' + finalLog.message });
         } else {
             console.log(JSON.stringify(finalLog));
         }
