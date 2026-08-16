@@ -61,7 +61,7 @@ const toWeb = {
                 while (isStrictTrue(this.isWritingToGS)) {
                     await Sleep(1000) ;
                     if (Date.now() - waitStartTime > 10000) {
-                        LogInBackground_error('listWriteToGS timeout, 强行写入'); 
+                        LogInBackground_error('listWriteToGS timeout, 强行写入; '+ `type: ${type}, messageLine: ${messageLine}`); 
                     }
                 }
             } else {
