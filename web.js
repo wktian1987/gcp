@@ -1,4 +1,4 @@
-import { ToStrictString, GetGS, LogInBackground, UpdateGS, ToStrictNumber, LogInBackground_error, BatchUpdateGS, makeRequestBodyArrayofBatchUpdate_updateLinesOnTheTop, GetSheetsIDfromSheet, isStrictFalse, isStrictTrue, Sleep } from "./utility.js";
+import { ToStrictString, GetGS, LogInBackground, UpdateGS, ToStrictNumber, LogInBackground_error, BatchUpdateGS, makeRequestBodyArrayofBatchUpdate_updateLinesOnTheTop, GetSheetsIDfromSheet, isStrictFalse, isStrictTrue, Sleep, try3times } from "./utility.js";
 
 const toWeb = {
     sheetName : 'web' ,
@@ -61,12 +61,12 @@ const toWeb = {
                 while (isStrictTrue(this.isWritingToGS)) {
                     await Sleep(1000) ;
                     if (Date.now() - waitStartTime > 10000) {
-                        LogInBackground_error('listWriteToGS timeout, 强行写入; '+ `type: ${type}, messageLine: ${messageLine}`); 
+                        LogInBackground_error('listWriteToGS timeout, 强行写入; '+ `type: ${type}; messageLine: ${messageLine}`); 
                     }
                 }
             } else {
                 this.isWritingToGS = true;
-                await BatchUpdateGS(this.spreadsheetID, requestBody);
+                await try3times(BatchUpdateGS, this.spreadsheetID, requestBody);
                 this.isWritingToGS = false;
                 LogInBackground('listWriteToGS success: \n' + `type: ${type}\n` + `messageLine: ${messageLine}`);
             }
