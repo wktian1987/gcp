@@ -907,11 +907,12 @@ export const TradeBot = {
         const MaxGrid                   = this.getThisTvMainData('MaxGrid')                     ;
         const ifOrderWaiting            = this.getThisTvMainData('ifOrderWaiting')              ;
         const gridNum                   = this.getThisTvMainData('gridNum')                     ;
-        const hghBuyPriceUnclose        = this.getThisTvMainData('hghBuyPriceUnclose')          ;
+        const gridDifficulty            = this.getThisTvMainData('gridDifficulty')              ;
         const enDifficulty              = this.getThisTvMainData('enDifficulty')                ;
         const exDifficulty              = this.getThisTvMainData('exDifficulty')                ;
         const therePosition             = this.getThisTvMainData('therePosition')               ;
         const lstTradeTime              = this.getThisTvMainData('lstTradeTime')                ;
+        const hghBuyPriceUnclose        = this.getThisTvMainData('hghBuyPriceUnclose')          ;
         const lowBuyPriceUnclose        = this.getThisTvMainData('lowBuyPriceUnclose')          ;
 
 
@@ -920,8 +921,8 @@ export const TradeBot = {
         this.closeToRndHgh = roundHgh / Math.pow((1 + waveUpChg), notBuyCloseToRndHghStep);
         this.closeToRndLow = roundLow / Math.pow((1 + waveDnChg), notBuyCloseToRndLowStep);
 
-        this.enDifficultyBuyPrice  = therePosition ? lowBuyPriceUnclose * (1+enDifficulty*waveDnChg) : null ;
-        this.exDifficultySellPrice = therePosition ? lowBuyPriceUnclose * (1+exDifficulty*waveUpChg) : null ;
+        this.enDifficultyBuyPrice   = therePosition ? hghBuyPriceUnclose * (1 + gridDifficulty * waveDnChg) : null;
+        this.exDifficultySellPrice  = therePosition ? lowBuyPriceUnclose * (1 +   exDifficulty * waveUpChg) : null;
 
         this.lowToBuy = Math.max(basicLowToBuy, this.closeToRndLow);
 
