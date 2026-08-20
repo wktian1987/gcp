@@ -921,7 +921,7 @@ export const TradeBot = {
         this.closeToRndHgh = roundHgh / Math.pow((1 + waveUpChg), notBuyCloseToRndHghStep);
         this.closeToRndLow = roundLow / Math.pow((1 + waveDnChg), notBuyCloseToRndLowStep);
 
-        this.enDifficultyBuyPrice   = therePosition ? hghBuyPriceUnclose * (1 + gridDifficulty * waveDnChg) : null;
+        this.enDifficultyBuyPrice   = therePosition ? roundHgh * (1 + gridDifficulty * waveDnChg) : null;
         this.exDifficultySellPrice  = therePosition ? lowBuyPriceUnclose * (1 +   exDifficulty * waveUpChg) : null;
 
         this.lowToBuy = Math.max(basicLowToBuy, this.closeToRndLow);
