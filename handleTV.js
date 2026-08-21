@@ -1533,7 +1533,10 @@ export const TradeBot = {
      */
     async WriteToGS_ReleaseLocks() {
         try {
-            if (isStrictTrue(this.toReNewBeforeWrite)) { this.renewData() }
+            if (isStrictTrue(this.toReNewBeforeWrite)) { 
+                this.renewData()        ;
+                this.CalcuBuySellLimit  ;
+            }
 
             this.updateDataToBot(this.tvData) ;
 
