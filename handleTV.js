@@ -926,7 +926,7 @@ export const TradeBot = {
 
         this.lowToBuy = Math.max(basicLowToBuy, this.closeToRndLow);
 
-        this.hghToBuy = Math.min(basicHghToBuy, this.closeToRndHgh, lowBuyPriceUnclose);
+        this.hghToBuy = Math.min(basicHghToBuy, this.closeToRndHgh, ToStrictNumber(lowBuyPriceUnclose, basicHghToBuy));
 
         if (therePosition) { this.hghToBuy = Math.min(this.hghToBuy, this.enDifficultyBuyPrice) }
         
