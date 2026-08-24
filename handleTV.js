@@ -891,6 +891,7 @@ export const TradeBot = {
         const waveDnChg             = this.getThisTvMainData('waveDnChg')           ;
         const roundHgh              = this.getThisTvMainData('roundHgh')            ;
         const roundLow              = this.getThisTvMainData('roundLow')            ;
+        const smaHghLow             = this.getThisTvMainData('smaHghLow')           ;
 
         const realTradeTime             = this.getThisTvMainData('realTradeTime')               ;
         const realTradeTimeTo           = this.getThisTvMainData('realTradeTimeTo')             ;
@@ -921,22 +922,20 @@ export const TradeBot = {
         this.closeToRndHgh = roundHgh / Math.pow((1 + waveUpChg), notBuyCloseToRndHghStep);
         this.closeToRndLow = roundLow / Math.pow((1 + waveDnChg), notBuyCloseToRndLowStep);
 
-        this.enDifficultyBuyPrice   = therePosition ? roundHgh * (1 + gridDifficulty * waveDnChg) : null;
-        this.exDifficultySellPrice  = therePosition ? lowBuyPriceUnclose * (1 +   exDifficulty * waveUpChg) : null;
+        this.enDifficultyBuyPrice = roundHgh * (1 + enDifficulty * waveDnChg);
+        this.exDifficultySellPrice = therePosition ? lowBuyPriceUnclose * (1 + exDifficulty * waveUpChg) : null;
 
         this.lowToBuy = Math.max(basicLowToBuy, this.closeToRndLow);
 
-        this.hghToBuy = Math.min(basicHghToBuy, this.closeToRndHgh, ToStrictNumber(lowBuyPriceUnclose, basicHghToBuy));
-
-        if (therePosition) { this.hghToBuy = Math.min(this.hghToBuy, this.enDifficultyBuyPrice) }
+        this.hghToBuy = Math.min(basicHghToBuy, this.closeToRndHgh, this.enDifficultyBuyPrice, ToStrictNumber(lowBuyPriceUnclose * (1 + 0.5 * waveDnChg), basicHghToBuy));
         
-        this.lowToSell = basicLowToSell;
+        this.lowToSell = Math.min(basicLowToSell, ToStrictNumber(lowBuyPriceUnclose * (1 + 0.5 * waveUpChg), basicLowToSell));
         if (therePosition) { this.lowToSell = Math.max(basicLowToSell, this.exDifficultySellPrice) }
 
         this.cutTooHighBuyPrice = CV.NA ;
         if (therePosition) {
             this.cutTooHighBuyPrice = Math.min(
-                hghBuyPriceUnclose / (roundHgh / roundLow) ,
+                hghBuyPriceUnclose / smaHghLow ,
                 hghBuyPriceUnclose / Math.pow(1 + waveUpChg, cutTooHghPower)
             ) ;
         }
