@@ -922,15 +922,15 @@ export const TradeBot = {
         this.closeToRndHgh = roundHgh / Math.pow((1 + waveUpChg), notBuyCloseToRndHghStep);
         this.closeToRndLow = roundLow / Math.pow((1 + waveDnChg), notBuyCloseToRndLowStep);
 
-        this.enDifficultyBuyPrice = roundHgh * (1 + enDifficulty * waveDnChg);
-        this.exDifficultySellPrice = therePosition ? lowBuyPriceUnclose * (1 + exDifficulty * waveUpChg) : null;
+        this.enDifficultyBuyPrice  = ToStrictNumber(hghBuyPriceUnclose, this.closeToRndHgh) * (1 + enDifficulty * waveDnChg);
+        this.exDifficultySellPrice = ToStrictNumber(lowBuyPriceUnclose, this.closeToRndLow) * (1 + exDifficulty * waveUpChg);
 
         this.lowToBuy = Math.max(basicLowToBuy, this.closeToRndLow);
 
         this.hghToBuy = Math.min(basicHghToBuy, this.closeToRndHgh, this.enDifficultyBuyPrice, ToStrictNumber(lowBuyPriceUnclose * (1 + 0.5 * waveDnChg), basicHghToBuy));
         
-        this.lowToSell = Math.min(basicLowToSell, ToStrictNumber(lowBuyPriceUnclose * (1 + 0.5 * waveUpChg), basicLowToSell));
-        if (therePosition) { this.lowToSell = Math.max(basicLowToSell, this.exDifficultySellPrice) }
+        this.lowToSell = Math.max(basicLowToSell, ToStrictNumber(lowBuyPriceUnclose * (1 + 0.5 * waveUpChg), basicLowToSell));
+        if (therePosition) { this.lowToSell = Math.max(lowToSell, this.exDifficultySellPrice) }
 
         this.cutTooHighBuyPrice = CV.NA ;
         if (therePosition) {
