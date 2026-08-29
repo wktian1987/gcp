@@ -929,8 +929,7 @@ export const TradeBot = {
 
         this.hghToBuy = Math.min(basicHghToBuy, this.closeToRndHgh, this.enDifficultyBuyPrice, ToStrictNumber(lowBuyPriceUnclose * (1 + 0.5 * waveDnChg), basicHghToBuy));
         
-        this.lowToSell = Math.max(basicLowToSell, ToStrictNumber(lowBuyPriceUnclose * (1 + 0.5 * waveUpChg), basicLowToSell));
-        if (therePosition) { this.lowToSell = Math.max(lowToSell, this.exDifficultySellPrice) }
+        this.lowToSell = Math.max(basicLowToSell, this.exDifficultySellPrice, ToStrictNumber(lowBuyPriceUnclose * (1 + 0.5 * waveUpChg), basicLowToSell));
 
         this.cutTooHighBuyPrice = CV.NA ;
         if (therePosition) {
