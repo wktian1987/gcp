@@ -1240,6 +1240,7 @@ export const TradeBot = {
             const roundHgh              =  this.getThisTvMainData('roundHgh')             ;
             const roundLow              =  this.getThisTvMainData('roundLow')             ;
             const inLong                =  this.getThisTvMainData('inLong')               ;
+            const canBuyLongShort       =  this.getThisTvMainData('canBuyLongShort')      ;
 
             const TradingSymbol         =  this.getThisTvMainData('TradingSymbol')        ;
             const isReal                =  this.getThisTvMainData('isReal')               ;
@@ -1266,6 +1267,7 @@ export const TradeBot = {
             let toBuy = false;
             const S = {};
 
+            // const inNormalBuyRegion = canBuyLongShort && TradingSymbolPrice > this.lowToBuy && TradingSymbolPrice < this.hghToBuy ? true : false ; 
             const inNormalBuyRegion = inLong && TradingSymbolPrice > this.lowToBuy && TradingSymbolPrice < this.hghToBuy ? true : false ; 
             AddSetMessage(this.alertMessageSet, inNormalBuyRegion ? 'inNormalBuyRegion' : 'not inNormalBuyRegion') ;
 
