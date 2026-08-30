@@ -1267,8 +1267,7 @@ export const TradeBot = {
             let toBuy = false;
             const S = {};
 
-            // const inNormalBuyRegion = canBuyLongShort && TradingSymbolPrice > this.lowToBuy && TradingSymbolPrice < this.hghToBuy ? true : false ; 
-            const inNormalBuyRegion = inLong && TradingSymbolPrice > this.lowToBuy && TradingSymbolPrice < this.hghToBuy ? true : false ; 
+            const inNormalBuyRegion = canBuyLongShort && TradingSymbolPrice > this.lowToBuy && TradingSymbolPrice < this.hghToBuy ? true : false ; 
             AddSetMessage(this.alertMessageSet, inNormalBuyRegion ? 'inNormalBuyRegion' : 'not inNormalBuyRegion') ;
 
             if (inNormalBuyRegion && isStrictTrue(this.markTouchTargetLow)) {
