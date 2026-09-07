@@ -885,6 +885,7 @@ export const TradeBot = {
         const roundHgh              = this.getThisTvMainData('roundHgh')            ;
         const roundLow              = this.getThisTvMainData('roundLow')            ;
         const smaHghLow             = this.getThisTvMainData('smaHghLow')           ;
+        const mustSellProfitStep    = this.getThisTvMainData('mustSellProfitStep')
 
         const realTradeTime             = this.getThisTvMainData('realTradeTime')               ;
         const realTradeTimeTo           = this.getThisTvMainData('realTradeTimeTo')             ;
