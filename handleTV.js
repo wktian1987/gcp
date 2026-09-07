@@ -1285,7 +1285,7 @@ export const TradeBot = {
                 S.ing_orderType = CV.order_T_LMT;
                 S.ing_reason = 'touchTargetLow';
             }
-            if (canBuy && !toBuy && this.hghToBuy > this.lowToBuy && targetLow < this.hghToBuy && targetLow > this.lowToBuy) { this.nextBuy = Math.max(ToStrictNumber(this.nextBuy, 0), targetLow) }
+            if (canBuy && !toBuy && targetLow < this.hghToBuy && targetLow > this.lowToBuy) { this.nextBuy = Math.max(ToStrictNumber(this.nextBuy, 0), targetLow) }
 
             if (this.thereCommandFromGS && isStrictTrue(this.commandData.toBuy)) {
                 AddSetMessage(this.alertMessageSet, 'Get toBuy signal from GS');
