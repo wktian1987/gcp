@@ -842,13 +842,6 @@ export const TradeBot = {
         this.allFund = this.crtFund + this.crtCoin * BaseCoinPrice;
         this.allCoin = this.crtFund / BaseCoinPrice + this.crtCoin;
 
-        this.rcd_fund = ToStrictNumber(this.mainData.rcd_fund, this.allFund);
-        this.rcd_coin = ToStrictNumber(this.mainData.rcd_coin, this.allCoin);
-        if (this.allFund > this.rcd_fund * (1 + barChgA)) { this.rcd_fund = this.allFund; AddSetMessage(this.alertMessageSet, '↑ new rcd_fund'); }
-        if (this.allFund < this.rcd_fund * (1 - barChgA)) { this.rcd_fund = this.allFund; AddSetMessage(this.alertMessageSet, '↓ new rcd_fund'); }
-        if (this.allCoin > this.rcd_coin * (1 + barChgB)) { this.rcd_coin = this.allCoin; AddSetMessage(this.alertMessageSet, '↑ new rcd_coin'); }
-        if (this.allCoin < this.rcd_coin * (1 - barChgB)) { this.rcd_coin = this.allCoin; AddSetMessage(this.alertMessageSet, '↓ new rcd_coin'); }
-
         this.initialFund    = ToStrictNumber(this.mainData.initialFund  , this.allFund) ;
         this.hghestFund     = ToStrictNumber(this.mainData.hghestFund   , this.allFund) ;
         this.lowestFund     = ToStrictNumber(this.mainData.lowestFund   , this.allFund) ;
@@ -940,6 +933,8 @@ export const TradeBot = {
         }
 
         this.cutToPreventLiqPrice = isStrictNumber(this.liquidatePrice) && this.liquidatePrice > 0 ? this.liquidatePrice / (1 + closeToLiquid) : CV.NA ;
+
+        this.mustSellProfitPrice = Math.pow((1 + waveUpChg), mustSellProfitStep) * lowBuyPriceUnclose;
 
         this.inTradingTime = timestamp > realTradeTime && timestamp < realTradeTimeTo;
 
@@ -1074,9 +1069,11 @@ export const TradeBot = {
             const timestamp             =  this.getThisTvMainData('timestamp')             ;
             const TradingSymbolPrice    =  this.getThisTvMainData('TradingSymbolPrice')    ;
             const waveUpChg             =  this.getThisTvMainData('waveUpChg')             ;
+            const targetHgh             =  this.getThisTvMainData('targetHgh')             ;
 
             const TradingSymbol         =  this.getThisTvMainData('TradingSymbol')         ;
             const isReal                =  this.getThisTvMainData('isReal')                ;
+            const canSell               =  this.getThisTvMainData('canSell')               ;
             const tradeFeeRate          =  this.getThisTvMainData('tradeFeeRate')          ;
             const minEnExPosition       =  this.getThisTvMainData('minEnExPosition')       ;
             const mustSellProfitStep    =  this.getThisTvMainData('mustSellProfitStep')    ;
@@ -1103,6 +1100,8 @@ export const TradeBot = {
             const inNormalSellRegion = TradingSymbolPrice > this.lowToSell ? true : false ;
             AddSetMessage(this.alertMessageSet, inNormalSellRegion ? 'inNormalSellRegion' : 'not inNormalSellRegion');
 
+            this.nextSell = CV.NA ;
+            
             // touch targetHgh
             if (inNormalSellRegion && (TradingSymbolPrice > (1 + tradeFeeRate) * lowBuyPriceUnclose) && this.markTouchTargetHgh) {
                 toSell = true;
@@ -1112,7 +1111,7 @@ export const TradeBot = {
                 S.ing_reason = 'touchTargetHgh';
             }
             // mustSellProfitStep
-            if ((TradingSymbolPrice > Math.pow((1 + waveUpChg), mustSellProfitStep) * Math.max(lowBuyPriceUnclose, avgBuyPriceUnclose))) {
+            if (TradingSymbolPrice > this.mustSellProfitPrice) {
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(lowBuySerialUnclose));
                 S.ing_orderPrice = TradingSymbolPrice ;
@@ -1160,6 +1159,12 @@ export const TradeBot = {
                 S.ing_orderType  = this.commandData.orderType ;
                 if (S.ing_orderType === CV.order_T_MKT) {S.ing_orderPrice = CV.NA}
                 S.ing_reason = 'toSell from GS';
+            }
+
+            if (canSell && !toSell) {
+                this.nextSell   =  this.lowToSell ;
+                if (targetHgh > this.lowToSell) {this.nextSell = targetHgh}
+                else {this.nextSell = this.mustSellProfitPrice}
             }
 
             if (isStrictFalse(toSell)) { return true }
@@ -1240,10 +1245,12 @@ export const TradeBot = {
             const roundHgh              =  this.getThisTvMainData('roundHgh')             ;
             const roundLow              =  this.getThisTvMainData('roundLow')             ;
             const inLong                =  this.getThisTvMainData('inLong')               ;
+            const targetLow             =  this.getThisTvMainData('targetLow')            ;
             const canBuyLongShort       =  this.getThisTvMainData('canBuyLongShort')      ;
 
             const TradingSymbol         =  this.getThisTvMainData('TradingSymbol')        ;
             const isReal                =  this.getThisTvMainData('isReal')               ;
+            const canBuy                =  this.getThisTvMainData('canBuy')               ;
             const minEnExPosition       =  this.getThisTvMainData('minEnExPosition')      ;
             const tradeFeeRate          =  this.getThisTvMainData('tradeFeeRate')         ;
             const leverage              =  this.getThisTvMainData('leverage')             ;
@@ -1270,12 +1277,15 @@ export const TradeBot = {
             const inNormalBuyRegion = canBuyLongShort && TradingSymbolPrice > this.lowToBuy && TradingSymbolPrice < this.hghToBuy ? true : false ; 
             AddSetMessage(this.alertMessageSet, inNormalBuyRegion ? 'inNormalBuyRegion' : 'not inNormalBuyRegion') ;
 
+            this.nextBuy = CV.NA;
+
             if (inNormalBuyRegion && isStrictTrue(this.markTouchTargetLow)) {
                 toBuy = true;
                 S.ing_orderPrice = Math.min(this.lstRcdTargetLow, TradingSymbolPrice) ;
                 S.ing_orderType = CV.order_T_LMT;
                 S.ing_reason = 'touchTargetLow';
             }
+            if (canBuy && !toBuy && this.hghToBuy > this.lowToBuy && targetLow < this.hghToBuy && targetLow > this.lowToBuy) { this.nextBuy = Math.max(ToStrictNumber(this.nextBuy, 0), targetLow) }
 
             if (this.thereCommandFromGS && isStrictTrue(this.commandData.toBuy)) {
                 AddSetMessage(this.alertMessageSet, 'Get toBuy signal from GS');
