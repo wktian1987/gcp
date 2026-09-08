@@ -1165,6 +1165,7 @@ export const TradeBot = {
             if (canSell && !toSell) {
                 this.nextSell   =  this.lowToSell ;
                 if (targetHgh > this.lowToSell) {this.nextSell = targetHgh}
+                else if (targetHgh * (1+waveUpChg) > this.lowToSell) {this.nextSell = targetHgh *(1+waveUpChg)}
                 else {this.nextSell = this.mustSellProfitPrice}
             }
 
