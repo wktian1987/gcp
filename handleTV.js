@@ -1053,6 +1053,8 @@ export const TradeBot = {
      * @returns string: 执行错误信息
     */
     async ToSell() {
+        this.nextSell = CV.NA ;
+
         if (!isStrictTrue(this.canSell)) {
             if (!this.thereCommandFromGS || isStrictFalse(this.commandData.toSell) ) {return true}
             if (this.thereCommandFromGS && isStrictTrue(this.commandData.toSell) && this.ifOrderWaiting) {
@@ -1100,8 +1102,6 @@ export const TradeBot = {
             const inNormalSellRegion = TradingSymbolPrice > this.lowToSell ? true : false ;
             AddSetMessage(this.alertMessageSet, inNormalSellRegion ? 'inNormalSellRegion' : 'not inNormalSellRegion');
 
-            this.nextSell = CV.NA ;
-            
             // touch targetHgh
             if (inNormalSellRegion && (TradingSymbolPrice > (1 + tradeFeeRate) * lowBuyPriceUnclose) && this.markTouchTargetHgh) {
                 toSell = true;
@@ -1226,6 +1226,8 @@ export const TradeBot = {
      * @returns string: 执行错误信息
     */
     async ToBuy() {
+        this.nextBuy = CV.NA ;
+
         if (!isStrictTrue(this.canBuy)) {
             if (!this.thereCommandFromGS || isStrictFalse(this.commandData.toBuy)) { return true }
             if (this.thereCommandFromGS && isStrictTrue(this.commandData.toBuy) && this.ifOrderWaiting) {
@@ -1276,8 +1278,6 @@ export const TradeBot = {
 
             const inNormalBuyRegion = canBuyLongShort && TradingSymbolPrice > this.lowToBuy && TradingSymbolPrice < this.hghToBuy ? true : false ; 
             AddSetMessage(this.alertMessageSet, inNormalBuyRegion ? 'inNormalBuyRegion' : 'not inNormalBuyRegion') ;
-
-            this.nextBuy = CV.NA;
 
             if (inNormalBuyRegion && isStrictTrue(this.markTouchTargetLow)) {
                 toBuy = true;
