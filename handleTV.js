@@ -1076,6 +1076,7 @@ export const TradeBot = {
 
             const TradingSymbol         =  this.getThisTvMainData('TradingSymbol')         ;
             const isReal                =  this.getThisTvMainData('isReal')                ;
+            const MaxGrid               =  this.getThisTvMainData('MaxGrid')               ;
             const canSell               =  this.getThisTvMainData('canSell')               ;
             const tradeFeeRate          =  this.getThisTvMainData('tradeFeeRate')          ;
             const minEnExPosition       =  this.getThisTvMainData('minEnExPosition')       ;
@@ -1163,10 +1164,12 @@ export const TradeBot = {
             }
 
             if (canSell && !toSell) {
-                this.nextSell   =  this.lowToSell ;
-                if (targetHgh > this.lowToSell) {this.nextSell = targetHgh}
-                else if (targetHgh * (1+waveUpChg) > this.lowToSell) {this.nextSell = targetHgh *(1+waveUpChg)}
-                else {this.nextSell = this.mustSellProfitPrice}
+                this.nextSell = this.lowToSell;
+                for (let i = 0; i < MaxGrid; i++) {
+                    const thisCheckHgh = targetHgh * Math.pow(1 + waveUpChg, i);
+                    if (thisCheckHgh > this.mustSellProfitPrice) { this.nextSell = this.mustSellProfitPrice; break; }
+                    if (thisCheckHgh > this.lowToSell) { this.nextSell = thisCheckHgh; break; }
+                }
             }
 
             if (isStrictFalse(toSell)) { return true }
