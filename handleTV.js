@@ -885,7 +885,8 @@ export const TradeBot = {
         const roundHgh              = this.getThisTvMainData('roundHgh')            ;
         const roundLow              = this.getThisTvMainData('roundLow')            ;
         const smaHghLow             = this.getThisTvMainData('smaHghLow')           ;
-        const mustSellProfitStep    = this.getThisTvMainData('mustSellProfitStep')
+        const mustSellProfitStep    = this.getThisTvMainData('mustSellProfitStep')  ;
+        const canBuyLongShort       =  this.getThisTvMainData('canBuyLongShort')    ;
 
         const realTradeTime             = this.getThisTvMainData('realTradeTime')               ;
         const realTradeTimeTo           = this.getThisTvMainData('realTradeTimeTo')             ;
@@ -970,6 +971,12 @@ export const TradeBot = {
             this.canBuy = false;
             this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + "gridNum >= MaxGrid");
         }
+
+        if (!canBuyLongShort) {
+            this.canBuy = false;
+            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + "canBuyLongShort is false");
+        }
+
         if (this.freeMargin / (MaxGrid - gridNum) < 1.1 * minEnExPosition * TradingSymbolPrice / leverage) {
             this.canBuy = false;
             this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'Not enough freeMargin');
@@ -1077,7 +1084,6 @@ export const TradeBot = {
             const TradingSymbol         =  this.getThisTvMainData('TradingSymbol')         ;
             const isReal                =  this.getThisTvMainData('isReal')                ;
             const MaxGrid               =  this.getThisTvMainData('MaxGrid')               ;
-            const canSell               =  this.getThisTvMainData('canSell')               ;
             const tradeFeeRate          =  this.getThisTvMainData('tradeFeeRate')          ;
             const minEnExPosition       =  this.getThisTvMainData('minEnExPosition')       ;
             const mustSellProfitStep    =  this.getThisTvMainData('mustSellProfitStep')    ;
@@ -1163,7 +1169,7 @@ export const TradeBot = {
                 S.ing_reason = 'toSell from GS';
             }
 
-            if (canSell && !toSell) {
+            if (!toSell) {
                 this.nextSell = this.lowToSell;
                 for (let i = 0; i < MaxGrid; i++) {
                     const thisCheckHgh = targetHgh * Math.pow(1 + waveUpChg, i);
@@ -1253,11 +1259,9 @@ export const TradeBot = {
             const roundLow              =  this.getThisTvMainData('roundLow')             ;
             const inLong                =  this.getThisTvMainData('inLong')               ;
             const targetLow             =  this.getThisTvMainData('targetLow')            ;
-            const canBuyLongShort       =  this.getThisTvMainData('canBuyLongShort')      ;
 
             const TradingSymbol         =  this.getThisTvMainData('TradingSymbol')        ;
             const isReal                =  this.getThisTvMainData('isReal')               ;
-            const canBuy                =  this.getThisTvMainData('canBuy')               ;
             const minEnExPosition       =  this.getThisTvMainData('minEnExPosition')      ;
             const tradeFeeRate          =  this.getThisTvMainData('tradeFeeRate')         ;
             const leverage              =  this.getThisTvMainData('leverage')             ;
@@ -1281,7 +1285,7 @@ export const TradeBot = {
             let toBuy = false;
             const S = {};
 
-            const inNormalBuyRegion = canBuyLongShort && TradingSymbolPrice > this.lowToBuy && TradingSymbolPrice < this.hghToBuy ? true : false ; 
+            const inNormalBuyRegion = TradingSymbolPrice > this.lowToBuy && TradingSymbolPrice < this.hghToBuy ? true : false ; 
             AddSetMessage(this.alertMessageSet, inNormalBuyRegion ? 'inNormalBuyRegion' : 'not inNormalBuyRegion') ;
 
             if (inNormalBuyRegion && isStrictTrue(this.markTouchTargetLow)) {
@@ -1290,7 +1294,11 @@ export const TradeBot = {
                 S.ing_orderType = CV.order_T_LMT;
                 S.ing_reason = 'touchTargetLow';
             }
-            if (canBuy && !toBuy && targetLow < this.hghToBuy && targetLow > this.lowToBuy) { this.nextBuy = Math.max(ToStrictNumber(this.nextBuy, 0), targetLow) }
+            if (!toBuy) {
+                if (targetLow < this.hghToBuy && targetLow > this.lowToBuy) {
+                    this.nextBuy = Math.max(ToStrictNumber(this.nextBuy, 0), targetLow) ;
+                }
+            }
 
             if (this.thereCommandFromGS && isStrictTrue(this.commandData.toBuy)) {
                 AddSetMessage(this.alertMessageSet, 'Get toBuy signal from GS');
