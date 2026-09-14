@@ -936,7 +936,7 @@ export const TradeBot = {
 
         this.cutToPreventLiqPrice = isStrictNumber(this.liquidatePrice) && this.liquidatePrice > 0 ? this.liquidatePrice / (1 + closeToLiquid) : CV.NA ;
 
-        this.mustSellProfitPrice = Math.pow((1 + waveUpChg), mustSellProfitStep) * lowBuyPriceUnclose;
+        this.mustSellProfitPrice = ToStrictNumber(Math.pow((1 + waveUpChg), mustSellProfitStep) * lowBuyPriceUnclose , CV.NA) ;
 
         this.inTradingTime = timestamp > realTradeTime && timestamp < realTradeTimeTo;
 
