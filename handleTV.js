@@ -246,7 +246,7 @@ export const TradeBot = {
         this.markTouchTargetHgh = false ;
         this.markTouchTargetLow = false ;
 
-        if (isStrictString(this.lstRcdTouchHghTime)) {
+        if (!isStrictNumber(this.lstRcdTouchHghTime)) {
             this.markTouchTargetHgh     = false             ;
             this.lstRcdTouchHghTime     = lstTouchHghTime   ;
             this.lstRcdTargetHgh        = lstTargetHgh      ;
@@ -257,7 +257,7 @@ export const TradeBot = {
             this.lstRcdTargetHgh        = lstTargetHgh      ;
             AddSetMessage(this.alertMessageSet, "↑ mark TouchTargetHgh") ;
         }
-        if (isStrictString(this.lstRcdTouchLowTime)) {
+        if (!isStrictNumber(this.lstRcdTouchLowTime)) {
             this.markTouchTargetLow     = false             ;
             this.lstRcdTouchLowTime     = lstTouchLowTime   ;
             this.lstRcdTargetLow        = lstTargetLow      ;
@@ -1081,7 +1081,6 @@ export const TradeBot = {
             const TradingSymbolPrice    =  this.getThisTvMainData('TradingSymbolPrice')    ;
             const waveUpChg             =  this.getThisTvMainData('waveUpChg')             ;
             const targetHgh             =  this.getThisTvMainData('targetHgh')             ;
-
             const TradingSymbol         =  this.getThisTvMainData('TradingSymbol')         ;
             const isReal                =  this.getThisTvMainData('isReal')                ;
             const MaxGrid               =  this.getThisTvMainData('MaxGrid')               ;
@@ -1092,11 +1091,13 @@ export const TradeBot = {
             const avgBuyPriceUnclose    =  this.getThisTvMainData('avgBuyPriceUnclose')    ;
             const lowBuySerialUnclose   =  this.getThisTvMainData('lowBuySerialUnclose')   ;
             const hghBuySerialUnclose   =  this.getThisTvMainData('hghBuySerialUnclose')   ;
+            const alreadyTouchHgh       =  this.getThisTvMainData('alreadyTouchHgh')       ;
             
             const uncloseOrdersA2d      =  this.getThisTvMainData('uncloseOrdersA2d')      ;
             const uncloseOrdersTitleA   =  this.getThisTvMainData('uncloseOrdersTitleA')   ;
             const ingOrderTitleA        =  this.getThisTvMainData('ingOrderTitleA')        ;
             const toGCPData             =  this.getThisTvMainData('toGCPData')             ;
+            const lstRcdTargetHgh       =  this.getThisTvMainData('lstRcdTargetHgh')       ;
 
             const ingOrderLine          =  toGCPData.ingOrderLine    ;
 
@@ -1112,7 +1113,7 @@ export const TradeBot = {
             AddSetMessage(this.alertMessageSet, inNormalSellRegion ? 'inNormalSellRegion' : 'not inNormalSellRegion');
 
             // touch targetHgh
-            if (inNormalSellRegion && (TradingSymbolPrice > (1 + tradeFeeRate) * lowBuyPriceUnclose) && this.markTouchTargetHgh) {
+            if (inNormalSellRegion && (TradingSymbolPrice > (1 + tradeFeeRate) * lowBuyPriceUnclose) && alreadyTouchHgh && TradingSymbolPrice > lstRcdTargetHgh) {
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(lowBuySerialUnclose));
                 S.ing_orderPrice = Math.max(this.lstRcdTargetHgh, TradingSymbolPrice);
@@ -1260,6 +1261,7 @@ export const TradeBot = {
             const roundLow              =  this.getThisTvMainData('roundLow')             ;
             const inLong                =  this.getThisTvMainData('inLong')               ;
             const targetLow             =  this.getThisTvMainData('targetLow')            ;
+            const alreadyTouchLow       =  this.getThisTvMainData('alreadyTouchLow')      ;
 
             const TradingSymbol         =  this.getThisTvMainData('TradingSymbol')        ;
             const isReal                =  this.getThisTvMainData('isReal')               ;
@@ -1280,6 +1282,7 @@ export const TradeBot = {
             const uncloseOrdersTitleA   =  this.getThisTvMainData('uncloseOrdersTitleA')  ;
             const ingOrderTitleA        =  this.getThisTvMainData('ingOrderTitleA')       ;
             const toGCPData             =  this.getThisTvMainData('toGCPData')            ;
+            const lstRcdTargetLow       =  this.getThisTvMainData('lstRcdTargetLow')      ;
 
             const ingOrderLine          =  this.toGCPData.ingOrderLine   ;
 
@@ -1289,9 +1292,9 @@ export const TradeBot = {
             const inNormalBuyRegion = TradingSymbolPrice > this.lowToBuy && TradingSymbolPrice < this.hghToBuy ? true : false ; 
             AddSetMessage(this.alertMessageSet, inNormalBuyRegion ? 'inNormalBuyRegion' : 'not inNormalBuyRegion') ;
 
-            if (inNormalBuyRegion && isStrictTrue(this.markTouchTargetLow)) {
+            if (inNormalBuyRegion && alreadyTouchLow) {
                 toBuy = true;
-                S.ing_orderPrice = Math.min(this.lstRcdTargetLow, TradingSymbolPrice) ;
+                S.ing_orderPrice = Math.min(lstRcdTargetLow, TradingSymbolPrice) ;
                 S.ing_orderType = CV.order_T_LMT;
                 S.ing_reason = 'touchTargetLow';
             }
