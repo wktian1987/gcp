@@ -232,6 +232,10 @@ export const TradeBot = {
             TradeBot[this.tbName_tgToReadGSCMD] = false;
         }
 
+        this.thereUnuseTargetLowTouch = this.getThisTvMainData('thereUnuseTargetLowTouch');
+        this.thereUnuseTargetHghTouch = this.getThisTvMainData('thereUnuseTargetHghTouch');
+        if (!isStrictBoolean(this.thereUnuseTargetLowTouch)) { this.thereUnuseTargetLowTouch = false }
+        if (!isStrictBoolean(this.thereUnuseTargetHghTouch)) { this.thereUnuseTargetHghTouch = false }
 
         const lstTargetHgh      = this.getThisTvMainData('lstTargetHgh')          ; // TV中
         const lstTargetLow      = this.getThisTvMainData('lstTargetLow')          ; // TV中
@@ -252,9 +256,10 @@ export const TradeBot = {
             this.lstRcdTargetHgh        = lstTargetHgh      ;
         }
         if (isStrictNumber(this.lstRcdTouchHghTime) && this.lstRcdTouchHghTime < lstTouchHghTime) {
-            this.markTouchTargetHgh     = true              ;
-            this.lstRcdTouchHghTime     = lstTouchHghTime   ;
-            this.lstRcdTargetHgh        = lstTargetHgh      ;
+            this.markTouchTargetHgh         = true              ;
+            this.thereUnuseTargetHghTouch   = true              ;   
+            this.lstRcdTouchHghTime         = lstTouchHghTime   ;
+            this.lstRcdTargetHgh            = lstTargetHgh      ;
             AddSetMessage(this.alertMessageSet, "↑ mark TouchTargetHgh") ;
         }
         if (!isStrictNumber(this.lstRcdTouchLowTime)) {
@@ -263,11 +268,14 @@ export const TradeBot = {
             this.lstRcdTargetLow        = lstTargetLow      ;
         }
         if (isStrictNumber(this.lstRcdTouchLowTime) && this.lstRcdTouchLowTime < lstTouchLowTime) {
-            this.markTouchTargetLow     = true              ;
-            this.lstRcdTouchLowTime     = lstTouchLowTime   ;
-            this.lstRcdTargetLow        = lstTargetLow      ;
+            this.markTouchTargetLow         = true              ;
+            this.thereUnuseTargetLowTouch   = true              ;
+            this.lstRcdTouchLowTime         = lstTouchLowTime   ;
+            this.lstRcdTargetLow            = lstTargetLow      ;
             AddSetMessage(this.alertMessageSet, "↓ mark TouchTargetLow") ;
         }
+
+
 
         let currentLock = this.getThisTvMainData('LOCK') ;
         if (this.mainData.timestamp > this.LockTime) { this.releaseTradeBotLOCK(); return { NotError: '经检查GS,已处理更新的信号, 本信号丢弃' }; }
@@ -1092,6 +1100,7 @@ export const TradeBot = {
             const lowBuySerialUnclose   =  this.getThisTvMainData('lowBuySerialUnclose')   ;
             const hghBuySerialUnclose   =  this.getThisTvMainData('hghBuySerialUnclose')   ;
             const alreadyTouchHgh       =  this.getThisTvMainData('alreadyTouchHgh')       ;
+            const markTouchTargetHgh    =  this.getThisTvMainData('markTouchTargetHgh')    ;
             
             const uncloseOrdersA2d      =  this.getThisTvMainData('uncloseOrdersA2d')      ;
             const uncloseOrdersTitleA   =  this.getThisTvMainData('uncloseOrdersTitleA')   ;
@@ -1113,13 +1122,25 @@ export const TradeBot = {
             AddSetMessage(this.alertMessageSet, inNormalSellRegion ? 'inNormalSellRegion' : 'not inNormalSellRegion');
 
             // touch targetHgh
-            if (inNormalSellRegion && (TradingSymbolPrice > (1 + tradeFeeRate) * lowBuyPriceUnclose) && alreadyTouchHgh && TradingSymbolPrice > lstRcdTargetHgh) {
+            if (inNormalSellRegion && (TradingSymbolPrice > (1 + tradeFeeRate) * lowBuyPriceUnclose) && markTouchTargetHgh && TradingSymbolPrice > lstRcdTargetHgh) {
+                this.thereUnuseTargetHghTouch   = false;
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(lowBuySerialUnclose));
                 S.ing_orderPrice = Math.max(this.lstRcdTargetHgh, TradingSymbolPrice);
                 S.ing_orderType  = CV.order_T_LMT ;
                 S.ing_reason = 'touchTargetHgh';
             }
+
+            // touch targetHgh
+            if (inNormalSellRegion && (TradingSymbolPrice > (1 + tradeFeeRate) * lowBuyPriceUnclose) && this.thereUnuseTargetHghTouch && TradingSymbolPrice > lstRcdTargetHgh) {
+                this.thereUnuseTargetHghTouch   = false;
+                toSell = true;
+                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(lowBuySerialUnclose));
+                S.ing_orderPrice = Math.max(this.lstRcdTargetHgh, TradingSymbolPrice);
+                S.ing_orderType  = CV.order_T_LMT ;
+                S.ing_reason = 'touchTargetHgh';
+            }
+
             // mustSellProfitStep
             if (TradingSymbolPrice > this.mustSellProfitPrice) {
                 toSell = true;
@@ -1277,6 +1298,7 @@ export const TradeBot = {
             const lstBuySerial          =  this.getThisTvMainData('lstBuySerial')         ;
             const lowBuySerialUnclose   =  this.getThisTvMainData('lowBuySerialUnclose')  ;
             const hghBuySerialUnclose   =  this.getThisTvMainData('hghBuySerialUnclose')  ;
+            const markTouchTargetLow    =  this.getThisTvMainData('markTouchTargetLow')   ;
             
             const uncloseOrdersA2d      =  this.getThisTvMainData('uncloseOrdersA2d')     ;
             const uncloseOrdersTitleA   =  this.getThisTvMainData('uncloseOrdersTitleA')  ;
@@ -1292,12 +1314,23 @@ export const TradeBot = {
             const inNormalBuyRegion = TradingSymbolPrice > this.lowToBuy && TradingSymbolPrice < this.hghToBuy ? true : false ; 
             AddSetMessage(this.alertMessageSet, inNormalBuyRegion ? 'inNormalBuyRegion' : 'not inNormalBuyRegion') ;
 
-            if (inNormalBuyRegion && alreadyTouchLow) {
+            if (inNormalBuyRegion && markTouchTargetLow) {
+                this.thereUnuseTargetLowTouch  =  false ;
                 toBuy = true;
                 S.ing_orderPrice = Math.min(lstRcdTargetLow, TradingSymbolPrice) ;
                 S.ing_orderType = CV.order_T_LMT;
                 S.ing_reason = 'touchTargetLow';
             }
+
+            if (inNormalBuyRegion && this.thereUnuseTargetLowTouch && TradingSymbolPrice < lstRcdTargetLow) {
+                this.thereUnuseTargetLowTouch  =  false ;
+                toBuy = true;
+                S.ing_orderPrice = Math.min(lstRcdTargetLow, TradingSymbolPrice) ;
+                S.ing_orderType = CV.order_T_LMT;
+                S.ing_reason = 'touchTargetLow';
+            }
+
+
             if (!toBuy) {
                 if (targetLow < this.hghToBuy && targetLow > this.lowToBuy) {
                     this.nextBuy = Math.max(ToStrictNumber(this.nextBuy, 0), targetLow) ;
