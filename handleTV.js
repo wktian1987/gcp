@@ -1072,8 +1072,6 @@ export const TradeBot = {
      * @returns string: 执行错误信息
     */
     async ToSell() {
-        this.nextSell = CV.NA ;
-
         if (!isStrictTrue(this.canSell)) {
             if (!this.thereCommandFromGS || isStrictFalse(this.commandData.toSell) ) {return true}
             if (this.thereCommandFromGS && isStrictTrue(this.commandData.toSell) && this.ifOrderWaiting) {
@@ -1194,15 +1192,6 @@ export const TradeBot = {
                 S.ing_reason = 'toSell from GS';
             }
 
-            if (!toSell) {
-                this.nextSell = this.lowToSell;
-                for (let i = 0; i < MaxGrid; i++) {
-                    const thisCheckHgh = targetHgh * Math.pow(1 + waveUpChg, i);
-                    if (thisCheckHgh > this.mustSellProfitPrice) { this.nextSell = this.mustSellProfitPrice; break; }
-                    if (thisCheckHgh > this.lowToSell) { this.nextSell = thisCheckHgh; break; }
-                }
-            }
-
             if (isStrictFalse(toSell)) { return true }
 
             const r_gslock = await this.gslock_waitOK() ;
@@ -1262,8 +1251,6 @@ export const TradeBot = {
      * @returns string: 执行错误信息
     */
     async ToBuy() {
-        this.nextBuy = CV.NA ;
-
         if (!isStrictTrue(this.canBuy)) {
             if (!this.thereCommandFromGS || isStrictFalse(this.commandData.toBuy)) { return true }
             if (this.thereCommandFromGS && isStrictTrue(this.commandData.toBuy) && this.ifOrderWaiting) {
@@ -1330,13 +1317,6 @@ export const TradeBot = {
                 S.ing_orderPrice = Math.min(lstRcdTargetLow, TradingSymbolPrice) ;
                 S.ing_orderType = CV.order_T_LMT;
                 S.ing_reason = 'touchTargetLow';
-            }
-
-
-            if (!toBuy) {
-                if (targetLow < this.hghToBuy && targetLow > this.lowToBuy) {
-                    this.nextBuy = Math.max(ToStrictNumber(this.nextBuy, 0), targetLow) ;
-                }
             }
 
             if (this.thereCommandFromGS && isStrictTrue(this.commandData.toBuy)) {
