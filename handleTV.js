@@ -1131,14 +1131,14 @@ export const TradeBot = {
                 S.ing_reason = 'touchTargetHgh';
             }
 
-            // touch targetHgh
+            // touch thereUnuseTargetHghTouch
             if (inNormalSellRegion && (TradingSymbolPrice > (1 + tradeFeeRate) * lowBuyPriceUnclose) && this.thereUnuseTargetHghTouch && TradingSymbolPrice > lstRcdTargetHgh) {
                 this.thereUnuseTargetHghTouch   = false;
                 toSell = true;
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(lowBuySerialUnclose));
                 S.ing_orderPrice = Math.max(this.lstRcdTargetHgh, TradingSymbolPrice);
                 S.ing_orderType  = CV.order_T_LMT ;
-                S.ing_reason = 'touchTargetHgh';
+                S.ing_reason = 'thereUnuseTargetHghTouch';
             }
 
             // mustSellProfitStep
@@ -1316,7 +1316,7 @@ export const TradeBot = {
                 toBuy = true;
                 S.ing_orderPrice = Math.min(lstRcdTargetLow, TradingSymbolPrice) ;
                 S.ing_orderType = CV.order_T_LMT;
-                S.ing_reason = 'touchTargetLow';
+                S.ing_reason = 'thereUnuseTargetLowTouch';
             }
 
             if (this.thereCommandFromGS && isStrictTrue(this.commandData.toBuy)) {
