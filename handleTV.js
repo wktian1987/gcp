@@ -258,6 +258,7 @@ export const TradeBot = {
         if (isStrictNumber(this.lstRcdTouchHghTime) && this.lstRcdTouchHghTime < lstTouchHghTime) {
             this.markTouchTargetHgh         = true              ;
             this.thereUnuseTargetHghTouch   = true              ;   
+            this.thereUnuseTargetLowTouch   = false             ;   
             this.lstRcdTouchHghTime         = lstTouchHghTime   ;
             this.lstRcdTargetHgh            = lstTargetHgh      ;
             AddSetMessage(this.alertMessageSet, "↑ mark TouchTargetHgh") ;
@@ -270,6 +271,7 @@ export const TradeBot = {
         if (isStrictNumber(this.lstRcdTouchLowTime) && this.lstRcdTouchLowTime < lstTouchLowTime) {
             this.markTouchTargetLow         = true              ;
             this.thereUnuseTargetLowTouch   = true              ;
+            this.thereUnuseTargetHghTouch   = false             ;
             this.lstRcdTouchLowTime         = lstTouchLowTime   ;
             this.lstRcdTargetLow            = lstTargetLow      ;
             AddSetMessage(this.alertMessageSet, "↓ mark TouchTargetLow") ;
