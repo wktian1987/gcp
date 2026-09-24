@@ -922,6 +922,7 @@ export const TradeBot = {
         const lowBuyPriceUnclose        = this.getThisTvMainData('lowBuyPriceUnclose')          ;
         let   hghBuyPriceThisGridRound  = this.getThisTvMainData('hghBuyPriceThisGridRound')    ;
 
+        this.hghBuyPriceThisGridRound = hghBuyPriceThisGridRound
         if (hghBuyPriceUnclose > hghBuyPriceThisGridRound) { this.hghBuyPriceThisGridRound = hghBuyPriceUnclose; hghBuyPriceThisGridRound = this.hghBuyPriceThisGridRound }
         if (!isStrictNumber(hghBuyPriceThisGridRound) && isStrictNumber(hghBuyPriceUnclose)) { this.hghBuyPriceThisGridRound = hghBuyPriceUnclose; hghBuyPriceThisGridRound = this.hghBuyPriceThisGridRound }
         if (!isStrictNumber(hghBuyPriceUnclose) && isStrictNumber(hghBuyPriceThisGridRound)) { this.hghBuyPriceThisGridRound = CV.NA; hghBuyPriceThisGridRound = this.hghBuyPriceThisGridRound }
