@@ -121,8 +121,10 @@ const server = http.createServer(async (req, res) => {
         // 这是不得以的做法, 
 
         if (method === 'POST') {
+            console.log(`////////////////收到POST信号: ${url}`);
             // 对于来自TG的消息有单独的快速通道
             if (url === postURL.tgbot) {
+                console.log(`////////////////收到/tgBot连接: ${url}`);
                 const tgLogs = new LogsWithTime('tgBot Message', 'onlyErr');
                 tgLogs.AddNewLogLine("收到/tgBot连接");
                 try {
@@ -145,6 +147,7 @@ const server = http.createServer(async (req, res) => {
                     tgLogs.AddNewLogLine(`HandleTgBot()处理成功`);
                 } catch (e) { tgLogs.AddNewErrLogLine(`HandleTgBot()处理失败: ${e.message}`) } finally { tgLogs.consoleLogs() }
             } else {
+                console.log(`////////////////收到POST信号: ${url}`);
                 let stopHandleThisSigal = false;
                 if (stopHandleNewSignals) {
                     stopHandleThisSigal = true;
