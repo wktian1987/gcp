@@ -37,8 +37,6 @@ export async function HandleTgBot(msg) {
     // 只处理我或者群内发来的消息
     if (chat_id !== myTgID && chat_id !== myGroupAlertTgID) {
         SendTG("收到未授权联系人信息", "已忽略本条消息", myTgID).catch(()=>{});
-        await Sleep(1000);
-        SendTG("收到未授权联系人信息", "已忽略本条消息", myGroupAlertTgID).catch(()=>{});
         return ;
     }
 
