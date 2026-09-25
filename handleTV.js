@@ -920,18 +920,18 @@ export const TradeBot = {
         const lstTradeTime              = this.getThisTvMainData('lstTradeTime')                ;
         const hghBuyPriceUnclose        = this.getThisTvMainData('hghBuyPriceUnclose')          ;
         const lowBuyPriceUnclose        = this.getThisTvMainData('lowBuyPriceUnclose')          ;
-        let   hghBuyPriceThisGridRound  = this.getThisTvMainData('hghBuyPriceThisGridRound')    ;
+        const hghBuyPriceThisGridRound  = this.getThisTvMainData('hghBuyPriceThisGridRound')    ;
 
         this.hghBuyPriceThisGridRound = hghBuyPriceThisGridRound
-        if (hghBuyPriceUnclose > hghBuyPriceThisGridRound) { this.hghBuyPriceThisGridRound = hghBuyPriceUnclose; hghBuyPriceThisGridRound = this.hghBuyPriceThisGridRound }
-        if (!isStrictNumber(hghBuyPriceThisGridRound) && isStrictNumber(hghBuyPriceUnclose)) { this.hghBuyPriceThisGridRound = hghBuyPriceUnclose; hghBuyPriceThisGridRound = this.hghBuyPriceThisGridRound }
-        if (!isStrictNumber(hghBuyPriceUnclose) && isStrictNumber(hghBuyPriceThisGridRound)) { this.hghBuyPriceThisGridRound = CV.NA; hghBuyPriceThisGridRound = this.hghBuyPriceThisGridRound }
+        if (hghBuyPriceUnclose > hghBuyPriceThisGridRound) { this.hghBuyPriceThisGridRound = hghBuyPriceUnclose }
+        if (!isStrictNumber(hghBuyPriceThisGridRound) && isStrictNumber(hghBuyPriceUnclose)) { this.hghBuyPriceThisGridRound = hghBuyPriceUnclose }
+        if (!isStrictNumber(hghBuyPriceUnclose) && isStrictNumber(hghBuyPriceThisGridRound)) { this.hghBuyPriceThisGridRound = CV.NA }
 
         // 计算边界
         this.closeToRndHgh = roundHgh / Math.pow((1 + waveUpChg), notBuyCloseToRndHghStep);
         this.closeToRndLow = roundLow / Math.pow((1 + waveDnChg), notBuyCloseToRndLowStep);
 
-        this.enDifficultyBuyPrice  = Math.min(ToStrictNumber(hghBuyPriceThisGridRound, roundHgh) * (1 + enDifficulty * waveDnChg) , ToStrictNumber(lowBuyPriceUnclose, roundHgh) * (1 + waveDnChg) )
+        this.enDifficultyBuyPrice  = Math.min(ToStrictNumber(this.hghBuyPriceThisGridRound, roundHgh) * (1 + enDifficulty * waveDnChg) , ToStrictNumber(lowBuyPriceUnclose, roundHgh) * (1 + waveDnChg) )
         this.exDifficultySellPrice = Math.max(ToStrictNumber(lowBuyPriceUnclose, roundLow) * (1 + exDifficulty * waveUpChg) , ToStrictNumber(lowBuyPriceUnclose, roundLow) * (1+waveUpChg) )
 
         this.lowToBuy   = Math.max(basicLowToBuy    , this.closeToRndLow);
@@ -1626,10 +1626,10 @@ export const TradeBot = {
                                         [this.lowestCoin            ]   ]   ;
 
                 this.batchUpdateList.push(...makeRequestBodyArrayofBatchUpdate_clearUpdate({
-                    sheetID: this.sheetsID[this.toGCPData.HghLowRange.split('!')[0]] ,
+                    sheetID: this.sheetsID[this.toGCPData.HghLowRange.split('!')[0]],
                     range: this.toGCPData.HghLowRange,
                     values: newHghLowV
-                })) ;
+                }));
             }
 
             this.batchUpdateList.push(makeRequestBodyArrayofBatchUpdate_clear({
@@ -1642,12 +1642,11 @@ export const TradeBot = {
                 values: ObjToA2dNumBoolStr(this)
             }));
 
-            this.batchUpdateList.push(makeRequestBodyArrayofBatchUpdate_update(
-                {
-                sheetID : this.sheetsID[this.toGCPData.lockRange.split('!')[0]]     ,
-                range   : this.toGCPData.lockRange                                  ,
-                values  : [[CV.noLOCK]]                                             }
-            ));
+            this.batchUpdateList.push(makeRequestBodyArrayofBatchUpdate_update({
+                sheetID: this.sheetsID[this.toGCPData.lockRange.split('!')[0]],
+                range: this.toGCPData.lockRange,
+                values: [[CV.noLOCK]]
+            }));
 
 
             const r_gslock = await this.gslock_waitOK() ;
