@@ -69,6 +69,10 @@ const TV_StrategyOption = {
     onlyWave        : 'onlyWave'        ,
     onlyGrid        : 'onlyGrid'        ,
     bothWaveGrid    : 'bothWaveGrid'    } ;
+const TV_BuyLongShort = {
+    AllTime         : 'AllTime'         ,
+    InLong          : 'InLong'          ,
+    InShort         : 'InShort'         } ;
 
 export async function HandleAllPrice(tvData, thisLogs) {
     const RangeAllPrices = "fromTV!A2:B" ;
@@ -900,7 +904,9 @@ export const TradeBot = {
         const roundLow              = this.getThisTvMainData('roundLow')            ;
         const smaHghLow             = this.getThisTvMainData('smaHghLow')           ;
         const mustSellProfitStep    = this.getThisTvMainData('mustSellProfitStep')  ;
-        const canBuyLongShort       = this.getThisTvMainData('canBuyLongShort')     ;
+        const BuyLongShort          = this.getThisTvMainData('BuyLongShort')        ;
+        const inLong                = this.getThisTvMainData('inLong')              ;
+        const inShort               = this.getThisTvMainData('inShort')             ;
 
         const realTradeTime             = this.getThisTvMainData('realTradeTime')               ;
         const realTradeTimeTo           = this.getThisTvMainData('realTradeTimeTo')             ;
@@ -957,6 +963,11 @@ export const TradeBot = {
 
         this.inTradingTime = timestamp > realTradeTime && timestamp < realTradeTimeTo;
 
+        this.canBuyLongShort = false ;
+        if (BuyLongShort === TV_BuyLongShort.InLong  && isStrictTrue(inLong)  ) {this.canBuyLongShort = true}
+        if (BuyLongShort === TV_BuyLongShort.InShort && isStrictTrue(inShort) ) {this.canBuyLongShort = true}
+        if (BuyLongShort === TV_BuyLongShort.AllTime )                          {this.canBuyLongShort = true}
+
         // 判断严格地不能买卖条件
         this.canBuy         = true  ;
         this.cantBuyReason  = ""    ;
@@ -989,7 +1000,7 @@ export const TradeBot = {
             this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + "gridNum >= MaxGrid");
         }
 
-        if (!canBuyLongShort) {
+        if (!this.canBuyLongShort) {
             this.canBuy = false;
             this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + "canBuyLongShort is false");
         }
