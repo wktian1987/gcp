@@ -899,7 +899,7 @@ export const TradeBot = {
         if (this.allCoin < this.lowestCoin) { this.toWriteHghLow = true; this.lowestCoin = this.allCoin; AddSetMessage(this.alertMessageSet, "↓ new lowestCoin"); }
 
         if (this.toWriteHghLow) {
-            this.initiated              = isStrictTrue(this.mainData.initiated) ? true : false;
+            this.initiated              = isStrictTrue(this.mainData.initiated) ;
             this.initiateTime           = ToStrictNumber(this.mainData.initiateTime             ,timestamp              ) ;
             this.inTradingSymbolPrice   = ToStrictNumber(this.mainData.inTradingSymbolPrice     , TradingSymbolPrice    ) ;
             this.inBaseCoinPrice        = ToStrictNumber(this.mainData.inBaseCoinPrice          , BaseCoinPrice         ) ;
@@ -922,8 +922,8 @@ export const TradeBot = {
 
 
         // 计算边界
-        const closeToRndHgh = roundHgh / Math.pow((1 + waveUpChg), notBuyCloseToRndHghStep);
-        const closeToRndLow = roundLow / Math.pow((1 + waveDnChg), notBuyCloseToRndLowStep);
+        const closeToRndHgh = roundHgh / Math.pow(1 + waveUpChg, notBuyCloseToRndHghStep);
+        const closeToRndLow = roundLow / Math.pow(1 + waveDnChg, notBuyCloseToRndLowStep);
 
         const difficultyPower = difficultyCoefficient + 1                   ; // 只在本函数第一次使用时运行一次 
         const gridMaxPowerDiv = Math.pow(MaxGrid, difficultyCoefficient)    ; // 只在本函数第一次使用时运行一次
@@ -933,7 +933,7 @@ export const TradeBot = {
         if (hghBuyPriceUnclose > hghBuyPriceThisGridRound) { this.hghBuyPriceThisGridRound = hghBuyPriceUnclose }
         if (!isStrictNumber(hghBuyPriceThisGridRound) && isStrictNumber(hghBuyPriceUnclose)) { this.hghBuyPriceThisGridRound = hghBuyPriceUnclose }
         if (!isStrictNumber(hghBuyPriceUnclose) && isStrictNumber(hghBuyPriceThisGridRound)) { this.hghBuyPriceThisGridRound = CV.NA }
-        const enDifficultyBuyPrice      = Math.min(ToStrictNumber(this.hghBuyPriceThisGridRound, roundHgh) * Math.pow((1 + waveDnChg), this.enDifficulty), ToStrictNumber(lowBuyPriceUnclose, roundHgh) * (1+waveDnChg) )
+        const enDifficultyBuyPrice      = Math.min(ToStrictNumber(this.hghBuyPriceThisGridRound, roundHgh) * Math.pow(1 + waveDnChg, this.enDifficulty), ToStrictNumber(lowBuyPriceUnclose, roundHgh) * (1+waveDnChg) )
         const exDifficultySellPrice     = ToStrictNumber(lowBuyPriceUnclose, roundLow) * (1+waveUpChg)
 
         this.lowToBuy = Math.max(basicLowToBuy, closeToRndLow);
@@ -950,8 +950,7 @@ export const TradeBot = {
 
         this.cutToPreventLiqPrice = isStrictNumber(this.liquidatePrice) && this.liquidatePrice > 0 ? this.liquidatePrice / (1 + closeToLiquid) : CV.NA ;
 
-        this.mustSellProfitPrice = Math.pow((1 + waveUpChg), mustSellProfitStep) * lowBuyPriceUnclose ;
-        if (!isStrictNumber(this.mustSellProfitPrice)) { this.mustSellProfitPrice = CV.NA }
+        this.mustSellProfitPrice = ToStrictNumber(Math.pow(1 + waveUpChg, mustSellProfitStep) * lowBuyPriceUnclose, CV.NA);
 
         this.inTradingTime = timestamp > realTradeTime && timestamp < realTradeTimeTo;
 
@@ -969,42 +968,42 @@ export const TradeBot = {
         if (!this.inTradingTime) {
             this.canBuy = false;
             this.canSell = false;
-            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'not in trading time');
-            this.cantSellReason = AddMessage(this.cantSellReason, 'cant sell: ' + 'not in trading time');
+            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cantBuy: ' + 'not in trading time');
+            this.cantSellReason = AddMessage(this.cantSellReason, 'cantSell: ' + 'not in trading time');
         }
 
         if (timestamp - lstTradeTime < ordersInterval * 60000) {
             this.canBuy = false;
             this.canSell = false;
-            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'there order just done, wait some time');
-            this.cantSellReason = AddMessage(this.cantSellReason, 'cant sell: ' + 'there order just done, wait some time');
+            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cantBuy: ' + 'there order just done, wait some time');
+            this.cantSellReason = AddMessage(this.cantSellReason, 'cantSell: ' + 'there order just done, wait some time');
         }
 
         if (ifOrderWaiting) {
             this.canBuy = false;
             this.canSell = false;
-            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'there order waiting');
-            this.cantSellReason = AddMessage(this.cantSellReason, 'cant sell: ' + 'there order waiting');
+            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cantBuy: ' + 'there order waiting');
+            this.cantSellReason = AddMessage(this.cantSellReason, 'cantSell: ' + 'there order waiting');
         }
 
         if (Number(gridNum) >= Number(MaxGrid)) {
             this.canBuy = false;
-            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + "gridNum >= MaxGrid");
+            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cantBuy: ' + "gridNum >= MaxGrid");
         }
 
         if (!this.canBuyLongShort) {
             this.canBuy = false;
-            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + "canBuyLongShort is false");
+            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cantBuy: ' + "canBuyLongShort is false");
         }
 
         if (this.freeMargin / (MaxGrid - gridNum) < 1.1 * minEnExPosition * TradingSymbolPrice / leverage) {
             this.canBuy = false;
-            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cant buy: ' + 'Not enough freeMargin');
+            this.cantBuyReason = AddMessage(this.cantBuyReason, 'cantBuy: ' + 'Not enough freeMargin');
         }
 
         if (!isStrictTrue(therePosition)) {
             this.canSell = false;
-            this.cantSellReason = AddMessage(this.cantSellReason, 'cant sell: ' + 'No position to sell');
+            this.cantSellReason = AddMessage(this.cantSellReason, 'cantSell: ' + 'No position to sell');
         }
 
         AddSetMessage(this.alertMessageSet, this.cantBuyReason);
@@ -1128,8 +1127,8 @@ export const TradeBot = {
             const idx_confirmPrice  = uncloseOrdersTitleA.indexOf('confirmPrice')   ;
             const idx_qty           = uncloseOrdersTitleA.indexOf('qty')            ;
 
-            const inNormalSellRegion = TradingSymbolPrice > this.lowToSell ? true : false ;
-            AddSetMessage(this.alertMessageSet, inNormalSellRegion ? 'inNormalSellRegion' : 'not inNormalSellRegion');
+            const inNormalSellRegion = TradingSymbolPrice > this.lowToSell;
+            if (!isStrictTrue(inNormalSellRegion)) { AddSetMessage('cantSell: not inNormalSellRegion') }
 
             let tradeOption_withWave  =  StrategyOption === TV_StrategyOption.onlyWave || TV_StrategyOption.bothWaveGrid
             let tradeOption_withGrid  =  StrategyOption === TV_StrategyOption.onlyGrid || TV_StrategyOption.bothWaveGrid
@@ -1259,7 +1258,7 @@ export const TradeBot = {
             ToWeb_AddNewLine({type: 'trade', message: newWebLine});
 
             this.canBuy = false;
-            AddSetMessage(this.alertMessageSet, 'cant buy: just a new sellOrder sent');
+            AddSetMessage(this.alertMessageSet, 'cantBuy: just a new sellOrder sent');
 
             return true;
         } catch (e) { return this.returnRunningWellErrMessage('ToSell()失败', e.message) }
@@ -1323,8 +1322,8 @@ export const TradeBot = {
             let toBuy = false;
             const S = {};
 
-            const inNormalBuyRegion = TradingSymbolPrice > this.lowToBuy && TradingSymbolPrice < this.hghToBuy ? true : false ; 
-            AddSetMessage(this.alertMessageSet, inNormalBuyRegion ? 'inNormalBuyRegion' : 'not inNormalBuyRegion') ;
+            const inNormalBuyRegion = TradingSymbolPrice > this.lowToBuy && TradingSymbolPrice < this.hghToBuy;
+            if (!isStrictTrue(inNormalBuyRegion)) { AddSetMessage('cantBuy: not inNormalBuyRegion') }
 
             let tradeOption_withWave  =  StrategyOption === TV_StrategyOption.onlyWave || TV_StrategyOption.bothWaveGrid
             let tradeOption_withGrid  =  StrategyOption === TV_StrategyOption.onlyGrid || TV_StrategyOption.bothWaveGrid
@@ -1409,7 +1408,7 @@ export const TradeBot = {
             ToWeb_AddNewLine({type: 'trade', message: newWebLine});
 
             this.canSell = false;
-            AddSetMessage(this.alertMessageSet, 'cant sell: just a new buyOrder sent');
+            AddSetMessage(this.alertMessageSet, 'cantSell: just a new buyOrder sent');
 
             return true;
 
@@ -1515,7 +1514,7 @@ export const TradeBot = {
 
                     this.allPosition = allPosition + ingOrderData.ing_qty ;
                     if (this.allPosition < minEnExPosition) {this.allPosition = 0}
-                    this.therePosition = this.allPosition > minEnExPosition ? true : false ;
+                    this.therePosition = this.allPosition > minEnExPosition ;
                     // this.avgBuyPrice 无变化
                     this.netProfit = ToStrictNumber(netProfit, 0) + ingOrderData.ing_qty * (ingOrderData.ing_confirmPrice - avgBuyPrice) + ingOrderData.ing_tradeFee;
                 }
