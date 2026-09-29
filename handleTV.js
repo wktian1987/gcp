@@ -926,7 +926,7 @@ export const TradeBot = {
         const closeToRndLow = roundLow / Math.pow((1 + waveDnChg), notBuyCloseToRndLowStep);
 
         const difficultyPower = difficultyCoefficient + 1                   ; // 只在本函数第一次使用时运行一次 
-        const gridMaxPowerDiv = math.pow(MaxGrid, difficultyCoefficient)    ; // 只在本函数第一次使用时运行一次
+        const gridMaxPowerDiv = Math.pow(MaxGrid, difficultyCoefficient)    ; // 只在本函数第一次使用时运行一次
         this.enDifficulty  = difficultyCoefficient < 0 ? 0 : Math.pow(gridNum+1, difficultyPower)/gridMaxPowerDiv                   ;
         this.exDifficulty  = difficultyCoefficient < 0 ? 0 : Math.pow(MaxGrid+1-gridNum, difficultyPower)/gridMaxPowerDiv/MaxGrid   ;
         this.hghBuyPriceThisGridRound = hghBuyPriceThisGridRound;
