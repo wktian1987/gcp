@@ -925,8 +925,8 @@ export const TradeBot = {
         const closeToRndHgh = roundHgh / Math.pow(1 + waveUpChg, notBuyCloseToRndHghStep);
         const closeToRndLow = roundLow / Math.pow(1 + waveDnChg, notBuyCloseToRndLowStep);
 
-        const difficultyPower = difficultyCoefficient + 1                   ; // 只在本函数第一次使用时运行一次 
-        const gridMaxPowerDiv = Math.pow(MaxGrid, difficultyCoefficient)    ; // 只在本函数第一次使用时运行一次
+        const difficultyPower = difficultyCoefficient + 1                   ; // 实际上每次运行都会得到同样的值
+        const gridMaxPowerDiv = Math.pow(MaxGrid, difficultyCoefficient)    ; // 实际上每次运行都会得到同样的值
         this.enDifficulty  = difficultyCoefficient < 0 ? 0 : Math.pow(gridNum+1, difficultyPower)/gridMaxPowerDiv                   ;
         this.exDifficulty  = difficultyCoefficient < 0 ? 0 : Math.pow(MaxGrid+1-gridNum, difficultyPower)/gridMaxPowerDiv/MaxGrid   ;
         this.hghBuyPriceThisGridRound = hghBuyPriceThisGridRound;
@@ -1434,13 +1434,12 @@ export const TradeBot = {
 
             const minEnExPosition       =  this.getThisTvMainData('minEnExPosition')        ;
             const ifOrderWaiting        =  this.getThisTvMainData('ifOrderWaiting')         ;
-            const therePosition         =  this.getThisTvMainData('therePosition')          ;
             const allPosition           =  this.getThisTvMainData('allPosition')            ;
             const avgBuyPrice           =  this.getThisTvMainData('avgBuyPrice')            ;
             const netProfit             =  this.getThisTvMainData('netProfit')              ;
             const hghBuyPriceUnclose    =  this.getThisTvMainData('hghBuyPriceUnclose')     ;
-
-
+            const lowBuyPriceUnclose    =  this.getThisTvMainData('lowBuyPriceUnclose')     ;
+            const gridNum               =  this.getThisTvMainData('gridNum')                ;
 
             if (!isStrictTrue(ifOrderWaiting)) { return true }
 
@@ -1487,10 +1486,12 @@ export const TradeBot = {
                     const newUncloseOrderLine = uncloseOrdersTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || CV.NA));
                     uncloseOrdersA2d.push(newUncloseOrderLine);
 
-                    if (ingOrderData.confirmPrice > hghBuyPriceUnclose) { this.hghBuyPriceUnclose = ingOrderData.confirmPrice }
-                    if (!isStrictTrue(therePosition)) { this.therePosition = true }
-                    this.allPosition = ToStrictNumber(allPosition, 0) + ingOrderData.ing_qty ;
-                    this.avgBuyPrice = ingOrderData.ing_avgBuyPrice ;
+                    this.gridNum = ToStrictNumber(gridNum, 0) + 1;
+                    this.therePosition = true;
+                    this.allPosition = ToStrictNumber(allPosition, 0) + ingOrderData.ing_qty;
+                    this.avgBuyPrice = ingOrderData.ing_avgBuyPrice;
+                    this.hghBuyPriceUnclose =  ingOrderData.confirmPrice > ToStrictNumber(hghBuyPriceUnclose, 0) ? ingOrderData.confirmPrice : hghBuyPriceUnclose ;
+                    this.lowBuyPriceUnclose =  ingOrderData.confirmPrice < ToStrictNumber(lowBuyPriceUnclose, 0) || !isStrictNumber(lowBuyPriceUnclose)? ingOrderData.confirmPrice : lowBuyPriceUnclose ;
                     // this.netProfit 无变化
                 }
                 if (ingOrderData.ing_buysell === CV.order_SELL) {
@@ -1515,8 +1516,21 @@ export const TradeBot = {
                     this.allPosition = allPosition + ingOrderData.ing_qty ;
                     if (this.allPosition < minEnExPosition) {this.allPosition = 0}
                     this.therePosition = this.allPosition > minEnExPosition ;
-                    // this.avgBuyPrice 无变化
+                    this.gridNum = this.therePosition ? gridNum - 1 : 0 ;
                     this.netProfit = ToStrictNumber(netProfit, 0) + ingOrderData.ing_qty * (ingOrderData.ing_confirmPrice - avgBuyPrice) + ingOrderData.ing_tradeFee;
+                    if (uncloseOrdersA2d.length > 0) {
+                        let lowBuyPriceUnclose = uncloseOrdersA2d[0][index_confirmPrice];
+                        let hghBuyPriceUnclose = lowBuyPriceUnclose;
+                        for (const uncloseOrder of uncloseOrdersA2d) {
+                            if (uncloseOrder[index_confirmPrice] < lowBuyPriceUnclose) { lowBuyPriceUnclose = uncloseOrder[index_confirmPrice] }
+                            if (uncloseOrder[index_confirmPrice] > hghBuyPriceUnclose) { hghBuyPriceUnclose = uncloseOrder[index_confirmPrice] }
+                        }
+                        this.lowBuyPriceUnclose = lowBuyPriceUnclose;
+                        this.hghBuyPriceUnclose = hghBuyPriceUnclose;
+                    } else {
+                        this.lowBuyPriceUnclose = CV.NA;
+                        this.hghBuyPriceUnclose = CV.NA;
+                    }
                 }
 
                 w_toClearRangeSet.add(toGCPData.ingOrderLine);
