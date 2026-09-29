@@ -1493,6 +1493,7 @@ export const TradeBot = {
                     this.hghBuyPriceUnclose =  ingOrderData.confirmPrice > ToStrictNumber(hghBuyPriceUnclose, 0) ? ingOrderData.confirmPrice : hghBuyPriceUnclose ;
                     this.lowBuyPriceUnclose =  ingOrderData.confirmPrice < ToStrictNumber(lowBuyPriceUnclose, 0) || !isStrictNumber(lowBuyPriceUnclose)? ingOrderData.confirmPrice : lowBuyPriceUnclose ;
                     // this.netProfit 无变化
+                    this.lstTradeTime = ingOrderData.ing_confirmTimestamp;
                 }
                 if (ingOrderData.ing_buysell === CV.order_SELL) {
                     const index_orderID         =  uncloseOrdersTitleA.indexOf('orderID')       ;
@@ -1511,12 +1512,16 @@ export const TradeBot = {
                         theBoughtOrder[index_qty]       =  (1-ingOrderData.ing_isPartial) * theBoughtOrder[index_qty]       ;
                         theBoughtOrder[index_pXq]       =  theBoughtOrder[index_confirmPrice] * theBoughtOrder[index_qty]   ;
                         // uncloseOrdersA2d[indexOfBoughtOrder] = theBoughtOrder ; // 这一行可以去掉, 因为引用的直接是地址
-                    } else {uncloseOrdersA2d.splice(indexOfBoughtOrder, 1)}
+                        this.gridNum = ToStrictNumber(gridNum, 0) ;
+                    } else {
+                        uncloseOrdersA2d.splice(indexOfBoughtOrder, 1) ;
+                        this.gridNum = ToStrictNumber(gridNum, 0) - 1  ;
+                    }
 
                     this.allPosition = allPosition + ingOrderData.ing_qty ;
                     if (this.allPosition < minEnExPosition) {this.allPosition = 0}
                     this.therePosition = this.allPosition > minEnExPosition ;
-                    this.gridNum = this.therePosition ? gridNum - 1 : 0 ;
+                    // this.gridNum be updated in previous if-else
                     this.netProfit = ToStrictNumber(netProfit, 0) + ingOrderData.ing_qty * (ingOrderData.ing_confirmPrice - avgBuyPrice) + ingOrderData.ing_tradeFee;
                     if (uncloseOrdersA2d.length > 0) {
                         let lowBuyPriceUnclose = uncloseOrdersA2d[0][index_confirmPrice];
@@ -1531,6 +1536,7 @@ export const TradeBot = {
                         this.lowBuyPriceUnclose = CV.NA;
                         this.hghBuyPriceUnclose = CV.NA;
                     }
+                    this.lstTradeTime = ingOrderData.ing_confirmTimestamp;
                 }
 
                 w_toClearRangeSet.add(toGCPData.ingOrderLine);
