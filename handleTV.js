@@ -594,6 +594,7 @@ export const TradeBot = {
     /**
      * 将新数据写入bot对象中 ; 
      * @param {Object} newData 需要写入的新数据, 需保证newData是clean状态
+     * @returns true: 执行成功
      * @returns string: 失败返回具体熔断错误字符串
      */
     updateDataToBot(newData) {
@@ -834,22 +835,23 @@ export const TradeBot = {
     } ,
 
     CalcuBuySellLimit() {
-        const timestamp             = this.getThisTvMainData('timestamp')           ;
-        const TradingSymbolPrice    = this.getThisTvMainData('TradingSymbolPrice')  ;
-        const inFund                = this.getThisTvMainData('inFund')              ;
-        const inCoin                = this.getThisTvMainData('inCoin')              ;
-        const leverage              = this.getThisTvMainData('leverage')            ;
-        const waveUpChg             = this.getThisTvMainData('waveUpChg')           ;
-        const waveDnChg             = this.getThisTvMainData('waveDnChg')           ;
-        const roundHgh              = this.getThisTvMainData('roundHgh')            ;
-        const roundLow              = this.getThisTvMainData('roundLow')            ;
-        const smaHghLow             = this.getThisTvMainData('smaHghLow')           ;
-        const mustSellProfitStep    = this.getThisTvMainData('mustSellProfitStep')  ;
-        const BuyLongShort          = this.getThisTvMainData('BuyLongShort')        ;
-        const inLong                = this.getThisTvMainData('inLong')              ;
-        const inShort               = this.getThisTvMainData('inShort')             ;
-        const BaseCoinPrice         = this.getThisTvMainData('BaseCoinPrice')       ;
-        const BaseCoinHairCut       = this.getThisTvMainData('BaseCoinHairCut')     ;
+        const timestamp                 = this.getThisTvMainData('timestamp')                   ;
+        const TradingSymbolPrice        = this.getThisTvMainData('TradingSymbolPrice')          ;
+        const inFund                    = this.getThisTvMainData('inFund')                      ;
+        const inCoin                    = this.getThisTvMainData('inCoin')                      ;
+        const leverage                  = this.getThisTvMainData('leverage')                    ;
+        const waveUpChg                 = this.getThisTvMainData('waveUpChg')                   ;
+        const waveDnChg                 = this.getThisTvMainData('waveDnChg')                   ;
+        const roundHgh                  = this.getThisTvMainData('roundHgh')                    ;
+        const roundLow                  = this.getThisTvMainData('roundLow')                    ;
+        const smaHghLow                 = this.getThisTvMainData('smaHghLow')                   ;
+        const mustSellProfitStep        = this.getThisTvMainData('mustSellProfitStep')          ;
+        const BuyLongShort              = this.getThisTvMainData('BuyLongShort')                ;
+        const inLong                    = this.getThisTvMainData('inLong')                      ;
+        const inShort                   = this.getThisTvMainData('inShort')                     ;
+        const difficultyCoefficient     = this.getThisTvMainData('difficultyCoefficient')       ;
+        const BaseCoinPrice             = this.getThisTvMainData('BaseCoinPrice')               ;
+        const BaseCoinHairCut           = this.getThisTvMainData('BaseCoinHairCut')             ;
 
         const realTradeTime             = this.getThisTvMainData('realTradeTime')               ;
         const realTradeTimeTo           = this.getThisTvMainData('realTradeTimeTo')             ;
@@ -865,8 +867,6 @@ export const TradeBot = {
         const MaxGrid                   = this.getThisTvMainData('MaxGrid')                     ;
         const ifOrderWaiting            = this.getThisTvMainData('ifOrderWaiting')              ;
         const gridNum                   = this.getThisTvMainData('gridNum')                     ;
-        const enDifficulty              = this.getThisTvMainData('enDifficulty')                ;
-        const exDifficulty              = this.getThisTvMainData('exDifficulty')                ;
         const therePosition             = this.getThisTvMainData('therePosition')               ;
         const lstTradeTime              = this.getThisTvMainData('lstTradeTime')                ;
         const hghBuyPriceUnclose        = this.getThisTvMainData('hghBuyPriceUnclose')          ;
@@ -877,8 +877,6 @@ export const TradeBot = {
         const netProfit                 = this.getThisTvMainData('netProfit')                   ;
        
 
-        // 有新交易后，发生变化的变量是:
-        // therePosition, allPosition, avgBuyPrice, netProfit, 
         this.openProfit = isStrictTrue(therePosition) ? allPosition * (TradingSymbolPrice - avgBuyPrice) : CV.NA;
         this.allProfit = ToStrictNumber(netProfit, 0) + ToStrictNumber(this.openProfit, 0);
         this.usedMargin = isStrictTrue(therePosition) ? allPosition * TradingSymbolPrice / leverage : CV.NA;
@@ -922,21 +920,29 @@ export const TradeBot = {
         ///////////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////////
 
+
+        // 计算边界
+        const closeToRndHgh = roundHgh / Math.pow((1 + waveUpChg), notBuyCloseToRndHghStep);
+        const closeToRndLow = roundLow / Math.pow((1 + waveDnChg), notBuyCloseToRndLowStep);
+
+        const difficultyPower = difficultyCoefficient + 1                   ; // 只在本函数第一次使用时运行一次 
+        const gridMaxPowerDiv = math.pow(MaxGrid, difficultyCoefficient)    ; // 只在本函数第一次使用时运行一次
+        this.enDifficulty  = difficultyCoefficient < 0 ? 0 : Math.pow(gridNum+1, difficultyPower)/gridMaxPowerDiv                   ;
+        this.exDifficulty  = difficultyCoefficient < 0 ? 0 : Math.pow(MaxGrid+1-gridNum, difficultyPower)/gridMaxPowerDiv/MaxGrid   ;
         this.hghBuyPriceThisGridRound = hghBuyPriceThisGridRound;
         if (hghBuyPriceUnclose > hghBuyPriceThisGridRound) { this.hghBuyPriceThisGridRound = hghBuyPriceUnclose }
         if (!isStrictNumber(hghBuyPriceThisGridRound) && isStrictNumber(hghBuyPriceUnclose)) { this.hghBuyPriceThisGridRound = hghBuyPriceUnclose }
         if (!isStrictNumber(hghBuyPriceUnclose) && isStrictNumber(hghBuyPriceThisGridRound)) { this.hghBuyPriceThisGridRound = CV.NA }
 
-        // 计算边界
-        this.closeToRndHgh = roundHgh / Math.pow((1 + waveUpChg), notBuyCloseToRndHghStep);
-        this.closeToRndLow = roundLow / Math.pow((1 + waveDnChg), notBuyCloseToRndLowStep);
+        const enDifficultyBuyPrice      = Math.min(ToStrictNumber(this.hghBuyPriceThisGridRound, roundHgh) * Math.pow((1 + waveDnChg), this.enDifficulty), ToStrictNumber(lowBuyPriceUnclose, roundHgh) * (1+waveDnChg) )
+        const exDifficultySellPrice     = ToStrictNumber(lowBuyPriceUnclose, roundLow) * (1+waveUpChg)
 
-        this.enDifficultyBuyPrice  = Math.min(ToStrictNumber(this.hghBuyPriceThisGridRound, roundHgh) * (1 + enDifficulty * waveDnChg) , ToStrictNumber(lowBuyPriceUnclose, roundHgh) * (1 + waveDnChg) )
-        this.exDifficultySellPrice = Math.max(ToStrictNumber(lowBuyPriceUnclose, roundLow) * (1 + exDifficulty * waveUpChg) , ToStrictNumber(lowBuyPriceUnclose, roundLow) * (1+waveUpChg) )
+        this.enDifficultyBuyPrice       = Math.min(ToStrictNumber(this.hghBuyPriceThisGridRound, roundHgh) * (1 + enDifficulty * waveDnChg) , ToStrictNumber(lowBuyPriceUnclose, roundHgh) * (1 + waveDnChg) )
+        this.exDifficultySellPrice      = Math.max(ToStrictNumber(lowBuyPriceUnclose, roundLow) * (1 + exDifficulty * waveUpChg) , ToStrictNumber(lowBuyPriceUnclose, roundLow) * (1+waveUpChg) )
 
-        this.lowToBuy = Math.max(basicLowToBuy, this.closeToRndLow);
-        this.hghToBuy = Math.min(basicHghToBuy, this.closeToRndHgh, this.enDifficultyBuyPrice);
-        this.lowToSell = Math.max(basicLowToSell, this.exDifficultySellPrice);
+        this.lowToBuy = Math.max(basicLowToBuy, closeToRndLow);
+        this.hghToBuy = Math.min(basicHghToBuy, closeToRndHgh, enDifficultyBuyPrice);
+        this.lowToSell = Math.max(basicLowToSell, exDifficultySellPrice);
 
         this.cutTooHighBuyPrice = CV.NA ;
         if (therePosition) {
@@ -1609,7 +1615,8 @@ export const TradeBot = {
         try {
             if (isStrictTrue(this.toReNewBeforeWrite)) { this.CalcuBuySellLimit() }
 
-            this.updateDataToBot(this.tvData) ;
+            const r_updateDataToBot = this.updateDataToBot(this.tvData) ;
+            if (!isStrictTrue(r_updateDataToBot)) {throw new Error('updateDataToBot() 失败: \n' + ToStrictString(r_updateDataToBot, CV.NA))}
 
             if (this.alertMessageSet.size > 0) { this.alertMessage = StrFromSetMessage(this.alertMessageSet) }
 
