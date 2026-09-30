@@ -363,19 +363,23 @@ export const TradeBot = {
     } ,
 
     async makeGSCMD(commandData) {
+        const mainData  = this.getThisTvMainData('mainData')    ;
+        const toGCPData = this.getThisTvMainData('toGCPData')   ;
+
+
         this.thereCommandFromGS = false ; // 最高等级的交易命令, 直接来自GS的交易信号, 需要亲自手动设置
-        if (isStrictTrue(this.mainData.initiated)               &&    
+        if (isStrictTrue(mainData.initiated)               &&    
             Object.hasOwn(commandData, 'thisCommandBeRead')     &&
             Object.hasOwn(commandData, 'noCommandError')        &&
             isStrictFalse(commandData.thisCommandBeRead)        &&
             isStrictTrue(commandData.noCommandError)            )  {
             commandData.thisCommandBeRead = true ;
-            await try3times(UpdateGS, this.spreadsheetID, this.toGCPData.commandReadRange, [[commandData.thisCommandBeRead]]) ;
-            let checkCommandRead = ToStrictNumBoolStr( (await try3times(GetGS, this.spreadsheetID, this.toGCPData.commandReadRange))[0][0] ) ;
+            await try3times(UpdateGS, this.spreadsheetID, toGCPData.commandReadRange, [[commandData.thisCommandBeRead]]) ;
+            let checkCommandRead = ToStrictNumBoolStr( (await try3times(GetGS, this.spreadsheetID, toGCPData.commandReadRange))[0][0] ) ;
             if (checkCommandRead !== commandData.thisCommandBeRead) {
                 // 再重试一次, 重新写, 等2s再重新读
-                await try3times(UpdateGS, this.spreadsheetID, this.toGCPData.commandReadRange, [[commandData.thisCommandBeRead]]) ;
-                checkCommandRead = ToStrictNumBoolStr( (await try3times(GetGS, this.spreadsheetID, this.toGCPData.commandReadRange))[0][0] ) ;
+                await try3times(UpdateGS, this.spreadsheetID, toGCPData.commandReadRange, [[commandData.thisCommandBeRead]]) ;
+                checkCommandRead = ToStrictNumBoolStr( (await try3times(GetGS, this.spreadsheetID, toGCPData.commandReadRange))[0][0] ) ;
                 if (checkCommandRead !== commandData.thisCommandBeRead) {
                     throw new Error('读取并设置commandFromGS 失败') ;
                 }
@@ -466,38 +470,50 @@ export const TradeBot = {
      */
     async ToCheckInitiate() {
         try {
-            if (isStrictTrue(this.mainData.initiated)) {return true}
+            const thisLogs              = this.getThisTvMainData('thisLogs')            ;
+            const tvData                = this.getThisTvMainData('tvData')              ;
+            const timestamp             = this.getThisTvMainData('timestamp')           ;
+            const TradingSymbolPrice    = this.getThisTvMainData('TradingSymbolPrice')  ;
+            const BaseCoinPrice         = this.getThisTvMainData('BaseCoinPrice')       ;
+            const mainData              = this.getThisTvMainData('mainData')            ;
+            const realTradeTime         = this.getThisTvMainData('realTradeTime')       ;
+            const toGCPData             = this.getThisTvMainData('toGCPData')           ;
+            const initiated             = this.getThisTvMainData('initiated')           ;
+            const inFund                = this.getThisTvMainData('inFund')              ;
+            const inCoin                = this.getThisTvMainData('inCoin')              ;
+
+            if (isStrictTrue(initiated)) {return true}
 
             const r_gslock = await this.gslock_waitOK() ;
             if (!isStrictTrue(r_gslock)) { throw new Error(ToStrictString(r_gslock)) }
 
             // 初始化时间不能在GS中预设的交易开始时间之后
-            if (this.tvData.timestamp > this.mainData.realTradeTime) {throw new Error('初始化时间不能在GS中预设的交易开始时间之后') }
+            if (timestamp > realTradeTime) {throw new Error('初始化时间不能在GS中预设的交易开始时间之后') }
 
             // 下面是初始化过程
             // 系统处于未初始化状态
             const iD = {} ;
             iD.initiated            =   true                                                                        ;
-            iD.initiateTime         =   this.tvData.timestamp                                                       ;
-            iD.inTradingSymbolPrice =   this.tvData.TradingSymbolPrice                                              ;
-            iD.inBaseCoinPrice      =   this.tvData.BaseCoinPrice                                                   ;
-            iD.initialFund          =   this.mainData.inFund + this.mainData.inCoin * this.tvData.BaseCoinPrice     ;
+            iD.initiateTime         =   timestamp                                                            ;
+            iD.inTradingSymbolPrice =   TradingSymbolPrice                                                   ;
+            iD.inBaseCoinPrice      =   BaseCoinPrice                                                        ;
+            iD.initialFund          =   inFund + inCoin * BaseCoinPrice                    ;
             iD.hghestFund           =   iD.initialFund                                                              ;
             iD.lowestFund           =   iD.initialFund                                                              ;
-            iD.initialCoin          =   iD.initialFund / this.tvData.BaseCoinPrice                                  ;
+            iD.initialCoin          =   iD.initialFund / BaseCoinPrice                                       ;
             iD.hghestCoin           =   iD.initialCoin                                                              ;
             iD.lowestCoin           =   iD.initialCoin                                                              ;
 
             const i_toClearRangeSet     =  new Set()    ;
             const i_toBatchUpdateList   =  []           ;
 
-            i_toClearRangeSet.add( this.toGCPData.ingOrderLine       )  ;
-            i_toClearRangeSet.add( this.toGCPData.uncloseOrdersRange )  ;
-            i_toClearRangeSet.add( this.toGCPData.tradeHistoryRange  )  ;
-            i_toClearRangeSet.add( this.toGCPData.HghLowRange        )  ;
-            i_toClearRangeSet.add( this.toGCPData.simBrokerRange     )  ;
-            i_toClearRangeSet.add( this.toGCPData.BrokerRange        )  ;
-            i_toClearRangeSet.add( this.toGCPData.toWriteMainRange   )  ;
+            i_toClearRangeSet.add(toGCPData.ingOrderLine       )  ;
+            i_toClearRangeSet.add(toGCPData.uncloseOrdersRange )  ;
+            i_toClearRangeSet.add(toGCPData.tradeHistoryRange  )  ;
+            i_toClearRangeSet.add(toGCPData.HghLowRange        )  ;
+            i_toClearRangeSet.add(toGCPData.simBrokerRange     )  ;
+            i_toClearRangeSet.add(toGCPData.BrokerRange        )  ;
+            i_toClearRangeSet.add(toGCPData.toWriteMainRange   )  ;
 
             const toClearRangeList = Array.from(i_toClearRangeSet).map(v => makeRequestBodyArrayofBatchUpdate_clear({
                 sheetID: this.sheetsID[v.split('!')[0]],
@@ -521,17 +537,18 @@ export const TradeBot = {
 
             i_toBatchUpdateList.push(...makeRequestBodyArrayofBatchUpdate_clearUpdate(
                 {
-                    sheetID: this.sheetsID[this.toGCPData.HghLowRange.split('!')[0]],
-                    range: this.toGCPData.HghLowRange,
+                    sheetID: this.sheetsID[toGCPData.HghLowRange.split('!')[0]],
+                    range: toGCPData.HghLowRange,
                     values: newHghLowV
                 }));
 
-            this.thisLogs.AddNewLogLine('去GS更新initiate') ;
+            thisLogs.AddNewLogLine('去GS更新initiate') ;
             await try3times(BatchUpdateGS, this.spreadsheetID, i_toBatchUpdateList) ;
 
             const r_Get_gsData = await this.get_gsData();
-            if (!isStrictTrue(r_Get_gsData) || !isStrictTrue(this.mainData.initiated)) { throw new Error('初始化后经校验初始化结果未更新') }
-            this.thisLogs.AddNewLogLine('在GS更新initiate成功') ;
+            const initiated_new = this.getThisTvMainData('initiated') ;
+            if (!isStrictTrue(r_Get_gsData) || !isStrictTrue(initiated_new)) { throw new Error('初始化后经校验初始化结果未更新') }
+            thisLogs.AddNewLogLine('在GS更新initiate成功') ;
 
             AddSetMessage(this.alertMessageSet, 'just initiated')  ;
             
@@ -541,27 +558,38 @@ export const TradeBot = {
     } ,
 
     async CheckAllPosition_withBroker() {
+        const thisLogs              =  this.getThisTvMainData('thisLogs')           ;
+        const TradingSymbolPrice    =  this.getThisTvMainData('TradingSymbolPrice') ;
+        const ingOrderData          =  this.getThisTvMainData('ingOrderData')       ;
+        const leverage              =  this.getThisTvMainData('leverage')           ;
+        const isReal                =  this.getThisTvMainData('isReal')             ;
+        const TradingSymbol         =  this.getThisTvMainData('TradingSymbol')      ;
+        const allPosition           =  this.getThisTvMainData('allPosition')        ;
+        const gridNum               =  this.getThisTvMainData('gridNum')            ;
+        const ifOrderWaiting        =  this.getThisTvMainData('ifOrderWaiting')     ;
+        const minEnExPosition       =  this.getThisTvMainData('minEnExPosition')    ;
+        const freeMargin            =  this.getThisTvMainData('freeMargin')         ;
+
+
         const S                     = {}                                            ;
-        S.isReal                    = this.mainData.isReal                          ;
-        S.TradingSymbol             = this.mainData.TradingSymbol                   ;
-        S.allPosition               = ToStrictNumber(this.mainData.allPosition, 0)  ;
-        S.gridNum                   = ToStrictNumber(this.mainData.gridNum, 0)      ;
-        S.ifOrderWaiting            = this.mainData.ifOrderWaiting                  ;
-        S.waitingPosition           = this.ingOrderData?.ing_qty ?? 0               ;
+        S.isReal                    = isReal                                        ;
+        S.TradingSymbol             = TradingSymbol                                 ;
+        S.allPosition               = ToStrictNumber(allPosition, 0)                ;
+        S.gridNum                   = ToStrictNumber(gridNum, 0)                    ;
+        S.ifOrderWaiting            = ifOrderWaiting                                ;
+        S.waitingPosition           = ingOrderData?.ing_qty ?? 0                    ;
         S.allPositionWithWaiting    = S.allPosition + S.waitingPosition             ;
 
         try {
-            S.thisLogs = this.thisLogs ;
+            S.thisLogs = thisLogs ;
             await CheckAllPosition(S) ;
 
             // 无仓位 无pending_orders 的情况
-            if (S.allPosition               < this.mainData.minEnExPosition             &&
-                S.allPositionWithWaiting    < this.mainData.minEnExPosition             &&
-                S.brokerPosition            < 2 * this.mainData.minEnExPosition         ) { return true }
+            if (S.allPosition               < minEnExPosition             &&
+                S.allPositionWithWaiting    < minEnExPosition             &&
+                S.brokerPosition            < 2 * minEnExPosition         ) { return true }
 
-            const probableEachGridPosition = S.gridNum > 0                                  ?
-                S.allPosition / S.gridNum                                                   :
-                this.mainData.freeMargin * this.leverage / this.tvData.TradingSymbolPrice   ;
+            const probableEachGridPosition = S.gridNum > 0 ? S.allPosition / S.gridNum : freeMargin * leverage / TradingSymbolPrice;
 
             // 有pending_orders 的情况
             if ( isStrictTrue(S.ifOrderWaiting)                                                          &&
@@ -853,6 +881,7 @@ export const TradeBot = {
         const BaseCoinPrice             = this.getThisTvMainData('BaseCoinPrice')               ;
         const BaseCoinHairCut           = this.getThisTvMainData('BaseCoinHairCut')             ;
 
+        const mainData                  = this.getThisTvMainData('mainData')                    ;
         const realTradeTime             = this.getThisTvMainData('realTradeTime')               ;
         const realTradeTimeTo           = this.getThisTvMainData('realTradeTimeTo')             ;
         const minEnExPosition           = this.getThisTvMainData('minEnExPosition')             ;
@@ -886,12 +915,12 @@ export const TradeBot = {
         this.allFund = this.crtFund + this.crtCoin * BaseCoinPrice;
         this.allCoin = this.crtFund / BaseCoinPrice + this.crtCoin;
 
-        this.initialFund    = ToStrictNumber(this.mainData.initialFund  , this.allFund) ;
-        this.hghestFund     = ToStrictNumber(this.mainData.hghestFund   , this.allFund) ;
-        this.lowestFund     = ToStrictNumber(this.mainData.lowestFund   , this.allFund) ;
-        this.initialCoin    = ToStrictNumber(this.mainData.initialCoin  , this.allCoin) ;
-        this.hghestCoin     = ToStrictNumber(this.mainData.hghestCoin   , this.allCoin) ;
-        this.lowestCoin     = ToStrictNumber(this.mainData.lowestCoin   , this.allCoin) ;
+        this.initialFund    = ToStrictNumber(mainData.initialFund  , this.allFund) ;
+        this.hghestFund     = ToStrictNumber(mainData.hghestFund   , this.allFund) ;
+        this.lowestFund     = ToStrictNumber(mainData.lowestFund   , this.allFund) ;
+        this.initialCoin    = ToStrictNumber(mainData.initialCoin  , this.allCoin) ;
+        this.hghestCoin     = ToStrictNumber(mainData.hghestCoin   , this.allCoin) ;
+        this.lowestCoin     = ToStrictNumber(mainData.lowestCoin   , this.allCoin) ;
         this.toWriteHghLow  = this.toWriteHghLow ?? false ;
         if (this.allFund > this.hghestFund) { this.toWriteHghLow = true; this.hghestFund = this.allFund; AddSetMessage(this.alertMessageSet, "↑ new hghestFund"); }
         if (this.allFund < this.lowestFund) { this.toWriteHghLow = true; this.lowestFund = this.allFund; AddSetMessage(this.alertMessageSet, "↓ new lowestFund"); }
@@ -899,10 +928,10 @@ export const TradeBot = {
         if (this.allCoin < this.lowestCoin) { this.toWriteHghLow = true; this.lowestCoin = this.allCoin; AddSetMessage(this.alertMessageSet, "↓ new lowestCoin"); }
 
         if (this.toWriteHghLow) {
-            this.initiated              = isStrictTrue(this.mainData.initiated) ;
-            this.initiateTime           = ToStrictNumber(this.mainData.initiateTime             ,timestamp              ) ;
-            this.inTradingSymbolPrice   = ToStrictNumber(this.mainData.inTradingSymbolPrice     , TradingSymbolPrice    ) ;
-            this.inBaseCoinPrice        = ToStrictNumber(this.mainData.inBaseCoinPrice          , BaseCoinPrice         ) ;
+            this.initiated              = isStrictTrue  (mainData.initiated) ;
+            this.initiateTime           = ToStrictNumber(mainData.initiateTime             ,timestamp              ) ;
+            this.inTradingSymbolPrice   = ToStrictNumber(mainData.inTradingSymbolPrice     , TradingSymbolPrice    ) ;
+            this.inBaseCoinPrice        = ToStrictNumber(mainData.inBaseCoinPrice          , BaseCoinPrice         ) ;
         }
 
         // [this.liquidatePrice, this.stopPriceC, this.stopPriceF] = this.GetLiquidateStopPrice();
@@ -1021,38 +1050,46 @@ export const TradeBot = {
         try {
             const thisLogs              = this.getThisTvMainData('thisLogs')            ;
             const tvData                = this.getThisTvMainData('tvData')              ;
+            const timestamp             = this.getThisTvMainData('timestamp')           ;
             const TradingSymbol         = this.getThisTvMainData('TradingSymbol')       ;
+            const BaseCoinPrice         = this.getThisTvMainData('BaseCoinPrice')       ;
             const spreadsheetID         = this.getThisTvMainData('spreadsheetID')       ;
             const mainData              = this.getThisTvMainData('mainData')            ;
+            const isReal                = this.getThisTvMainData('isReal')              ;
             const tradeHistoryTitleA    = this.getThisTvMainData('tradeHistoryTitleA')  ; 
             const toGCPData             = this.getThisTvMainData('toGCPData')           ;
+            const lstFundTime           = this.getThisTvMainData('lstFundTime')         ;
+            const avgBuyPrice           = this.getThisTvMainData('avgBuyPrice')         ;
+            const allFundFee            = this.getThisTvMainData('allFundFee')          ;
+            const inCoin                = this.getThisTvMainData('inCoin')              ;
+            const inFund                = this.getThisTvMainData('inFund')              ;
 
             const tradeHistoryRange     = toGCPData.tradeHistoryRange  ;
 
             let toCheckFundFee = false;
-            if (isStrictNumber(mainData.lstFundTime)) {
-                const lstRound = Math.floor(mainData.lstFundTime / 28800000); // 8 * 60 * 60 * 1000
-                const thisRound = Math.floor(tvData.timestamp / 28800000);
+            if (isStrictNumber(lstFundTime)) {
+                const lstRound = Math.floor(lstFundTime / 28800000); // 8 * 60 * 60 * 1000
+                const thisRound = Math.floor(timestamp / 28800000);
                 toCheckFundFee = lstRound === thisRound ? false : true;
             } else { toCheckFundFee = true }
 
             if (isStrictFalse(toCheckFundFee)) { return true } 
 
             const fund = {}  ;
-            fund.orderID          = 'F-' + GetTimeStringWithOffset(8, 28800000 * Math.floor(tvData.timestamp / 28800000))  ;
-            fund.orderTimestamp   = Date.now()                                                                             ;
-            fund.orderDate        = GetTimeStringWithOffset(8, fund.orderTimestamp)                                        ;
-            fund.buysell          = CV.order_FUND                                                                          ;
-            fund.avgBuyPrice      = mainData.avgBuyPrice                                                                   ;
-            fund.reason           = "FundFee"                                                                              ;
-            fund.orderStatus      = CV.order_pending                                                                       ;
-            fund.lst_allFundFee   = ToStrictNumber(mainData.allFundFee     , 0                       )                     ;
-            fund.inCoin           = ToStrictNumber(mainData.inCoin         , 0                       )                     ;
-            fund.inFund           = ToStrictNumber(mainData.inFund         , 0                       )                     ;
-            fund.BaseCoinPrice    = ToStrictNumber(tvData.BaseCoinPrice    , mainData.BaseCoinPrice  )                     ;
-            fund.isReal           = mainData.isReal                                                                        ;
-            fund.TradingSymbol    = TradingSymbol                                                                          ;
-            fund.spreadsheetID    = spreadsheetID                                                                          ;
+            fund.orderID          = 'F-' + GetTimeStringWithOffset(8, 28800000 * Math.floor(timestamp / 28800000))  ;
+            fund.orderTimestamp   = Date.now()                                                                      ;
+            fund.orderDate        = GetTimeStringWithOffset(8, fund.orderTimestamp)                                 ;
+            fund.buysell          = CV.order_FUND                                                                   ;
+            fund.avgBuyPrice      = avgBuyPrice                                                                     ;
+            fund.reason           = "FundFee"                                                                       ;
+            fund.orderStatus      = CV.order_pending                                                                ;
+            fund.lst_allFundFee   = ToStrictNumber(allFundFee     , 0                       )                       ;
+            fund.inCoin           = ToStrictNumber(inCoin         , 0                       )                       ;
+            fund.inFund           = ToStrictNumber(inFund         , 0                       )                       ;
+            fund.BaseCoinPrice    = ToStrictNumber(BaseCoinPrice  , mainData.BaseCoinPrice  )                       ;
+            fund.isReal           = isReal                                                                          ;
+            fund.TradingSymbol    = TradingSymbol                                                                   ;
+            fund.spreadsheetID    = spreadsheetID                                                                   ;
 
             thisLogs.AddNewLogLine('ToCheckFundFee()') ;
             fund.thisLogs = thisLogs ;
@@ -1093,6 +1130,9 @@ export const TradeBot = {
         }
 
         try {
+            const thisLogs              =  this.getThisTvMainData('thisLogs')              ;
+            const tvData                =  this.getThisTvMainData('tvData')                ;
+            const botNumber             =  this.getThisTvMainData('botNumber')             ;
             const timestamp             =  this.getThisTvMainData('timestamp')             ;
             const TradingSymbolPrice    =  this.getThisTvMainData('TradingSymbolPrice')    ;
             const StrategyOption        =  this.getThisTvMainData('StrategyOption')        ;
@@ -1233,8 +1273,8 @@ export const TradeBot = {
             S.ing_orderPrice        = (S.ing_orderType === CV.order_T_MKT || !isStrictNumber(S.ing_orderPrice) ) ? S.ing_orderPrice : NumberToSameDecimals(S.ing_orderPrice, TradingSymbolPrice) ;
             S.ing_qty               = NumberToSameDecimals(S.ing_qty, minEnExPosition)              ;
 
-            this.thisLogs.AddNewLogLine('ToBuy()') ;
-            S.thisLogs = this.thisLogs ;
+            thisLogs.AddNewLogLine('ToBuy()') ;
+            S.thisLogs = thisLogs ;
             await SendOrderToBroker(S);
             if (!S.respOK) {throw new Error('交易所返回数据不正确')}
             // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
@@ -1254,7 +1294,7 @@ export const TradeBot = {
             AddSetMessage(this.alertMessageSet, `sellReason: ${S.ing_reason}`);
             this.toSendEmail = true ;
 
-            const newWebLine = `${this.tvData.botNumber} ${S.ing_orderDate} -> new sell, orderPrice: ${S.ing_orderPrice}, qty: ${S.ing_qty}, sellReason: ${S.ing_reason}, id: ${S.ing_orderID}` ;
+            const newWebLine = `${botNumber} ${S.ing_orderDate} -> new sell, orderPrice: ${S.ing_orderPrice}, qty: ${S.ing_qty}, sellReason: ${S.ing_reason}, id: ${S.ing_orderID}` ;
             ToWeb_AddNewLine({type: 'trade', message: newWebLine});
 
             this.canBuy = false;
@@ -1285,6 +1325,9 @@ export const TradeBot = {
         }
 
         try {
+            const thisLogs              =  this.getThisTvMainData('thisLogs')             ;
+            const tvData                =  this.getThisTvMainData('tvData')               ;
+            const botNumber             =  this.getThisTvMainData('botNumber')            ;
             const timestamp             =  this.getThisTvMainData('timestamp')            ;
             const TradingSymbolPrice    =  this.getThisTvMainData('TradingSymbolPrice')   ;
             const StrategyOption        =  this.getThisTvMainData('StrategyOption')       ;
@@ -1317,7 +1360,7 @@ export const TradeBot = {
             const toGCPData             =  this.getThisTvMainData('toGCPData')            ;
             const lstRcdTargetLow       =  this.getThisTvMainData('lstRcdTargetLow')      ;
 
-            const ingOrderLine          =  this.toGCPData.ingOrderLine   ;
+            const ingOrderLine          =  toGCPData.ingOrderLine   ;
 
             let toBuy = false;
             const S = {};
@@ -1383,8 +1426,8 @@ export const TradeBot = {
             S.ing_orderPrice        = (S.ing_orderType === CV.order_T_MKT || !isStrictNumber(S.ing_orderPrice) ) ? S.ing_orderPrice : NumberToSameDecimals(S.ing_orderPrice, TradingSymbolPrice) ;
             S.ing_qty               = NumberToSameDecimals(S.ing_qty, minEnExPosition) ;
 
-            this.thisLogs.AddNewLogLine('ToBuy()') ;
-            S.thisLogs = this.thisLogs ;
+            thisLogs.AddNewLogLine('ToBuy()') ;
+            S.thisLogs = thisLogs ;
             await SendOrderToBroker(S);
             if (!S.respOK) { throw new Error('交易所返回数据不正确') }
             // 对于实际交易所中的orderID, 交易所可能会返回, 他们自己的orderID格式
@@ -1404,7 +1447,7 @@ export const TradeBot = {
             AddSetMessage(this.alertMessageSet, `buyReason: ${S.ing_reason}`);
             this.toSendEmail = true ;
 
-            const newWebLine = `${this.tvData.botNumber} ${S.ing_orderDate} -> new buy , orderPrice: ${S.ing_orderPrice}, qty: ${S.ing_qty}, buyReason: ${S.ing_reason}, id: ${S.ing_orderID}` ;
+            const newWebLine = `${botNumber} ${S.ing_orderDate} -> new buy , orderPrice: ${S.ing_orderPrice}, qty: ${S.ing_qty}, buyReason: ${S.ing_reason}, id: ${S.ing_orderID}` ;
             ToWeb_AddNewLine({type: 'trade', message: newWebLine});
 
             this.canSell = false;
@@ -1423,16 +1466,31 @@ export const TradeBot = {
      */
     async ToCheckWaitingOrder() {
         try {
+            const thisLogs              =  this.getThisTvMainData('thisLogs')               ;
+            const spreadsheetID         =  this.getThisTvMainData('spreadsheetID')          ;
+
             const tvData                =  this.getThisTvMainData('tvData')                 ;
-            const toGCPData             =  this.getThisTvMainData('toGCPData')              ;
+            const botNumber             =  this.getThisTvMainData('botNumber')              ;
+            const timestamp             =  this.getThisTvMainData('timestamp')              ;
+            const TradingSymbol         =  this.getThisTvMainData('TradingSymbol')          ;
+            const TradingSymbolPrice    =  this.getThisTvMainData('TradingSymbolPrice')     ;
+            const BaseCoinPrice         =  this.getThisTvMainData('BaseCoinPrice')          ;
+            const waveUpChg             =  this.getThisTvMainData('waveUpChg')              ;
+            const waveDnChg             =  this.getThisTvMainData('waveDnChg')              ;
+
             const mainData              =  this.getThisTvMainData('mainData')               ;
+            const isReal                =  this.getThisTvMainData('isReal')                 ;
+            const toGCPData             =  this.getThisTvMainData('toGCPData')              ;
             const ingOrderData          =  this.getThisTvMainData('ingOrderData')           ;
             const ingOrderTitleA        =  this.getThisTvMainData('ingOrderTitleA')         ;
             const uncloseOrdersA2d      =  this.getThisTvMainData('uncloseOrdersA2d')       ;
             const uncloseOrdersTitleA   =  this.getThisTvMainData('uncloseOrdersTitleA')    ;
             const tradeHistoryTitleA    =  this.getThisTvMainData('tradeHistoryTitleA')     ;
-
             const minEnExPosition       =  this.getThisTvMainData('minEnExPosition')        ;
+            const allGotProfit          =  this.getThisTvMainData('allGotProfit')           ;
+            const allTradeFee           =  this.getThisTvMainData('allTradeFee')            ;
+            const inCoin                =  this.getThisTvMainData('inCoin')                 ;
+            const inFund                =  this.getThisTvMainData('inFund')                 ;
             const ifOrderWaiting        =  this.getThisTvMainData('ifOrderWaiting')         ;
             const allPosition           =  this.getThisTvMainData('allPosition')            ;
             const avgBuyPrice           =  this.getThisTvMainData('avgBuyPrice')            ;
@@ -1443,18 +1501,18 @@ export const TradeBot = {
 
             if (!isStrictTrue(ifOrderWaiting)) { return true }
 
-            ingOrderData.isReal             = mainData.isReal                                                       ;
-            ingOrderData.TradingSymbol      = tvData.TradingSymbol                                                  ;
-            ingOrderData.spreadsheetID      = this.spreadsheetID                                                    ;
-            ingOrderData.lst_allGotProfit   = ToStrictNumber(mainData.allGotProfit  , 0                      )      ;
-            ingOrderData.lst_allTradeFee    = ToStrictNumber(mainData.allTradeFee   , 0                      )      ;
-            ingOrderData.inCoin             = ToStrictNumber(mainData.inCoin        , 0                      )      ;
-            ingOrderData.inFund             = ToStrictNumber(mainData.inFund        , 0                      )      ;
-            ingOrderData.BaseCoinPrice      = ToStrictNumber(tvData.BaseCoinPrice   , mainData.BaseCoinPrice )      ;
+            ingOrderData.isReal             = isReal                                                    ;
+            ingOrderData.TradingSymbol      = TradingSymbol                                             ;
+            ingOrderData.spreadsheetID      = spreadsheetID                                             ;
+            ingOrderData.lst_allGotProfit   = ToStrictNumber(allGotProfit   , 0                      )  ;
+            ingOrderData.lst_allTradeFee    = ToStrictNumber(allTradeFee    , 0                      )  ;
+            ingOrderData.inCoin             = ToStrictNumber(inCoin         , 0                      )  ;
+            ingOrderData.inFund             = ToStrictNumber(inFund         , 0                      )  ;
+            ingOrderData.BaseCoinPrice      = ToStrictNumber(BaseCoinPrice  , mainData.BaseCoinPrice )  ;
 
             ingOrderData.ifWaitingThenCancel = true;
-            if (ingOrderData.ing_buysell === CV.order_BUY  && tvData.TradingSymbolPrice < ToStrictNumber(ingOrderData.ing_orderPrice, 0) * (1 + tvData.waveUpChg)) { ingOrderData.ifWaitingThenCancel = false }
-            if (ingOrderData.ing_buysell === CV.order_SELL && tvData.TradingSymbolPrice > ToStrictNumber(ingOrderData.ing_orderPrice, 0) * (1 + tvData.waveDnChg)) { ingOrderData.ifWaitingThenCancel = false }
+            if (ingOrderData.ing_buysell === CV.order_BUY  && TradingSymbolPrice < ToStrictNumber(ingOrderData.ing_orderPrice, 0) * (1 + waveUpChg)) { ingOrderData.ifWaitingThenCancel = false }
+            if (ingOrderData.ing_buysell === CV.order_SELL && TradingSymbolPrice > ToStrictNumber(ingOrderData.ing_orderPrice, 0) * (1 + waveDnChg)) { ingOrderData.ifWaitingThenCancel = false }
             if (ingOrderData.ing_reason.includes('from GS')) {ingOrderData.ifWaitingThenCancel = false}
             if (this.thereCommandFromGS && this.commandData.toCancel) { // 查看是否有来自最高等级的GS交易命令
                 AddMessage(this.alertMessage, 'Get toCancel signal from GS');
@@ -1462,8 +1520,8 @@ export const TradeBot = {
             } 
 
             // 去交易所查看成交情况
-            this.thisLogs.AddNewLogLine('ToCheckWaitingOrder()') ;
-            ingOrderData.thisLogs = this.thisLogs ;
+            thisLogs.AddNewLogLine('ToCheckWaitingOrder()') ;
+            ingOrderData.thisLogs = thisLogs ;
             await CheckOrderConfirm(ingOrderData);
             if (!ingOrderData.respOK) {throw new Error('交易所返回数据有错')}
 
@@ -1509,7 +1567,7 @@ export const TradeBot = {
                     if (isStrictNumber(ingOrderData.ing_isPartial) && ingOrderData.ing_isPartial < 1) {
                         // 卖单部分成交的情况, 相对比较复杂
                         const theBoughtOrder = uncloseOrdersA2d[indexOfBoughtOrder] ; // 直接拿到的就是对应的订单的地址, 对他的修改相当于直接修改原始订单
-                        theBoughtOrder[index_orderID]   =  'PB-' + GetTimeStringWithOffset(8, this.timestamp)               ;
+                        theBoughtOrder[index_orderID]   =  'PB-' + GetTimeStringWithOffset(8, timestamp)                    ;
                         theBoughtOrder[index_qty]       =  (1-ingOrderData.ing_isPartial) * theBoughtOrder[index_qty]       ;
                         theBoughtOrder[index_pXq]       =  theBoughtOrder[index_confirmPrice] * theBoughtOrder[index_qty]   ;
                         // uncloseOrdersA2d[indexOfBoughtOrder] = theBoughtOrder ; // 这一行可以去掉, 因为引用的直接是地址
@@ -1561,7 +1619,7 @@ export const TradeBot = {
                 AddSetMessage(this.alertMessageSet, thisMessage) ;
                 this.toSendEmail = true ;
 
-                const newWebLine = `${this.tvData.botNumber} ${ingOrderData.ing_confirmDate} -> order confirmed, id: ${ingOrderData.ing_orderID}`;
+                const newWebLine = `${botNumber} ${ingOrderData.ing_confirmDate} -> order confirmed, id: ${ingOrderData.ing_orderID}`;
                 ToWeb_AddNewLine({ type: 'trade', message: newWebLine });
             }
 
@@ -1577,7 +1635,7 @@ export const TradeBot = {
                 AddSetMessage(this.alertMessageSet, (ingOrderData.ing_buysell === CV.order_BUY ? "buy" : "sell") + "Order canceled");
                 this.toSendEmail = true ;
 
-                const newWebLine = `${this.tvData.botNumber} ${GetTimeStringWithOffset(8, this.tvData.timestamp)} -> order canceled, id: ${ingOrderData.ing_orderID}`;
+                const newWebLine = `${botNumber} ${GetTimeStringWithOffset(8, timestamp)} -> order canceled, id: ${ingOrderData.ing_orderID}`;
                 ToWeb_AddNewLine({ type: 'trade', message: newWebLine });
             }
 
@@ -1628,16 +1686,24 @@ export const TradeBot = {
      */
     async WriteToGS_ReleaseLocks() {
         try {
-            if (isStrictTrue(this.toReNewBeforeWrite)) { this.CalcuBuySellLimit() }
+            const thisLogs              = this.getThisTvMainData('thisLogs')            ;
+            const tvData                = this.getThisTvMainData('tvData')              ;
+            const timestamp             = this.getThisTvMainData('timestamp')           ;
+            const mainData              = this.getThisTvMainData('mainData')            ;
+            const toGCPData             = this.getThisTvMainData('toGCPData')           ;
+            const toReNewBeforeWrite    = this.getThisTvMainData('toReNewBeforeWrite')  ;
+            const toWriteHghLow         = this.getThisTvMainData('toWriteHghLow')       ;
+            
+            if (isStrictTrue(toReNewBeforeWrite)) { this.CalcuBuySellLimit() }
 
-            const r_updateDataToBot = this.updateDataToBot(this.tvData) ;
+            const r_updateDataToBot = this.updateDataToBot(tvData) ;
             if (!isStrictTrue(r_updateDataToBot)) {throw new Error('updateDataToBot() 失败: \n' + ToStrictString(r_updateDataToBot, CV.NA))}
 
             if (this.alertMessageSet.size > 0) { this.alertMessage = StrFromSetMessage(this.alertMessageSet) }
 
             this.gcpWriteTime = Date.now();
 
-            if (isStrictTrue(this.toWriteHghLow)) {
+            if (isStrictTrue(toWriteHghLow)) {
                 const newHghLowV = [    [this.initiated             ]   ,
                                         [this.initiateTime          ]   ,
                                         [this.inTradingSymbolPrice  ]   ,
@@ -1650,25 +1716,25 @@ export const TradeBot = {
                                         [this.lowestCoin            ]   ]   ;
 
                 this.batchUpdateList.push(...makeRequestBodyArrayofBatchUpdate_clearUpdate({
-                    sheetID: this.sheetsID[this.toGCPData.HghLowRange.split('!')[0]],
-                    range: this.toGCPData.HghLowRange,
+                    sheetID: this.sheetsID[toGCPData.HghLowRange.split('!')[0]],
+                    range: toGCPData.HghLowRange,
                     values: newHghLowV
                 }));
             }
 
             this.batchUpdateList.push(makeRequestBodyArrayofBatchUpdate_clear({
-                sheetID: this.sheetsID[this.toGCPData.toWriteMainRange.split('!')[0]],
-                range: this.toGCPData.toWriteMainRange
+                sheetID: this.sheetsID[toGCPData.toWriteMainRange.split('!')[0]],
+                range: toGCPData.toWriteMainRange
             }));
 
             this.batchUpdateList.push(makeRequestBodyArrayofBatchUpdate_append({
-                sheetID: this.sheetsID[this.toGCPData.toWriteMainRange.split('!')[0]],
+                sheetID: this.sheetsID[toGCPData.toWriteMainRange.split('!')[0]],
                 values: ObjToA2dNumBoolStr(this)
             }));
 
             this.batchUpdateList.push(makeRequestBodyArrayofBatchUpdate_update({
-                sheetID: this.sheetsID[this.toGCPData.lockRange.split('!')[0]],
-                range: this.toGCPData.lockRange,
+                sheetID: this.sheetsID[toGCPData.lockRange.split('!')[0]],
+                range: toGCPData.lockRange,
                 values: [[CV.noLOCK]]
             }));
 
@@ -1676,15 +1742,16 @@ export const TradeBot = {
             const r_gslock = await this.gslock_waitOK() ;
             if (!isStrictTrue(r_gslock)) { throw new Error(ToStrictString(r_gslock)) }
 
-            this.thisLogs.AddNewLogLine('去往GS更新最终数据') ;
+            thisLogs.AddNewLogLine('去往GS更新最终数据') ;
             await try3times(BatchUpdateGS, this.spreadsheetID, this.batchUpdateList) ;
-            this.thisLogs.AddNewLogLine('往GS更新最终数据成功') ;
+            thisLogs.AddNewLogLine('往GS更新最终数据成功') ;
 
-            this.thisLogs.AddNewLogLine('去执行get_gsData(), 将获得数据存入缓存');
+            thisLogs.AddNewLogLine('去执行get_gsData(), 将获得数据存入缓存');
             const r_get_gsData = await this.get_gsData();
+            const timestamp_new = this.mainData.timestamp ; // get_gsData() 会修改mainData
             if      (!isStrictTrue(r_get_gsData) || isStrictString(r_get_gsData)) { throw new Error('get_gsData() 失败: \n' + r_get_gsData) }
-            else if (this.mainData.timestamp !== this.tvData.timestamp) {throw new Error('get_gsData() 失败: timestamp 不匹配\n') }
-            else { this.thisLogs.AddNewLogLine('get_gsData()并写入缓存成功') }
+            else if (timestamp_new !== timestamp) {throw new Error('get_gsData() 失败: timestamp 不匹配\n') }
+            else { thisLogs.AddNewLogLine('get_gsData()并写入缓存成功') }
 
             const r_releaseTradeBotLOCK = this.releaseTradeBotLOCK();
             if (!r_releaseTradeBotLOCK || isStrictString(r_releaseTradeBotLOCK)) {
@@ -1692,7 +1759,7 @@ export const TradeBot = {
                 // 无法为GS解锁, 是严重错误, 需要手动解锁
                 this.addRunningWellMessage(errMessage);
                 throw new Error(errMessage);
-            } else {this.thisLogs.AddNewLogLine('TradeBotLock释放成功') }
+            } else {thisLogs.AddNewLogLine('TradeBotLock释放成功') }
 
             return true;
         } catch (e) { return this.returnRunningWellErrMessage('WriteToGS_ReleaseLocks()失败', e.message) }
@@ -1701,7 +1768,7 @@ export const TradeBot = {
 
     async ToSendAlertMessage() {
         try {
-            const toGCPData = this.toGCPData ;
+            const toGCPData = this.getThisTvMainData('toGCPData') ;
 
             const getDataList = [] ; 
             getDataList.push({name: 'toReadA2d'             , range: toGCPData.toReadRange              }) ;
