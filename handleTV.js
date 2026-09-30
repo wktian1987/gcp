@@ -1130,8 +1130,8 @@ export const TradeBot = {
             const inNormalSellRegion = TradingSymbolPrice > this.lowToSell;
             if (!isStrictTrue(inNormalSellRegion)) { AddSetMessage('cantSell: not inNormalSellRegion') }
 
-            let tradeOption_withWave  =  StrategyOption === TV_StrategyOption.onlyWave || TV_StrategyOption.bothWaveGrid
-            let tradeOption_withGrid  =  StrategyOption === TV_StrategyOption.onlyGrid || TV_StrategyOption.bothWaveGrid
+            let tradeOption_withWave  =  StrategyOption === TV_StrategyOption.onlyWave || TV_StrategyOption.bothWaveGrid ;
+            let tradeOption_withGrid  =  StrategyOption === TV_StrategyOption.onlyGrid || TV_StrategyOption.bothWaveGrid ;
             
             // touch targetHgh
             if (tradeOption_withWave && inNormalSellRegion && (TradingSymbolPrice > (1 + tradeFeeRate) * lowBuyPriceUnclose) && markTouchTargetHgh && TradingSymbolPrice > lstRcdTargetHgh) {
@@ -1480,7 +1480,9 @@ export const TradeBot = {
             // 需要注意的是卖单, 如果部分成交的话, 不能简单地将uncloseOrders中的那个订单删掉, 需要修改那一行, 而不是删掉那一行
 
             if (ingOrderData.ing_orderStatus === CV.order_confirm ) {
-                this.toReNewBeforeWrite = true ;
+                this.toReNewBeforeWrite = true;
+                this.lstTradeTime = ingOrderData.ing_confirmTimestamp;
+                this.ifOrderWaiting = false;
 
                 if (ingOrderData.ing_buysell === CV.order_BUY) {
                     const newUncloseOrderLine = uncloseOrdersTitleA.map(v => isStrictNumber(ingOrderData['ing_' + v]) ? ingOrderData['ing_' + v] : (ingOrderData['ing_' + v] || CV.NA));
@@ -1493,7 +1495,6 @@ export const TradeBot = {
                     this.hghBuyPriceUnclose =  ingOrderData.confirmPrice > ToStrictNumber(hghBuyPriceUnclose, 0) ? ingOrderData.confirmPrice : hghBuyPriceUnclose ;
                     this.lowBuyPriceUnclose =  ingOrderData.confirmPrice < ToStrictNumber(lowBuyPriceUnclose, 0) || !isStrictNumber(lowBuyPriceUnclose)? ingOrderData.confirmPrice : lowBuyPriceUnclose ;
                     // this.netProfit 无变化
-                    this.lstTradeTime = ingOrderData.ing_confirmTimestamp;
                 }
                 if (ingOrderData.ing_buysell === CV.order_SELL) {
                     const index_orderID         =  uncloseOrdersTitleA.indexOf('orderID')       ;
@@ -1536,7 +1537,6 @@ export const TradeBot = {
                         this.lowBuyPriceUnclose = CV.NA;
                         this.hghBuyPriceUnclose = CV.NA;
                     }
-                    this.lstTradeTime = ingOrderData.ing_confirmTimestamp;
                 }
 
                 w_toClearRangeSet.add(toGCPData.ingOrderLine);
