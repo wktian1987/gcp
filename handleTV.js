@@ -1168,7 +1168,7 @@ export const TradeBot = {
             const idx_qty           = uncloseOrdersTitleA.indexOf('qty')            ;
 
             const inNormalSellRegion = TradingSymbolPrice > this.lowToSell;
-            if (!isStrictTrue(inNormalSellRegion)) { AddSetMessage('cantSell: not inNormalSellRegion') }
+            if (!isStrictTrue(inNormalSellRegion)) { AddSetMessage(this.alertMessageSet, 'cantSell: not inNormalSellRegion') }
 
             let tradeOption_withWave  =  StrategyOption === TV_StrategyOption.onlyWave || TV_StrategyOption.bothWaveGrid ;
             let tradeOption_withGrid  =  StrategyOption === TV_StrategyOption.onlyGrid || TV_StrategyOption.bothWaveGrid ;
@@ -1273,7 +1273,7 @@ export const TradeBot = {
             S.ing_orderPrice        = (S.ing_orderType === CV.order_T_MKT || !isStrictNumber(S.ing_orderPrice) ) ? S.ing_orderPrice : NumberToSameDecimals(S.ing_orderPrice, TradingSymbolPrice) ;
             S.ing_qty               = NumberToSameDecimals(S.ing_qty, minEnExPosition)              ;
 
-            thisLogs.AddNewLogLine('ToBuy()') ;
+            thisLogs.AddNewLogLine('ToSell()') ;
             S.thisLogs = thisLogs ;
             await SendOrderToBroker(S);
             if (!S.respOK) {throw new Error('交易所返回数据不正确')}
@@ -1366,7 +1366,7 @@ export const TradeBot = {
             const S = {};
 
             const inNormalBuyRegion = TradingSymbolPrice > this.lowToBuy && TradingSymbolPrice < this.hghToBuy;
-            if (!isStrictTrue(inNormalBuyRegion)) { AddSetMessage('cantBuy: not inNormalBuyRegion') }
+            if (!isStrictTrue(inNormalBuyRegion)) { AddSetMessage(this.alertMessageSet, 'cantBuy: not inNormalBuyRegion') }
 
             let tradeOption_withWave  =  StrategyOption === TV_StrategyOption.onlyWave || TV_StrategyOption.bothWaveGrid
             let tradeOption_withGrid  =  StrategyOption === TV_StrategyOption.onlyGrid || TV_StrategyOption.bothWaveGrid
@@ -1515,7 +1515,7 @@ export const TradeBot = {
             if (ingOrderData.ing_buysell === CV.order_SELL && TradingSymbolPrice > ToStrictNumber(ingOrderData.ing_orderPrice, 0) * (1 + waveDnChg)) { ingOrderData.ifWaitingThenCancel = false }
             if (ingOrderData.ing_reason.includes('from GS')) {ingOrderData.ifWaitingThenCancel = false}
             if (this.thereCommandFromGS && this.commandData.toCancel) { // 查看是否有来自最高等级的GS交易命令
-                AddMessage(this.alertMessage, 'Get toCancel signal from GS');
+                AddSetMessage(this.alertMessageSet, 'Get toCancel signal from GS');
                 ingOrderData.ifWaitingThenCancel = true;
             } 
 
