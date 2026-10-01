@@ -865,6 +865,7 @@ export const TradeBot = {
     CalcuBuySellLimit() {
         const timestamp                 = this.getThisTvMainData('timestamp')                   ;
         const TradingSymbolPrice        = this.getThisTvMainData('TradingSymbolPrice')          ;
+        const StrategyOption            = this.getThisTvMainData('StrategyOption')             ;
         const inFund                    = this.getThisTvMainData('inFund')                      ;
         const inCoin                    = this.getThisTvMainData('inCoin')                      ;
         const leverage                  = this.getThisTvMainData('leverage')                    ;
@@ -905,6 +906,8 @@ export const TradeBot = {
         const avgBuyPrice               = this.getThisTvMainData('avgBuyPrice')                 ;
         const netProfit                 = this.getThisTvMainData('netProfit')                   ;
        
+        this.tradeOption_withWave  =  StrategyOption === TV_StrategyOption.onlyWave || StrategyOption === TV_StrategyOption.bothWaveGrid  ;
+        this.tradeOption_withGrid  =  StrategyOption === TV_StrategyOption.onlyGrid || StrategyOption === TV_StrategyOption.bothWaveGrid  ;
 
         this.openProfit = isStrictTrue(therePosition) ? allPosition * (TradingSymbolPrice - avgBuyPrice) : CV.NA;
         this.allProfit = ToStrictNumber(netProfit, 0) + ToStrictNumber(this.openProfit, 0);
@@ -1135,7 +1138,8 @@ export const TradeBot = {
             const botNumber             =  this.getThisTvMainData('botNumber')             ;
             const timestamp             =  this.getThisTvMainData('timestamp')             ;
             const TradingSymbolPrice    =  this.getThisTvMainData('TradingSymbolPrice')    ;
-            const StrategyOption        =  this.getThisTvMainData('StrategyOption')        ;
+            const tradeOption_withWave  =  this.getThisTvMainData('tradeOption_withWave')  ;
+            const tradeOption_withGrid  =  this.getThisTvMainData('tradeOption_withGrid')  ;
             const waveUpChg             =  this.getThisTvMainData('waveUpChg')             ;
             const targetHgh             =  this.getThisTvMainData('targetHgh')             ;
             const TradingSymbol         =  this.getThisTvMainData('TradingSymbol')         ;
@@ -1170,9 +1174,15 @@ export const TradeBot = {
             const inNormalSellRegion = TradingSymbolPrice > this.lowToSell;
             if (!isStrictTrue(inNormalSellRegion)) { AddSetMessage(this.alertMessageSet, 'cantSell: not inNormalSellRegion') }
 
-            let tradeOption_withWave  =  StrategyOption === TV_StrategyOption.onlyWave || TV_StrategyOption.bothWaveGrid ;
-            let tradeOption_withGrid  =  StrategyOption === TV_StrategyOption.onlyGrid || TV_StrategyOption.bothWaveGrid ;
-            
+            // withGrid
+            if (tradeOption_withGrid && inNormalSellRegion && (TradingSymbolPrice > (1 + tradeFeeRate) * lowBuyPriceUnclose)) {
+                toSell = true;
+                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(lowBuySerialUnclose));
+                S.ing_orderPrice = Math.max(this.lowToSell, TradingSymbolPrice) ;
+                S.ing_orderType  = CV.order_T_LMT ;
+                S.ing_reason = 'touchGridLowToSell';
+            }
+
             // touch targetHgh
             if (tradeOption_withWave && inNormalSellRegion && (TradingSymbolPrice > (1 + tradeFeeRate) * lowBuyPriceUnclose) && markTouchTargetHgh && TradingSymbolPrice > lstRcdTargetHgh) {
                 this.thereUnuseTargetHghTouch   = false;
@@ -1191,15 +1201,6 @@ export const TradeBot = {
                 S.ing_orderPrice = Math.max(this.lstRcdTargetHgh, TradingSymbolPrice);
                 S.ing_orderType  = CV.order_T_LMT ;
                 S.ing_reason = 'thereUnuseTargetHghTouch';
-            }
-
-            // onlyGrid
-            if (tradeOption_withGrid && inNormalSellRegion && (TradingSymbolPrice > (1 + tradeFeeRate) * lowBuyPriceUnclose)) {
-                toSell = true;
-                toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(lowBuySerialUnclose));
-                S.ing_orderPrice = Math.max(this.lowToSell, TradingSymbolPrice) ;
-                S.ing_orderType  = CV.order_T_LMT ;
-                S.ing_reason = 'touchGridLowToSell';
             }
 
             // mustSellProfitStep
@@ -1330,7 +1331,8 @@ export const TradeBot = {
             const botNumber             =  this.getThisTvMainData('botNumber')            ;
             const timestamp             =  this.getThisTvMainData('timestamp')            ;
             const TradingSymbolPrice    =  this.getThisTvMainData('TradingSymbolPrice')   ;
-            const StrategyOption        =  this.getThisTvMainData('StrategyOption')       ;
+            const tradeOption_withWave  =  this.getThisTvMainData('tradeOption_withWave') ;
+            const tradeOption_withGrid  =  this.getThisTvMainData('tradeOption_withGrid') ;
             const waveUpChg             =  this.getThisTvMainData('waveUpChg')            ;
             const roundHgh              =  this.getThisTvMainData('roundHgh')             ;
             const roundLow              =  this.getThisTvMainData('roundLow')             ;
@@ -1368,8 +1370,13 @@ export const TradeBot = {
             const inNormalBuyRegion = TradingSymbolPrice > this.lowToBuy && TradingSymbolPrice < this.hghToBuy;
             if (!isStrictTrue(inNormalBuyRegion)) { AddSetMessage(this.alertMessageSet, 'cantBuy: not inNormalBuyRegion') }
 
-            let tradeOption_withWave  =  StrategyOption === TV_StrategyOption.onlyWave || TV_StrategyOption.bothWaveGrid
-            let tradeOption_withGrid  =  StrategyOption === TV_StrategyOption.onlyGrid || TV_StrategyOption.bothWaveGrid
+            // withGrid
+            if (tradeOption_withGrid && inNormalBuyRegion) {
+                toBuy = true;
+                S.ing_orderPrice = Math.min(this.hghToBuy, TradingSymbolPrice)  ;
+                S.ing_orderType = CV.order_T_LMT;
+                S.ing_reason = 'touchGridHghToBuy';
+            }
 
             // touchTargetLow
             if (tradeOption_withWave && inNormalBuyRegion && markTouchTargetLow) {
@@ -1386,14 +1393,6 @@ export const TradeBot = {
                 S.ing_orderPrice = Math.min(lstRcdTargetLow, TradingSymbolPrice) ;
                 S.ing_orderType = CV.order_T_LMT;
                 S.ing_reason = 'thereUnuseTargetLowTouch';
-            }
-
-            // onlyGrid
-            if (tradeOption_withGrid && inNormalBuyRegion) {
-                toBuy = true;
-                S.ing_orderPrice = Math.min(this.hghToBuy, TradingSymbolPrice)  ;
-                S.ing_orderType = CV.order_T_LMT;
-                S.ing_reason = 'touchGridHghToBuy';
             }
 
             if (this.thereCommandFromGS && isStrictTrue(this.commandData.toBuy)) {
