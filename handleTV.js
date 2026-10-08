@@ -1180,7 +1180,7 @@ export const TradeBot = {
                 toSellOrderA = uncloseOrdersA2d.find(v => String(v[idx_serial]) === String(lowBuySerialUnclose));
                 S.ing_orderPrice = Math.max(this.lowToSell, TradingSymbolPrice) ;
                 S.ing_orderType  = CV.order_T_LMT ;
-                S.ing_reason = 'touchGridLowToSell';
+                S.ing_reason = 'Grid: inNormalSellRegion';
             }
 
             // touch targetHgh
@@ -1375,7 +1375,7 @@ export const TradeBot = {
                 toBuy = true;
                 S.ing_orderPrice = Math.min(this.hghToBuy, TradingSymbolPrice)  ;
                 S.ing_orderType = CV.order_T_LMT;
-                S.ing_reason = 'touchGridHghToBuy';
+                S.ing_reason = 'Grid: inNormalBuyRegion';
             }
 
             // touchTargetLow
