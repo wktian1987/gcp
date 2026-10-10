@@ -865,7 +865,7 @@ export const TradeBot = {
     CalcuBuySellLimit() {
         const timestamp                 = this.getThisTvMainData('timestamp')                   ;
         const TradingSymbolPrice        = this.getThisTvMainData('TradingSymbolPrice')          ;
-        const StrategyOption            = this.getThisTvMainData('StrategyOption')             ;
+        const StrategyOption            = this.getThisTvMainData('StrategyOption')              ;
         const inFund                    = this.getThisTvMainData('inFund')                      ;
         const inCoin                    = this.getThisTvMainData('inCoin')                      ;
         const leverage                  = this.getThisTvMainData('leverage')                    ;
@@ -965,8 +965,11 @@ export const TradeBot = {
         if (hghBuyPriceUnclose > hghBuyPriceThisGridRound) { this.hghBuyPriceThisGridRound = hghBuyPriceUnclose }
         if (!isStrictNumber(hghBuyPriceThisGridRound) && isStrictNumber(hghBuyPriceUnclose)) { this.hghBuyPriceThisGridRound = hghBuyPriceUnclose }
         if (!isStrictNumber(hghBuyPriceUnclose) && isStrictNumber(hghBuyPriceThisGridRound)) { this.hghBuyPriceThisGridRound = CV.NA }
-        const enDifficultyBuyPrice      = Math.min(ToStrictNumber(this.hghBuyPriceThisGridRound, roundHgh) * Math.pow(1 + waveDnChg, this.enDifficulty), ToStrictNumber(lowBuyPriceUnclose, roundHgh) * (1+waveDnChg) )
-        const exDifficultySellPrice     = ToStrictNumber(lowBuyPriceUnclose, roundLow) * (1+waveUpChg)
+        let enDifficultyBuyPrice      = ToStrictNumber(lowBuyPriceUnclose, roundHgh) * (1+waveDnChg) ;
+        let exDifficultySellPrice     = ToStrictNumber(lowBuyPriceUnclose, roundLow) * (1+waveUpChg) ;
+        if (isStrictTrue(this.tradeOption_withGrid)) {
+            enDifficultyBuyPrice = Math.min(ToStrictNumber(this.hghBuyPriceThisGridRound, roundHgh) * Math.pow(1 + waveDnChg, this.enDifficulty), enDifficultyBuyPrice) ;
+        }
 
         this.lowToBuy = Math.max(basicLowToBuy, closeToRndLow);
         this.hghToBuy = Math.min(basicHghToBuy, closeToRndHgh, enDifficultyBuyPrice);
