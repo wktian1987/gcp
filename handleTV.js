@@ -901,7 +901,7 @@ export const TradeBot = {
         const lstTradeTime              = this.getThisTvMainData('lstTradeTime')                ;
         const hghBuyPriceUnclose        = this.getThisTvMainData('hghBuyPriceUnclose')          ;
         const lowBuyPriceUnclose        = this.getThisTvMainData('lowBuyPriceUnclose')          ;
-        const hghBuyPriceThisGridRound  = this.getThisTvMainData('hghBuyPriceThisGridRound')    ;
+        const hghPriceThisGridRound     = this.getThisTvMainData('hghPriceThisGridRound')       ;
         const allPosition               = this.getThisTvMainData('allPosition')                 ;
         const avgBuyPrice               = this.getThisTvMainData('avgBuyPrice')                 ;
         const netProfit                 = this.getThisTvMainData('netProfit')                   ;
@@ -961,14 +961,14 @@ export const TradeBot = {
         const gridMaxPowerDiv = Math.pow(MaxGrid, difficultyCoefficient)    ; // 实际上每次运行都会得到同样的值
         this.enDifficulty  = difficultyCoefficient < 0 ? 0 : Math.pow(gridNum+1, difficultyPower)/gridMaxPowerDiv                   ;
         this.exDifficulty  = difficultyCoefficient < 0 ? 0 : Math.pow(MaxGrid+1-gridNum, difficultyPower)/gridMaxPowerDiv/MaxGrid   ;
-        this.hghBuyPriceThisGridRound = hghBuyPriceThisGridRound;
-        if (hghBuyPriceUnclose > hghBuyPriceThisGridRound) { this.hghBuyPriceThisGridRound = hghBuyPriceUnclose }
-        if (!isStrictNumber(hghBuyPriceThisGridRound) && isStrictNumber(hghBuyPriceUnclose)) { this.hghBuyPriceThisGridRound = hghBuyPriceUnclose }
-        if (!isStrictNumber(hghBuyPriceUnclose) && isStrictNumber(hghBuyPriceThisGridRound)) { this.hghBuyPriceThisGridRound = CV.NA }
+        this.hghPriceThisGridRound = hghPriceThisGridRound;
+        if (hghBuyPriceUnclose > hghPriceThisGridRound) { this.hghPriceThisGridRound = hghBuyPriceUnclose }
+        if (!isStrictNumber(hghPriceThisGridRound) && isStrictNumber(hghBuyPriceUnclose)) { this.hghPriceThisGridRound = hghBuyPriceUnclose }
+        if (!isStrictNumber(hghBuyPriceUnclose) && isStrictNumber(hghPriceThisGridRound)) { this.hghPriceThisGridRound = CV.NA }
         let enDifficultyBuyPrice      = ToStrictNumber(lowBuyPriceUnclose, roundHgh) * (1+waveDnChg) ;
         let exDifficultySellPrice     = ToStrictNumber(lowBuyPriceUnclose, roundLow) * (1+waveUpChg) ;
         if (isStrictTrue(this.tradeOption_withGrid)) {
-            enDifficultyBuyPrice = Math.min(ToStrictNumber(this.hghBuyPriceThisGridRound, roundHgh) * Math.pow(1 + waveDnChg, this.enDifficulty), enDifficultyBuyPrice) ;
+            enDifficultyBuyPrice = Math.min(ToStrictNumber(this.hghPriceThisGridRound, roundHgh) * Math.pow(1 + waveDnChg, this.enDifficulty), enDifficultyBuyPrice) ;
         }
 
         this.lowToBuy = Math.max(basicLowToBuy, closeToRndLow);
