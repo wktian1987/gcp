@@ -962,13 +962,11 @@ export const TradeBot = {
         this.enDifficulty  = difficultyCoefficient < 0 ? 0 : Math.pow(gridNum+1, difficultyPower)/gridMaxPowerDiv                   ;
         this.exDifficulty  = difficultyCoefficient < 0 ? 0 : Math.pow(MaxGrid+1-gridNum, difficultyPower)/gridMaxPowerDiv/MaxGrid   ;
         this.hghPriceThisGridRound = hghPriceThisGridRound;
-        if (hghBuyPriceUnclose > hghPriceThisGridRound) { this.hghPriceThisGridRound = hghBuyPriceUnclose }
-        if (!isStrictNumber(hghPriceThisGridRound) && isStrictNumber(hghBuyPriceUnclose)) { this.hghPriceThisGridRound = hghBuyPriceUnclose }
-        if (!isStrictNumber(hghBuyPriceUnclose) && isStrictNumber(hghPriceThisGridRound)) { this.hghPriceThisGridRound = CV.NA }
+        if (!isStrictNumber(this.hghPriceThisGridRound) || !isStrictNumber(hghBuyPriceUnclose)) { this.hghPriceThisGridRound = roundHgh }
         let enDifficultyBuyPrice      = ToStrictNumber(lowBuyPriceUnclose, roundHgh) * (1+waveDnChg) ;
         let exDifficultySellPrice     = ToStrictNumber(lowBuyPriceUnclose, roundLow) * (1+waveUpChg) ;
         if (isStrictTrue(this.tradeOption_withGrid)) {
-            enDifficultyBuyPrice = Math.min(ToStrictNumber(this.hghPriceThisGridRound, roundHgh) * Math.pow(1 + waveDnChg, this.enDifficulty), enDifficultyBuyPrice) ;
+            enDifficultyBuyPrice = Math.min(this.hghPriceThisGridRound * Math.pow(1 + waveDnChg, this.enDifficulty), enDifficultyBuyPrice) ;
         }
 
         this.lowToBuy = Math.max(basicLowToBuy, closeToRndLow);
